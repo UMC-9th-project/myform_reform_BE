@@ -8,7 +8,7 @@ export interface ErrorResponse {
   success: null;
 }
 
-export interface SuccessResponse<T> {
+export interface TsoaResponse<T> {
   resultType: string;
   error: null;
   success: T;
