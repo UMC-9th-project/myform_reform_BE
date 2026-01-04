@@ -4,10 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "ssh:open": "zsh tunnel.sh",
+    "ssh:kill": "pkill -f 'ssh.*54312'",
     "build": "tsoa spec-and-routes && tsc",
     "dev:start": "nodemon --watch '*.ts' --exec tsx ./src/app.ts",
     "eslint": "eslint",
-    "prisma": "npx prisma db pull && npx prisma generate"
+    "dev:prisma": "npx prisma db pull && npx prisma generate"
   },
   "keywords": [],
   "author": "",
