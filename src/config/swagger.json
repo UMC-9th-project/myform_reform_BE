@@ -7,7 +7,7 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"successResponse_string_": {
+			"TsoaResponse_string_": {
 				"properties": {
 					"resultType": {
 						"type": "string"
@@ -35,7 +35,7 @@
 		"securitySchemes": {}
 	},
 	"info": {
-		"title": "rfnf",
+		"title": "myform_reform",
 		"version": "1.0.0",
 		"license": {
 			"name": "ISC"
@@ -52,7 +52,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/successResponse_string_"
+									"$ref": "#/components/schemas/TsoaResponse_string_"
 								}
 							}
 						}

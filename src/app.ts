@@ -1,8 +1,8 @@
 import express from 'express';
 import morgan from 'morgan';
-import * as swaggerJson from './config/swagger.json';
+import swaggerJson from './config/swagger.json' with { type: 'json' };
 import * as swaggerUI from 'swagger-ui-express';
-import { RegisterRoutes } from './routes/tsoaRoutes';
+import { RegisterRoutes } from './routes/tsoaRoutes.js';
 import dotenv from 'dotenv';
 // import { errorHandler } from './middleware/error';
 

@@ -1,4 +1,4 @@
-import { TestService } from './test.service';
+import { TestService } from './test.service.js';
 
 let T: TestService;
 

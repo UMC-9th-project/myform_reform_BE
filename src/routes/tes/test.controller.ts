@@ -10,8 +10,8 @@ import {
   Route,
   Tags
 } from 'tsoa';
-import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse';
-import { TestService } from './test.service';
+import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
+import { TestService } from './test.service.js';
 
 @Route('project')
 @Tags('project node CRUD')
