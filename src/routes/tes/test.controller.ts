@@ -12,6 +12,7 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { TestService } from './test.service.js';
+import { CustomExample } from '../../middleware/error.js';
 
 @Route('project')
 @Tags('project node CRUD')
@@ -25,6 +26,6 @@ export class TestController extends Controller {
   @Get('/')
   public async setTest(): Promise<TsoaResponse<string>> {
     const answer = await this.testService.helloworld();
-    return new ResponseHandler(answer);
+    throw new CustomExample('에러 테스트');
   }
 }

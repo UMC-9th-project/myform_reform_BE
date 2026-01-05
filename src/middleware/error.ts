@@ -79,3 +79,21 @@ export class BasicError extends Error {
     };
   }
 }
+
+export const notFoundHandler = (req: Request, res: Response) => {
+  res.status(404).json({
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-404',
+      reason: 'Not Found',
+      data: `Cannot ${req.method} ${req.path}`
+    },
+    success: null
+  });
+};
+
+export class CustomExample extends BasicError {
+  constructor(description: string) {
+    super(400, 'errcode', 'err message', description);
+  }
+}
