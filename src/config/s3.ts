@@ -1,10 +1,12 @@
+/* tslint:disable */
+/* eslint-disable */
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand
 } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
-import { v5 } from 'uuid';
+import { v4 } from 'uuid';
 import { S3UploadError } from '../middleware/error.js';
 
 dotenv.config();
@@ -22,9 +24,9 @@ export class S3 {
 
   async uploadToS3(file: Express.Multer.File): Promise<string> {
     if (!file.mimetype.startsWith('image/')) {
-      throw new Error('지원되지 않는 파일 형식입니다.');
+      throw new S3UploadError('지원되지 않는 파일 형식입니다.');
     }
-    const uniqueName = `${v5}${file.originalname}`;
+    const uniqueName = v4();
     const command = new PutObjectCommand({
       Bucket: process.env.S3_NAME || '',
       Key: uniqueName,
@@ -51,7 +53,7 @@ export class S3 {
 
       await this.s3.send(command);
       return true;
-    } catch (error) {
+    } catch (err) {
       throw new S3UploadError('S3에서 파일 삭제 중 오류가 발생했습니다');
     }
   }

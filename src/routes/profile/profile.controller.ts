@@ -2,19 +2,27 @@ import {
   Controller,
   Post,
   Route,
+  Request,
   SuccessResponse,
   Response,
   Tags,
   Get,
-  Path
+  Path,
+  UploadedFiles,
+  Body,
+  FormField,
+  Example
 } from 'tsoa';
 import { ProfileService } from './profile.service.js';
+// import { Request as ExRequest } from 'express';
 import {
   ErrorResponse,
   ResponseHandler,
   TsoaResponse,
   commonError
 } from '../../config/tsoaResponse.js';
+import { ItemDto, ItemRequest } from './profile.dto.js';
+import { Request as ExRequest } from 'express';
 
 @Route('/api/v1/profile')
 @Tags('Profile Router')
@@ -26,14 +34,38 @@ export class ProfileController extends Controller {
   }
 
   /**
-   * 판매 상품 등록
+   * 판매 상품 등록, body는 json stringfy후 제공되어야합니다.
    * @summary 새로운 판매 상품을 등록합니다
    * @returns 판매글 등록 결과
    */
   @Post('add/item')
+  @Example<ItemRequest>({
+    title: '제목',
+    content: '설명',
+    price: 1000,
+    quantity: 1,
+    delivery: 100,
+    option: [
+      {
+        comment: 'test',
+        price: 1
+      }
+    ],
+    category: {
+      major: '의류',
+      sub: '상의'
+    }
+  })
   @SuccessResponse(200, '판매글 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async addItem(): Promise<TsoaResponse<string>> {
+  public async addItem(
+    @FormField() body: string,
+    @UploadedFiles('images') images: Express.Multer.File[]
+  ): Promise<TsoaResponse<string>> {
+    const dto = JSON.parse(body);
+    const itemDto = new ItemDto(dto);
+    await this.profileService.addItem(itemDto, images);
+
     return new ResponseHandler('테스트');
   }
 

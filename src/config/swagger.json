@@ -111,6 +111,27 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_string_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"title": "제목",
+											"content": "설명",
+											"price": 1000,
+											"quantity": 1,
+											"delivery": 100,
+											"option": [
+												{
+													"comment": "test",
+													"price": 1
+												}
+											],
+											"category": {
+												"major": "의류",
+												"sub": "상의"
+											}
+										}
+									}
 								}
 							}
 						}
@@ -132,7 +153,33 @@
 					"Profile Router"
 				],
 				"security": [],
-				"parameters": []
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"body": {
+										"type": "string"
+									},
+									"images": {
+										"items": {
+											"type": "string",
+											"format": "binary"
+										},
+										"type": "array"
+									}
+								},
+								"required": [
+									"body",
+									"images"
+								]
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/profile/add/reform": {
@@ -228,7 +275,7 @@
 						}
 					}
 				},
-				"description": "특정 판매상품 상세 조회",
+				"description": "특정 판매목록 상세 조회",
 				"summary": "판매상품 ID로 해당 상품의 상세 정보를 조회합니다",
 				"tags": [
 					"Profile Router"

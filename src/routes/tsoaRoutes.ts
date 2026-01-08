@@ -8,6 +8,8 @@ import { TestController } from './tes/test.controller.js';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { ProfileController } from './profile/profile.controller.js';
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
+import multer from 'multer';
+
 
 
 
@@ -42,13 +44,14 @@ const templateService = new ExpressTemplateService(models, {"noImplicitAdditiona
 
 
 
-export function RegisterRoutes(app: Router) {
+export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof multer>}) {
 
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
 
+    const upload = opts?.multer ||  multer({"limits":{"fileSize":8388608}});
 
     
         const argsTestController_setTest: Record<string, TsoaRoute.ParameterSchema> = {
@@ -81,8 +84,15 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_addItem: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"formData","name":"body","required":true,"dataType":"string"},
+                images: {"in":"formData","name":"images","required":true,"dataType":"array","array":{"dataType":"file"}},
         };
         app.post('/api/v1/profile/add/item',
+            upload.fields([
+                {
+                    name: "images",
+                }
+            ]),
             ...(fetchMiddlewares<RequestHandler>(ProfileController)),
             ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.addItem)),
 
