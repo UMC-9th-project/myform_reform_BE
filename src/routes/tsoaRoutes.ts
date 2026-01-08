@@ -120,8 +120,15 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsProfileController_addReform: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"formData","name":"body","required":true,"dataType":"string"},
+                images: {"in":"formData","name":"images","required":true,"dataType":"array","array":{"dataType":"file"}},
         };
         app.post('/api/v1/profile/add/reform',
+            upload.fields([
+                {
+                    name: "images",
+                }
+            ]),
             ...(fetchMiddlewares<RequestHandler>(ProfileController)),
             ...(fetchMiddlewares<RequestHandler>(ProfileController.prototype.addReform)),
 

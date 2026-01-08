@@ -1,7 +1,7 @@
 import { Category, Option } from '../../types/item.js';
 
 interface Item {
-  images: string[] | null;
+  images: string[];
   title: string;
   content: string;
   price: number;
@@ -33,6 +33,40 @@ export class ItemDto implements Item {
     this.quantity = body.quantity;
     this.delivery = body.delivery;
     this.option = body.option;
+    this.category = body.category;
+  }
+}
+
+interface Reform {
+  images: string[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expected_working: number;
+  category: Category;
+}
+
+export type ReformRequest = Omit<Reform, 'images'>;
+
+export class ReformDto implements Reform {
+  ownerId: string;
+  images: string[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expected_working: number;
+  category: Category;
+
+  constructor(body: ReformRequest, ownerId: string) {
+    this.ownerId = ownerId;
+    this.images = [];
+    this.title = body.title;
+    this.content = body.content;
+    this.price = body.price;
+    this.expected_working = body.expected_working;
+    this.delivery = body.delivery;
     this.category = body.category;
   }
 }

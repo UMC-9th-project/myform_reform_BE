@@ -1,4 +1,4 @@
-import { ItemDto } from './profile.dto.js';
+import { ItemDto, ReformDto } from './profile.dto.js';
 import { ProfileModel } from './profile.model.js';
 import { S3 } from '../../config/s3.js';
 import { ItemAddError } from './profile.error.js';
@@ -10,16 +10,21 @@ export class ProfileService {
     this.s3 = new S3();
   }
 
-  async addItem(itemDto: ItemDto, images: Express.Multer.File[]) {
+  async addProduct(
+    mode: 'ITEM' | 'REFORM',
+    dto: ItemDto | ReformDto,
+    images: Express.Multer.File[]
+  ) {
     try {
       const imageStr: string[] = [];
       for (const img of images) {
         const ans = await this.s3.uploadToS3(img);
         imageStr.push(ans);
       }
-      itemDto.images = imageStr;
-      await this.profileModel.addItem(itemDto);
+      dto.images = imageStr;
+      await this.profileModel.addProduct(mode, dto);
     } catch (err: any) {
+      console.log(err);
       throw new ItemAddError(err);
     }
   }

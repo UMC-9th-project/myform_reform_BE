@@ -21,7 +21,12 @@ import {
   TsoaResponse,
   commonError
 } from '../../config/tsoaResponse.js';
-import { ItemDto, ItemRequest } from './profile.dto.js';
+import {
+  ItemDto,
+  ItemRequest,
+  ReformDto,
+  ReformRequest
+} from './profile.dto.js';
 import { Request as ExRequest } from 'express';
 
 @Route('/api/v1/profile')
@@ -66,9 +71,9 @@ export class ProfileController extends Controller {
     const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
     const dto = JSON.parse(body);
     const itemDto = new ItemDto(dto, ownerId);
-    await this.profileService.addItem(itemDto, images);
+    await this.profileService.addProduct('ITEM', itemDto, images);
 
-    return new ResponseHandler('테스트');
+    return new ResponseHandler('판매글 등록 성공');
   }
 
   /**
@@ -77,9 +82,28 @@ export class ProfileController extends Controller {
    * @returns 주문제작 등록 결과
    */
   @Post('add/reform')
+  @Example<ReformRequest>({
+    title: '맞춤 자켓 제작',
+    content: '고객님의 사이즈에 맞춰 자켓을 제작해드립니다',
+    price: 150000,
+    delivery: 3000,
+    expected_working: 14,
+    category: {
+      major: '의류',
+      sub: '아우터'
+    }
+  })
   @SuccessResponse(200, '주문제작 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async addReform(): Promise<TsoaResponse<string>> {
+  public async addReform(
+    @FormField() body: string,
+    @UploadedFiles() images: Express.Multer.File[]
+  ): Promise<TsoaResponse<string>> {
+    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
+    const dto = JSON.parse(body);
+    const reformDto = new ReformDto(dto, ownerId);
+    await this.profileService.addProduct('REFORM', reformDto, images);
+
     return new ResponseHandler('테스트');
   }
 
