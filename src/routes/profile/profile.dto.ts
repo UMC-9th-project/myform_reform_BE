@@ -14,6 +14,7 @@ interface Item {
 export type ItemRequest = Omit<Item, 'images'>;
 
 export class ItemDto implements Item {
+  ownerId: string;
   images: string[];
   title: string;
   content: string;
@@ -23,7 +24,8 @@ export class ItemDto implements Item {
   option: Option[];
   category: Category;
 
-  constructor(body: ItemRequest) {
+  constructor(body: ItemRequest, ownerId: string) {
+    this.ownerId = ownerId;
     this.images = [];
     this.title = body.title;
     this.content = body.content;

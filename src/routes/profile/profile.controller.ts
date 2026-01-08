@@ -62,8 +62,10 @@ export class ProfileController extends Controller {
     @FormField() body: string,
     @UploadedFiles('images') images: Express.Multer.File[]
   ): Promise<TsoaResponse<string>> {
+    //TODO: JWT 로직 추가 이후 ownerID 목업 삭제
+    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
     const dto = JSON.parse(body);
-    const itemDto = new ItemDto(dto);
+    const itemDto = new ItemDto(dto, ownerId);
     await this.profileService.addItem(itemDto, images);
 
     return new ResponseHandler('테스트');

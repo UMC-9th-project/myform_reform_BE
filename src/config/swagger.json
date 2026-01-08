@@ -147,7 +147,7 @@
 						}
 					}
 				},
-				"description": "판매 상품 등록",
+				"description": "판매 상품 등록, body는 json stringfy후 제공되어야합니다.",
 				"summary": "새로운 판매 상품을 등록합니다",
 				"tags": [
 					"Profile Router"

@@ -1,6 +1,7 @@
 import { ItemDto } from './profile.dto.js';
 import { ProfileModel } from './profile.model.js';
 import { S3 } from '../../config/s3.js';
+import { ItemAddError } from './profile.error.js';
 export class ProfileService {
   private profileModel: ProfileModel;
   private s3: S3;
@@ -17,9 +18,9 @@ export class ProfileService {
         imageStr.push(ans);
       }
       itemDto.images = imageStr;
-      await this.profileModel;
-    } catch (err) {
-      throw err;
+      await this.profileModel.addItem(itemDto);
+    } catch (err: any) {
+      throw new ItemAddError(err);
     }
   }
 }

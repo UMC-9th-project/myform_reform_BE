@@ -18,3 +18,8 @@ export class ItemAddError extends BasicError {
     super(400, 'e400', '아이템 등록 오류', des);
   }
 }
+export class CategoryNotExist extends BasicError {
+  constructor(des: string) {
+    super(404, 'e400', '아이템 등록 오류', des);
+  }
+}
