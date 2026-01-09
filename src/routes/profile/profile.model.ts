@@ -45,7 +45,8 @@ export class ProfileModel {
           const group = await tx.option_group.create({
             data: {
               item_id: ans.item_id,
-              name: opt.title
+              name: opt.title,
+              sort_order: opt.sortOrder
             }
           });
           for (const optItem of opt.content) {
@@ -54,7 +55,8 @@ export class ProfileModel {
                 option_group_id: group.option_group_id,
                 name: optItem.comment,
                 extra_price: optItem.price,
-                quantity: optItem.quantity
+                quantity: optItem.quantity,
+                sort_order: optItem.sortOrder
               }
             });
           }

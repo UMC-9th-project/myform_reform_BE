@@ -67,7 +67,7 @@ export class ProfileController extends Controller {
   /**
    * 주문제작 상품 등록
    *
-   * {\"title\":\"맞춤 자켓 제작\",\"content\":\"고객님의 사이즈에 맞춰 자켓을 제작해드립니다\",\"price\":150000,\"delivery\":3000,\"expected_working\":14,\"category\":{\"major\":\"의류\",\"sub\":\"아우터\"}}
+   * {"title":"제목","content":"설명","price":1000,"delivery":100,"option":[{"title":"사이즈","sortOrder":1,"content":[{"comment":"S","price":0,"quantity":10,"sortOrder":1},{"comment":"M","price":0,"quantity":10,"sortOrder":2},{"comment":"L","price":500,"quantity":5,"sortOrder":3}]},{"title":"색상","sortOrder":2,"content":[{"comment":"블랙","price":0,"quantity":20,"sortOrder":1},{"comment":"화이트","price":0,"quantity":15,"sortOrder":2}]}],"category":{"major":"의류","sub":"상의"}}
    *
    * @summary 새로운 주문제작 상품을 등록합니다
    * @param body JSON 문자열 형태의 상품 정보
