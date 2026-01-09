@@ -35,10 +35,29 @@ export class ProfileModel {
             category_id: categorydata.category_id
           }
         });
+
         for (const img of images) {
           await tx.item_photo.create({
             data: { item_id: ans.item_id, content: img }
           });
+        }
+        for (const opt of option) {
+          const group = await tx.option_group.create({
+            data: {
+              item_id: ans.item_id,
+              name: opt.title
+            }
+          });
+          for (const optItem of opt.content) {
+            await tx.option_item.create({
+              data: {
+                option_group_id: group.option_group_id,
+                name: optItem.comment,
+                extra_price: optItem.price,
+                quantity: optItem.quantity
+              }
+            });
+          }
         }
       });
     } else if (mode == 'REFORM') {

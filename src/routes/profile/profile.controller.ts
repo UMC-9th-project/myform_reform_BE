@@ -40,27 +40,15 @@ export class ProfileController extends Controller {
 
   /**
    * 판매 상품 등록, body는 json stringfy후 제공되어야합니다.
+   *
+   * {\"title\":\"제목\",\"content\":\"설명\",\"price\":1000,\"delivery\":100,\"option\":[{\"title\":\"사이즈\",\"content\":[{\"comment\":\"S\",\"price\":0,\"quantity\":10},{\"comment\":\"M\",\"price\":0,\"quantity\":10}]}],\"category\":{\"major\":\"의류\",\"sub\":\"상의\"}}
+   *
    * @summary 새로운 판매 상품을 등록합니다
    * @returns 판매글 등록 결과
+   * @param body JSON 문자열 형태의 상품 정보
+   *
    */
   @Post('add/item')
-  @Example<ItemRequest>({
-    title: '제목',
-    content: '설명',
-    price: 1000,
-    quantity: 1,
-    delivery: 100,
-    option: [
-      {
-        comment: 'test',
-        price: 1
-      }
-    ],
-    category: {
-      major: '의류',
-      sub: '상의'
-    }
-  })
   @SuccessResponse(200, '판매글 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addItem(
@@ -69,7 +57,7 @@ export class ProfileController extends Controller {
   ): Promise<TsoaResponse<string>> {
     //TODO: JWT 로직 추가 이후 ownerID 목업 삭제
     const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
-    const dto = JSON.parse(body);
+    const dto = JSON.parse(body) as ItemRequest;
     const itemDto = new ItemDto(dto, ownerId);
     await this.profileService.addProduct('ITEM', itemDto, images);
 
@@ -78,21 +66,14 @@ export class ProfileController extends Controller {
 
   /**
    * 주문제작 상품 등록
+   *
+   * {\"title\":\"맞춤 자켓 제작\",\"content\":\"고객님의 사이즈에 맞춰 자켓을 제작해드립니다\",\"price\":150000,\"delivery\":3000,\"expected_working\":14,\"category\":{\"major\":\"의류\",\"sub\":\"아우터\"}}
+   *
    * @summary 새로운 주문제작 상품을 등록합니다
+   * @param body JSON 문자열 형태의 상품 정보
    * @returns 주문제작 등록 결과
    */
   @Post('add/reform')
-  @Example<ReformRequest>({
-    title: '맞춤 자켓 제작',
-    content: '고객님의 사이즈에 맞춰 자켓을 제작해드립니다',
-    price: 150000,
-    delivery: 3000,
-    expected_working: 14,
-    category: {
-      major: '의류',
-      sub: '아우터'
-    }
-  })
   @SuccessResponse(200, '주문제작 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addReform(
@@ -100,7 +81,7 @@ export class ProfileController extends Controller {
     @UploadedFiles() images: Express.Multer.File[]
   ): Promise<TsoaResponse<string>> {
     const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
-    const dto = JSON.parse(body);
+    const dto = JSON.parse(body) as ReformRequest;
     const reformDto = new ReformDto(dto, ownerId);
     await this.profileService.addProduct('REFORM', reformDto, images);
 

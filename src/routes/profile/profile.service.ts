@@ -5,6 +5,7 @@ import { ItemAddError } from './profile.error.js';
 export class ProfileService {
   private profileModel: ProfileModel;
   private s3: S3;
+
   constructor() {
     this.profileModel = new ProfileModel();
     this.s3 = new S3();

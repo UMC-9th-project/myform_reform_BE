@@ -1,13 +1,12 @@
-import { Category, Option } from '../../types/item.js';
+import { Category, Option, OptionGroup } from '../../types/item.js';
 
 interface Item {
   images: string[];
   title: string;
   content: string;
   price: number;
-  quantity: number;
   delivery: number;
-  option: Option[];
+  option: OptionGroup[];
   category: Category;
 }
 
@@ -19,9 +18,8 @@ export class ItemDto implements Item {
   title: string;
   content: string;
   price: number;
-  quantity: number;
   delivery: number;
-  option: Option[];
+  option: OptionGroup[];
   category: Category;
 
   constructor(body: ItemRequest, ownerId: string) {
@@ -30,7 +28,6 @@ export class ItemDto implements Item {
     this.title = body.title;
     this.content = body.content;
     this.price = body.price;
-    this.quantity = body.quantity;
     this.delivery = body.delivery;
     this.option = body.option;
     this.category = body.category;
