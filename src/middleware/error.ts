@@ -97,3 +97,27 @@ export class CustomExample extends BasicError {
     super(400, 'errcode', 'err message', description);
   }
 }
+
+export class InputValidationError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_001', '입력 형식이 올바르지 않습니다.', description);
+  }
+}
+
+export class SmsProviderError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_002', 'SMS 전송 중 오류가 발생했습니다.', description);
+  }
+}
+
+export class RedisStorageError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_003', 'Redis에 인증 정보 저장 중 오류가 발생했습니다.', description);
+  }
+}
+
+export class TooManyCodeAttemptsError extends BasicError {
+  constructor(description: string) {
+    super(429, 'Auth_004', '인증 코드 입력 시도 횟수를 초과했습니다.', description);
+  }
+}
