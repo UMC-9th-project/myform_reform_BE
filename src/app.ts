@@ -4,6 +4,7 @@ import swaggerJson from './config/swagger.json' with { type: 'json' };
 import * as swaggerUI from 'swagger-ui-express';
 import { RegisterRoutes } from './routes/tsoaRoutes.js';
 import dotenv from 'dotenv';
+import 'reflect-metadata';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 
 dotenv.config();

@@ -97,3 +97,32 @@ export class CustomExample extends BasicError {
     super(400, 'errcode', 'err message', description);
   }
 }
+
+// Cart 관련 에러
+export class CartNotFoundError extends BasicError {
+  constructor() {
+    super(
+      404,
+      'CART-404',
+      'Cart not found',
+      '장바구니 아이템을 찾을 수 없습니다.'
+    );
+  }
+}
+
+export class PartialCartNotFoundError extends BasicError {
+  constructor(missingIds: string[]) {
+    super(
+      404,
+      'CART-404-PARTIAL',
+      'Some cart items not found',
+      `${missingIds.join(',')} 장바구니아이템을 찾을 수 없습니다.`
+    );
+  }
+}
+
+export class ValidationError extends BasicError {
+  constructor(description: any) {
+    super(400, 'ERR-VALIDATION', 'Validation failed', description);
+  }
+}
