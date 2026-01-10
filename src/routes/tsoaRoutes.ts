@@ -24,12 +24,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TsoaResponse_any_": {
+    "SendSmsResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "statusCode": {"dataType":"double","required":true},
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TsoaResponse_SendSmsResponse_": {
         "dataType": "refObject",
         "properties": {
             "resultType": {"dataType":"string","required":true},
             "error": {"dataType":"enum","enums":[null],"required":true},
-            "success": {"dataType":"any","required":true},
+            "success": {"ref":"SendSmsResponse","required":true},
         },
         "additionalProperties": false,
     },
@@ -40,6 +49,42 @@ const models: TsoaRoute.Models = {
             "resultType": {"dataType":"string","required":true},
             "error": {"dataType":"nestedObjectLiteral","nestedProperties":{"data":{"dataType":"union","subSchemas":[{"dataType":"any"},{"dataType":"enum","enums":[null]}]},"reason":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},"errorCode":{"dataType":"string"}},"required":true},
             "success": {"dataType":"enum","enums":[null],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SendSmsRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "phoneNumber": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VerifySmsResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "statusCode": {"dataType":"double","required":true},
+            "message": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TsoaResponse_VerifySmsResponse_": {
+        "dataType": "refObject",
+        "properties": {
+            "resultType": {"dataType":"string","required":true},
+            "error": {"dataType":"enum","enums":[null],"required":true},
+            "success": {"ref":"VerifySmsResponse","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VerifySmsRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "phoneNumber": {"dataType":"string","required":true},
+            "code": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -91,7 +136,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_sendSms: Record<string, TsoaRoute.ParameterSchema> = {
-                phoneNumber: {"in":"body-prop","name":"phoneNumber","required":true,"dataType":"string"},
+                requestBody: {"in":"body","name":"requestBody","required":true,"ref":"SendSmsRequest"},
         };
         app.post('/auth/sms/send',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -121,8 +166,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_verifySms: Record<string, TsoaRoute.ParameterSchema> = {
-                phoneNumber: {"in":"body-prop","name":"phoneNumber","required":true,"dataType":"string"},
-                code: {"in":"body-prop","name":"code","required":true,"dataType":"string"},
+                requestBody: {"in":"body","name":"requestBody","required":true,"ref":"VerifySmsRequest"},
         };
         app.post('/auth/sms/verify',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),

@@ -1,4 +1,4 @@
-import { InputValidationError } from "../middleware/error.js";
+import { InputValidationError } from '../middleware/error.js';
 
 export const validatePhoneNumber = (phoneNumber: string): void => {
   //한국 전화번호 형식 (하이픈 포함 또는 미포함)
@@ -14,4 +14,4 @@ export const validateCode = (code: string): void => {
   if(!codeRegex.test(code)){
     throw new InputValidationError(`유효하지 않은 인증 코드 형식입니다. 입력받은 인증 코드 : ${code}`);
   }
-}
+};

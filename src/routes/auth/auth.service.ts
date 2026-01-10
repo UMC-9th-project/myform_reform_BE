@@ -23,7 +23,6 @@ export class AuthService {
     const authCode = Math.floor(100000 + Math.random() * 900000).toString();
     // 인증 코드를 포함한 문자 메시지 생성
     const textMessage = `[니폼내폼] 본인 확인 인증번호 [${authCode}]입니다.`;
-    let smsResult: any;
 
     // Redis에 저장할 데이터 생성
     const authData = JSON.stringify({
@@ -41,7 +40,7 @@ export class AuthService {
     }
     // SMS 전송 로직
     try {
-      // smsResult = await messageService.send({
+      // await messageService.send({
       //   to: cleanPhoneNumber,
       //   from: process.env.SOLAPI_PHONE_NUMBER as string,
       //   text: textMessage
@@ -61,7 +60,6 @@ export class AuthService {
     const blockData = await mockRedis.get(`block:${cleanPhoneNumber}`);
     if (blockData){
       const parsedBlockData = JSON.parse(blockData);
-      const remainingBlockTimeSeconds = Math.ceil((parsedBlockData.generatedAt + 1800000 - new Date().getTime()) / 1000);
       throw new TooManyCodeAttemptsError(`blockedAt: ${new Date(parsedBlockData.generatedAt).toISOString()},availableAt: ${new Date(parsedBlockData.generatedAt + 1800000).toISOString()}
       `);
     }
@@ -86,7 +84,7 @@ export class AuthService {
       }
       const remainingAuthTimeSeconds = Math.ceil((parsedAuthData.generatedAt + 1800000 - new Date().getTime()) / 1000);
       await mockRedis.set(`auth:${cleanPhoneNumber}`, JSON.stringify(parsedAuthData), 'EX', remainingAuthTimeSeconds);
-      throw new CodeMismatchError(`인증 코드가 일치하지 않습니다.`);
+      throw new CodeMismatchError('인증 코드가 일치하지 않습니다.');
     }
     // 인증 코드 일치 시 Redis에서 인증 코드 삭제 후 true 리턴.
     await mockRedis.del(`auth:${cleanPhoneNumber}`);
