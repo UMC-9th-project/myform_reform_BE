@@ -1,7 +1,8 @@
 import { Route, Controller, Post, SuccessResponse, Body, Response, Example, Tags } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { BasicError, SmsProviderError, UnknownAuthError } from '../../middleware/error.js';
+import { BasicError } from '../../middleware/error.js';
+import { SmsProviderError, UnknownAuthError } from './auth.error.js';
 import { validatePhoneNumber, validateCode } from '../../utils/validators.js';
 import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse } from './auth.dto.js';
 

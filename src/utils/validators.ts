@@ -1,4 +1,4 @@
-import { InputValidationError } from '../middleware/error.js';
+import { InputValidationError } from '../routes/auth/auth.error.js';
 
 export const validatePhoneNumber = (phoneNumber: string): void => {
   //한국 전화번호 형식 (하이픈 포함 또는 미포함)
