@@ -30,6 +30,66 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"DeleteItemsDTO": {
+				"properties": {
+					"cartIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"cartIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_any_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"additionalProperties": false,
+						"type": "object"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AddToCartDTO": {
+				"properties": {
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					},
+					"optionItemIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"quantity",
+					"optionItemIds"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {}
@@ -63,6 +123,79 @@
 				],
 				"security": [],
 				"parameters": []
+			}
+		},
+		"/api/v1/cart/items": {
+			"delete": {
+				"operationId": "RemoveItemsFromCart",
+				"responses": {
+					"200": {
+						"description": "장바구니 아이템 삭제 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_string_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Cart Controller"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DeleteItemsDTO"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/cart/{itemId}": {
+			"post": {
+				"operationId": "AddToCart",
+				"responses": {
+					"201": {
+						"description": "장바구니 추가 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Cart Controller"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "itemId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AddToCartDTO"
+							}
+						}
+					}
+				}
 			}
 		}
 	},
