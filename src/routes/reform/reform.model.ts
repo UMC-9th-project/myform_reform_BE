@@ -1,5 +1,12 @@
+import {
+  reform_proposal,
+  reform_proposal_photo,
+  reform_request,
+  reform_request_photo
+} from '@prisma/client';
 import prisma from '../../config/prisma.config.js';
 import { ReformRequestDto } from './reform.dto.js';
+import { ReformDBError } from './reform.error.js';
 
 export class ReformModel {
   private prisma;
@@ -28,10 +35,49 @@ export class ReformModel {
         await tx.reform_request_photo.create({
           data: {
             reform_request_id: ans.reform_request_id,
-            content: img
+            content: img.content,
+            photo_order: img.photo_order
           }
         });
       }
     });
+  }
+
+  async findDetailRequest(
+    id: string
+  ): Promise<{ images: reform_request_photo[]; body: reform_request }> {
+    const [images, body] = await Promise.all([
+      this.prisma.reform_request_photo.findMany({
+        where: { reform_request_id: id }
+      }),
+      this.prisma.reform_request.findUnique({
+        where: { reform_request_id: id }
+      })
+    ]);
+
+    if (!body) {
+      throw new ReformDBError(`Reform request with id ${id} not found`);
+    }
+
+    return { images, body };
+  }
+
+  async findDetailProposal(
+    id: string
+  ): Promise<{ images: reform_proposal_photo[]; body: reform_proposal }> {
+    const [images, body] = await Promise.all([
+      this.prisma.reform_proposal_photo.findMany({
+        where: { reform_proposal_id: id }
+      }),
+      this.prisma.reform_proposal.findUnique({
+        where: { reform_proposal_id: id }
+      })
+    ]);
+
+    if (!body) {
+      throw new ReformDBError(`Reform request with id ${id} not found`);
+    }
+
+    return { images, body };
   }
 }

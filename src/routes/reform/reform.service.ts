@@ -1,5 +1,11 @@
 import { S3 } from '../../config/s3.js';
-import { ReformRequestDto } from './reform.dto.js';
+import {
+  ProposalDetailDto,
+  ReformRequest,
+  ReformRequestDto,
+  RequestDetailDto
+} from './reform.dto.js';
+import { ReformError } from './reform.error.js';
 import { ReformModel } from './reform.model.js';
 
 export class ReformService {
@@ -12,15 +18,42 @@ export class ReformService {
 
   async addRequest(dto: ReformRequestDto, images: Express.Multer.File[]) {
     try {
-      const imageStr: string[] = [];
-      for (const img of images) {
-        const ans = await this.s3.uploadToS3(img);
-        imageStr.push(ans);
+      const image: {
+        content: string;
+        photo_order: number;
+      }[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const ans = await this.s3.uploadToS3(images[i]);
+        const obj = {
+          content: ans,
+          photo_order: i + 1
+        };
+        image.push(obj);
       }
-      dto.images = imageStr;
+      dto.images = image;
       await this.refromModel.addRequest(dto);
     } catch (err: any) {
-      console.log(err);
+      throw new ReformError(err);
+    }
+  }
+
+  async findDetailRequest(id: string): Promise<RequestDetailDto> {
+    try {
+      const ans = await this.refromModel.findDetailRequest(id);
+      const dto = new RequestDetailDto(ans.body, ans.images);
+      return dto;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+  async findDetailProposal(id: string): Promise<ProposalDetailDto> {
+    try {
+      const ans = await this.refromModel.findDetailProposal(id);
+      const dto = new ProposalDetailDto(ans.body, ans.images);
+      return dto;
+    } catch (err: any) {
+      console.error(err);
+      throw new ReformError(err);
     }
   }
 }

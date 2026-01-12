@@ -1,4 +1,11 @@
+import {
+  reform_proposal,
+  reform_proposal_photo,
+  reform_request,
+  reform_request_photo
+} from '@prisma/client';
 import { Category } from '../../types/item.js';
+import { Reform } from '../profile/profile.dto.js';
 
 export interface RequestItems {
   thumbnail: string;
@@ -8,7 +15,10 @@ export interface RequestItems {
 }
 
 export interface ReformRequest {
-  images: string[];
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   title: string;
   contents: string;
   minBudget: number;
@@ -19,14 +29,17 @@ export interface ReformRequest {
 
 export class ReformRequestDto implements ReformRequest {
   userId: string;
-  images: string[];
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   contents: string;
   minBudget: number;
   maxBudget: number;
   dueDate: Date;
   category: Category;
   title: string;
-  constructor(body: ReformRequest) {
+  constructor(body: any) {
     this.userId = '';
     this.images = [];
     this.contents = body.contents;
@@ -35,5 +48,96 @@ export class ReformRequestDto implements ReformRequest {
     this.dueDate = body.dueDate;
     this.title = body.title;
     this.category = body.category;
+  }
+}
+
+export interface RequestDetail {
+  userId: string;
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  contents: string | null;
+  title: string | null;
+
+  min_budget: number;
+  max_budget: number;
+  due_date: Date | null;
+  created_at: Date | null;
+}
+
+export class RequestDetailDto implements RequestDetail {
+  userId: string;
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  contents: string | null;
+  title: string | null;
+
+  min_budget: number;
+  max_budget: number;
+  due_date: Date | null;
+  created_at: Date | null;
+
+  constructor(body: reform_request, images: reform_request_photo[]) {
+    this.userId = body.user_id;
+    this.contents = body.content;
+    this.title = body.title;
+    this.min_budget = body.min_budget!.toNumber();
+    this.max_budget = body.max_budget!.toNumber();
+    this.due_date = body.due_date;
+    this.created_at = body.created_at;
+    this.images = [];
+    this.extractImg(images);
+  }
+
+  extractImg(images: reform_request_photo[]) {
+    const image = images;
+    for (const img of image) {
+      const obj = {
+        content: img.content!,
+        photo_order: img.photo_order!
+      };
+      this.images.push(obj);
+    }
+  }
+}
+
+export type ProposalDetail = Partial<Reform> & {
+  ownerId: string;
+};
+
+export class ProposalDetailDto implements ProposalDetail {
+  ownerId: string;
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expected_working: number;
+
+  constructor(body: reform_proposal, images: reform_proposal_photo[]) {
+    this.ownerId = body.owner_id;
+    this.title = body.title!;
+    this.content = body.content!;
+    this.price = body.price!.toNumber();
+    this.delivery = body.delivery!.toNumber();
+    this.expected_working = body.expected_working!.toNumber();
+    this.images = [];
+    this.extractImg(images);
+  }
+  extractImg(images: reform_proposal_photo[]) {
+    const image = images;
+    for (const img of image) {
+      const obj = {
+        content: img.content!,
+        photo_order: img.photo_order!
+      };
+      this.images.push(obj);
+    }
   }
 }
