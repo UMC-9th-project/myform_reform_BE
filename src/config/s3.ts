@@ -1,3 +1,5 @@
+/* tslint:disable */
+/* eslint-disable */
 import {
   S3Client,
   PutObjectCommand,
@@ -51,7 +53,7 @@ export class S3 {
 
       await this.s3.send(command);
       return true;
-    } catch (error) {
+    } catch (err) {
       throw new S3UploadError('S3에서 파일 삭제 중 오류가 발생했습니다');
     }
   }

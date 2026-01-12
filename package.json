@@ -7,9 +7,10 @@
     "ssh:open": "zsh tunnel.sh",
     "ssh:kill": "pkill -f 'ssh.*54312'",
     "build": "tsoa spec-and-routes && tsc",
-    "dev:start": "nodemon --watch '*.ts' --exec tsx ./src/app.ts",
     "eslint": "eslint",
-    "dev:prisma": "npx prisma db pull && npx prisma generate"
+    "dev:start": "nodemon --watch '*.ts' --exec tsx ./src/app.ts",
+    "dev:prisma": "npx prisma db pull && npx prisma generate",
+    "dev": "npm run eslint && npm run build && npm run dev:start"
   },
   "keywords": [],
   "author": "",
