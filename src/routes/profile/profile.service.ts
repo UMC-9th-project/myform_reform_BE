@@ -17,12 +17,19 @@ export class ProfileService {
     images: Express.Multer.File[]
   ) {
     try {
-      const imageStr: string[] = [];
-      for (const img of images) {
-        const ans = await this.s3.uploadToS3(img);
-        imageStr.push(ans);
+      const image: {
+        content: string;
+        photo_order: number;
+      }[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const ans = await this.s3.uploadToS3(images[i]);
+        const obj = {
+          content: ans,
+          photo_order: i + 1
+        };
+        image.push(obj);
       }
-      dto.images = imageStr;
+      dto.images = image;
       await this.profileModel.addProduct(mode, dto);
     } catch (err: any) {
       console.log(err);

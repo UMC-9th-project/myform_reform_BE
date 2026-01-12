@@ -1,7 +1,10 @@
 import { Category, Option, OptionGroup } from '../../types/item.js';
 
 interface Item {
-  images: string[];
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   title: string;
   content: string;
   price: number;
@@ -14,7 +17,10 @@ export type ItemRequest = Omit<Item, 'images'>;
 
 export class ItemDto implements Item {
   ownerId: string;
-  images: string[];
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   title: string;
   content: string;
   price: number;
@@ -34,8 +40,11 @@ export class ItemDto implements Item {
   }
 }
 
-interface Reform {
-  images: string[];
+export interface Reform {
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   title: string;
   content: string;
   price: number;
@@ -48,7 +57,10 @@ export type ReformRequest = Omit<Reform, 'images'>;
 
 export class ReformDto implements Reform {
   ownerId: string;
-  images: string[];
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
   title: string;
   content: string;
   price: number;

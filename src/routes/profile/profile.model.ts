@@ -38,7 +38,11 @@ export class ProfileModel {
 
         for (const img of images) {
           await tx.item_photo.create({
-            data: { item_id: ans.item_id, content: img }
+            data: {
+              item_id: ans.item_id,
+              content: img.content,
+              photo_order: img.photo_order
+            }
           });
         }
         for (const opt of option) {
@@ -85,7 +89,8 @@ export class ProfileModel {
           await tx.reform_proposal_photo.create({
             data: {
               reform_proposal_id: ans.reform_proposal_id,
-              content: img
+              content: img.content,
+              photo_order: img.photo_order
             }
           });
         }
