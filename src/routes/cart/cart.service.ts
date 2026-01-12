@@ -4,7 +4,7 @@ import {
   PartialCartNotFoundError,
   ItemNotFoundError,
   PartialOptionItemNotFoundError
-} from '../../middleware/error.js';
+} from '../../routes/cart/cart.error.js';
 
 export class CartService {
   constructor() {}

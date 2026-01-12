@@ -13,6 +13,7 @@ export class AddToCartDTO {
   quantity!: number;
 
   @IsArray()
+  @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   optionItemIds!: string[];
 }

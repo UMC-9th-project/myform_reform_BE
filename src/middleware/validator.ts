@@ -1,6 +1,6 @@
 import { plainToInstance, ClassConstructor } from 'class-transformer';
 import { validate } from 'class-validator';
-import { ValidationError } from './error.js';
+import { ValidationError } from '../routes/cart/cart.error.js';
 
 export async function validateOrThrow<T extends object>(
   dtoClass: ClassConstructor<T>,
