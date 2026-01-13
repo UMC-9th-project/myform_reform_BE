@@ -15,7 +15,7 @@ import { DeleteItemsDTO } from './dto/cart.req.dto.js';
 import { AddToCartDTO } from './dto/cart.req.dto.js';
 import { validateOrThrow } from '../../middleware/validator.js';
 
-@Route('api/v1/cart')
+@Route('/cart')
 @Tags('Cart Controller')
 export class CartController extends Controller {
   private cartService: CartService;

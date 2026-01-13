@@ -8,7 +8,7 @@ export interface CartItemResponse {
   cartId: string;
   itemId: string | null;
   title: string | null;
-  // imageUrl
+  imageUrl: string | null;
   price: number;
   quantity: number;
   delivery: number;

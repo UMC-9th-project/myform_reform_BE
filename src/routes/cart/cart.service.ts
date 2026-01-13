@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import * as cartModel from './cart.model.js';
 import {
   CartNotFoundError,
@@ -142,6 +141,9 @@ export class CartService {
         cartId: row.cart_id,
         itemId: item?.item_id || null,
         title: item?.title || null,
+        imageUrl:
+          (item?.item_photo || []).find((p: any) => p.photo_order === 1)
+            ?.content || null,
         price,
         quantity,
         delivery,
