@@ -1,4 +1,12 @@
-import { Route, Controller, Post, SuccessResponse, Body, Response, Example, Tags } from 'tsoa';
+import { Route, 
+  Controller, 
+  Post, 
+  SuccessResponse, 
+  Body, 
+  Response, 
+  Example, 
+  Tags,
+} from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
 import { BasicError } from '../../middleware/error.js';
