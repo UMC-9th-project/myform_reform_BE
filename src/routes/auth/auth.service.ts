@@ -1,6 +1,7 @@
 import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
+import { validatePhoneNumber, validateCode } from '../../utils/validators.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -28,6 +29,7 @@ export class AuthService {
   }
   async sendSms(phoneNumber: string): Promise<void>{
     // 전화번호에서 숫자가 아닌 모든 문자 제거
+    validatePhoneNumber(phoneNumber);
     const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
     // block:${cleanPhoneNumber} 키가 존재하면 30분 간 인증 제한.
     await this.checkBlockStatus(cleanPhoneNumber);
@@ -70,6 +72,8 @@ export class AuthService {
   }
 
   async verifySms(phoneNumber: string, code: string): Promise<boolean>{
+    validatePhoneNumber(phoneNumber);
+    validateCode(code);
     const cleanPhoneNumber:string = phoneNumber.replace(/[^0-9]/g, '');
     const authKey = `auth:${cleanPhoneNumber}`;
     const blockKey = `block:${cleanPhoneNumber}`;

@@ -56,7 +56,7 @@ const models: TsoaRoute.Models = {
     "SendSmsRequest": {
         "dataType": "refObject",
         "properties": {
-            "phoneNumber": {"dataType":"string","required":true},
+            "phoneNumber": {"dataType":"string","required":true,"validators":{"pattern":{"errorMsg":"유효한 휴대폰 번호 형식이 아닙니다 (예: 01012345678)","value":"^01[016789]-?\\d{3,4}-?\\d{4}$"},"minLength":{"errorMsg":"휴대폰 번호가 너무 짧습니다","value":10},"maxLength":{"errorMsg":"휴대폰 번호가 너무 깁니다","value":13}}},
         },
         "additionalProperties": false,
     },
@@ -83,8 +83,8 @@ const models: TsoaRoute.Models = {
     "VerifySmsRequest": {
         "dataType": "refObject",
         "properties": {
-            "phoneNumber": {"dataType":"string","required":true},
-            "code": {"dataType":"string","required":true},
+            "phoneNumber": {"dataType":"string","required":true,"validators":{"pattern":{"errorMsg":"유효한 휴대폰 번호 형식이 아닙니다. (예: 01012345678)","value":"^01[016789]-?\\d{3,4}-?\\d{4}$"},"minLength":{"errorMsg":"휴대폰 번호가 너무 짧습니다","value":10},"maxLength":{"errorMsg":"휴대폰 번호가 너무 깁니다","value":13}}},
+            "code": {"dataType":"string","required":true,"validators":{"pattern":{"errorMsg":"유효한 인증 코드 형식이 아닙니다 (예: 123456)","value":"^[0-9]{6}$"},"minLength":{"errorMsg":"인증 코드가 너무 짧습니다","value":6},"maxLength":{"errorMsg":"인증 코드가 너무 깁니다","value":6}}},
         },
         "additionalProperties": false,
     },
