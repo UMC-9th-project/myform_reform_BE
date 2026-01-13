@@ -197,6 +197,28 @@
 					}
 				}
 			}
+		},
+		"/api/v1/cart": {
+			"get": {
+				"operationId": "GetCart",
+				"responses": {
+					"200": {
+						"description": "장바구니 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_any_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Cart Controller"
+				],
+				"security": [],
+				"parameters": []
+			}
 		}
 	},
 	"servers": [

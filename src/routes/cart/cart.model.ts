@@ -70,3 +70,26 @@ export async function addItemToCart(
     return cart;
   });
 }
+
+export async function findCartByUserId(userId: string) {
+  if (!userId) return [];
+
+  return prisma.cart.findMany({
+    where: { user_id: userId },
+    include: {
+      cart_option: { include: { option_item: true } }
+    }
+  });
+}
+
+export async function findItemsByIds(itemIds: string[]) {
+  if (!itemIds || itemIds.length === 0) return [];
+  return prisma.item.findMany({
+    where: { item_id: { in: itemIds } },
+    include: {
+      item_photo: true,
+      option_group: { include: { option_item: true } },
+      owner: true
+    }
+  });
+}

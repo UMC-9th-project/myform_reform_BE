@@ -11,8 +11,8 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { CartService } from './cart.service.js';
-import { DeleteItemsDTO } from '../../middleware/cart/cart.dto.js';
-import { AddToCartDTO } from '../../middleware/cart/cart.dto.js';
+import { DeleteItemsDTO } from './dto/cart.req.dto.js';
+import { AddToCartDTO } from './dto/cart.req.dto.js';
 import { validateOrThrow } from '../../middleware/validator.js';
 
 @Route('api/v1/cart')
@@ -55,5 +55,13 @@ export class CartController extends Controller {
     );
 
     return new ResponseHandler(created);
+  }
+
+  @Get('')
+  @SuccessResponse('200', '장바구니 조회 성공')
+  public async getCart(): Promise<TsoaResponse<object>> {
+    const userId = '0f41af82-2259-4d42-8f1a-ca8771c8d473';
+    const cart = await this.cartService.getCartByUser(userId);
+    return new ResponseHandler(cart);
   }
 }
