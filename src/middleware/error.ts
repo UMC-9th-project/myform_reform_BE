@@ -54,21 +54,21 @@ export const errorHandler = (
   });
 };
 
-export class BasicError extends Error {
+export class BasicError<T = any> extends Error {
   public status: number;
   public code: string;
-  public description: string;
+  public description: T;
 
   constructor(
     status: number,
     code: string,
     message: string,
-    description: string
+    description: T
   ) {
     super(message);
     this.status = status;
     this.code = code;
-    this.description = description || 'No description: 에러 설명이 없습니다.';
+    this.description = description ?? ('No description: 에러 설명이 없습니다.' as T);
   }
   toJSON() {
     return {
@@ -95,5 +95,11 @@ export const notFoundHandler = (req: Request, res: Response) => {
 export class CustomExample extends BasicError {
   constructor(description: string) {
     super(400, 'errcode', 'err message', description);
+  }
+}
+
+export class S3UploadError extends BasicError {
+  constructor(des: string) {
+    super(500, 'e-s3', '서버에 사진을 올리는중 오류가 발생했습니다.', des);
   }
 }

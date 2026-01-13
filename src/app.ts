@@ -6,6 +6,7 @@ import { RegisterRoutes } from './routes/tsoaRoutes.js';
 import dotenv from 'dotenv';
 import 'reflect-metadata';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
+import { WebSocketServer } from './infra/websocket/websocket.js';
 
 dotenv.config();
 const app = express();
@@ -19,4 +20,8 @@ app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerJson));
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(3001);
+const server = app.listen(3001);
+
+// 웹소켓 서버 초기화
+const webSocketServer = WebSocketServer.getInstance();
+webSocketServer.init(server);
