@@ -7,6 +7,249 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"UserSession": {
+				"properties": {
+					"is_logged_in": {
+						"type": "boolean"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"USER",
+							"OWNER",
+							null
+						],
+						"nullable": true
+					},
+					"user_id": {
+						"type": "string",
+						"nullable": true
+					},
+					"nickname": {
+						"type": "string",
+						"nullable": true
+					},
+					"profile_image": {
+						"type": "string",
+						"nullable": true
+					},
+					"cart_count": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"is_logged_in",
+					"role",
+					"user_id",
+					"nickname",
+					"profile_image",
+					"cart_count"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Banner": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"image_url": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"image_url"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TrendingItem": {
+				"properties": {
+					"item_id": {
+						"type": "string"
+					},
+					"thumbnail": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"star": {
+						"type": "number",
+						"format": "double"
+					},
+					"review_count": {
+						"type": "number",
+						"format": "double"
+					},
+					"owner_id": {
+						"type": "string"
+					},
+					"owner_nickname": {
+						"type": "string"
+					},
+					"is_wished": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"item_id",
+					"thumbnail",
+					"title",
+					"price",
+					"star",
+					"review_count",
+					"owner_id",
+					"owner_nickname",
+					"is_wished"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CustomOrder": {
+				"properties": {
+					"proposal_id": {
+						"type": "string"
+					},
+					"thumbnail": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"min_price": {
+						"type": "number",
+						"format": "double"
+					},
+					"owner_id": {
+						"type": "string"
+					},
+					"owner_nickname": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"proposal_id",
+					"thumbnail",
+					"title",
+					"min_price",
+					"owner_id",
+					"owner_nickname"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BestReformer": {
+				"properties": {
+					"owner_id": {
+						"type": "string"
+					},
+					"nickname": {
+						"type": "string"
+					},
+					"profile_image": {
+						"type": "string"
+					},
+					"bio": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"owner_id",
+					"nickname",
+					"profile_image",
+					"bio"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HomeData": {
+				"properties": {
+					"banners": {
+						"items": {
+							"$ref": "#/components/schemas/Banner"
+						},
+						"type": "array"
+					},
+					"trending_items": {
+						"items": {
+							"$ref": "#/components/schemas/TrendingItem"
+						},
+						"type": "array"
+					},
+					"custom_orders": {
+						"items": {
+							"$ref": "#/components/schemas/CustomOrder"
+						},
+						"type": "array"
+					},
+					"best_reformers": {
+						"items": {
+							"$ref": "#/components/schemas/BestReformer"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"banners",
+					"trending_items",
+					"custom_orders",
+					"best_reformers"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetHomeResponseDto": {
+				"description": "메인 페이지 응답 DTO",
+				"properties": {
+					"result": {
+						"type": "boolean"
+					},
+					"user_session": {
+						"$ref": "#/components/schemas/UserSession"
+					},
+					"home_data": {
+						"$ref": "#/components/schemas/HomeData"
+					}
+				},
+				"required": [
+					"result",
+					"user_session",
+					"home_data"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetHomeResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetHomeResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"TsoaResponse_string_": {
 				"properties": {
 					"resultType": {
@@ -43,6 +286,73 @@
 		"contact": {}
 	},
 	"paths": {
+		"/home": {
+			"get": {
+				"operationId": "GetHome",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetHomeResponseDto_"
+								}
+							}
+						}
+					}
+				},
+				"description": "메인 페이지 데이터 조회",
+				"summary": "메인 페이지 진입 시 로그인/비로그인 여부를 확인하고 그에 맞는 데이터를 반환합니다.",
+				"tags": [
+					"Main Page"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "- 사용자 ID (헤더 또는 쿼리 파라미터, 임시 - JWT 구현 시 제거)",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "- 사용자 역할 ('USER' 또는 'OWNER', 임시 - JWT 구현 시 제거)",
+						"in": "header",
+						"name": "x-user-role",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"USER",
+								"OWNER"
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "user_id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "role",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"USER",
+								"OWNER"
+							]
+						}
+					}
+				]
+			}
+		},
 		"/project": {
 			"get": {
 				"operationId": "SetTest",
