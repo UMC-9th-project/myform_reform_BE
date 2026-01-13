@@ -53,15 +53,18 @@ export async function addItemToCart(
           options_hash: options_hash
         }
       },
-      create: {
-        item_id: itemId,
-        user_id: userId,
-        quantity: quantity,
-        options_hash: options_hash,
-        cart_option: {
-          createMany: { data }
+      create: (() => {
+        const createData: any = {
+          item_id: itemId,
+          user_id: userId,
+          quantity: quantity,
+          options_hash: options_hash
+        };
+        if (data && data.length > 0) {
+          createData.cart_option = { createMany: { data } };
         }
-      },
+        return createData;
+      })(),
       update: {
         quantity: { increment: quantity }
       }
@@ -91,5 +94,14 @@ export async function findItemsByIds(itemIds: string[]) {
       option_group: { include: { option_item: true } },
       owner: true
     }
+  });
+}
+
+export async function findOptionGroupsByItemId(itemId: string) {
+  if (!itemId) return [];
+  return prisma.option_group.findMany({
+    where: { item_id: itemId },
+    include: { option_item: { select: { option_item_id: true, name: true } } },
+    orderBy: { sort_order: 'asc' }
   });
 }

@@ -49,3 +49,9 @@ export class PartialOptionItemNotFoundError extends BasicError {
     );
   }
 }
+
+export class IncompleteOptionSelectionError extends BasicError {
+  constructor(description: any) {
+    super(422, 'OPTION-422-INCOMPLETE', 'Incomplete option selection', description);
+  }
+}

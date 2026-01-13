@@ -4,7 +4,8 @@ import {
   CartNotFoundError,
   PartialCartNotFoundError,
   ItemNotFoundError,
-  PartialOptionItemNotFoundError
+  PartialOptionItemNotFoundError,
+  IncompleteOptionSelectionError
 } from '../../routes/cart/cart.error.js';
 
 export class CartService {
@@ -41,6 +42,49 @@ export class CartService {
       if (existing.length !== optionItemIds.length) {
         const missing = optionItemIds.filter((id) => !existing.includes(id));
         throw new PartialOptionItemNotFoundError(missing);
+      }
+    }
+
+    // option_group별로 모든 옵션이 하나씩 선택되었는지 검증
+    const groups = await cartModel.findOptionGroupsByItemId(itemId);
+    if (groups && groups.length > 0) {
+      const provided = optionItemIds || [];
+      const providedSet = new Set(provided);
+      const missingGroups: any[] = [];
+      const multiSelectedGroups: any[] = [];
+
+      for (const g of groups) {
+        const optionIds = (g.option_item || []).map(
+          (oi: any) => oi.option_item_id
+        );
+        const matches = optionIds.filter((oid: string) => providedSet.has(oid));
+        if (matches.length === 0) {
+          missingGroups.push({
+            groupId: g.option_group_id,
+            groupName: g.name || null
+          });
+        } else if (matches.length > 1) {
+          multiSelectedGroups.push({
+            groupId: g.option_group_id,
+            groupName: g.name || null,
+            selected: matches
+          });
+        }
+      }
+
+      if (missingGroups.length > 0 || multiSelectedGroups.length > 0) {
+        const parts: string[] = [];
+        if (missingGroups.length > 0) {
+          parts.push(
+            `다음 옵션 그룹에서 선택이 필요합니다: ${missingGroups.map((m) => m.groupName || m.groupId).join(',')}`
+          );
+        }
+        if (multiSelectedGroups.length > 0) {
+          parts.push(
+            `다음 옵션 그룹에는 하나만 선택해야 합니다: ${multiSelectedGroups.map((m) => m.groupName || m.groupId).join(',')}`
+          );
+        }
+        throw new IncompleteOptionSelectionError(parts.join(' | '));
       }
     }
 
