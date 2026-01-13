@@ -19,16 +19,25 @@ import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse } 
 @Tags('Auth')
 export class AuthController extends Controller {
   private authService = new AuthService();
+  /**
+   * 입력한 휴대폰 번호로 인증 코드를 발송합니다.
+   *
+   * @summary 입력한 휴대폰 번호로 인증 코드를 발송합니다.
+   * @returns 인증 코드 발송 성공 여부
+   *
+   */
   @SuccessResponse(200, 'SMS 전송 완료')
   @Example<ResponseHandler<SendSmsResponse>>({
     resultType: 'SUCCESS',
     error: null,
     success: {statusCode: 200, message: 'SMS 전송이 완료되었습니다.'}
   })
+
   @Response<ErrorResponse>('400', '전화번호 형식 오류')
   @Response<ErrorResponse>('429', '인증 시도 횟수 초과')
   @Response<ErrorResponse>('500', '서버 내부 오류')
-  @Post('sms/send')
+  
+  @Post('sms/send') 
   public async sendSms(
     @Body() requestBody: SendSmsRequest): Promise<TsoaResponse<SendSmsResponse>> {
     validatePhoneNumber(requestBody.phoneNumber);
@@ -44,7 +53,13 @@ export class AuthController extends Controller {
       throw new SmsProviderError(msg);
     }
   }
-
+  /**
+   * 입력한 휴대폰 번호와 인증 코드를 검증합니다.
+   *
+   * @summary 인증 코드를 검증합니다.
+   * @returns 인증 코드 검증 결과
+   *
+   */
   @SuccessResponse(200, '인증 코드 검증 성공')
   @Example<ResponseHandler<VerifySmsResponse>>({
     resultType: 'SUCCESS',
