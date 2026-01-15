@@ -37,3 +37,47 @@ export interface VerifySmsResponse {
   statusCode: number;
   message: string;
 }
+
+export interface KakaoSignupResponse {
+  status: 'signup';
+  user: {
+    kakaoId: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface KakaoLoginResponse {
+  status: 'login';
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    role: 'user' | 'reformer';
+    auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  };
+}
+
+export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse
+
+export interface JwtPayload {
+  id: string;
+  email: string;
+  role: 'user' | 'reformer';
+  auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface LogoutResponse {
+  statusCode: number;
+  message: string;
+}
+
+export interface PassportUserInfo {
+  status: 'signup' | 'login';
+  role: 'user' | 'reformer';
+  kakaoId?: string;
+  email?: string;
+  id?: string;
+  auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+}

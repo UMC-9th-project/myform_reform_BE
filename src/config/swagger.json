@@ -191,6 +191,173 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"KakaoSignupResponse": {
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"signup"
+						],
+						"nullable": false
+					},
+					"user": {
+						"properties": {
+							"role": {
+								"type": "string"
+							},
+							"email": {
+								"type": "string"
+							},
+							"kakaoId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"role",
+							"email",
+							"kakaoId"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"status",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"KakaoLoginResponse": {
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"login"
+						],
+						"nullable": false
+					},
+					"accessToken": {
+						"type": "string"
+					},
+					"refreshToken": {
+						"type": "string"
+					},
+					"user": {
+						"properties": {
+							"auth_status": {
+								"type": "string",
+								"enum": [
+									"PENDING",
+									"APPROVED",
+									"REJECTED"
+								]
+							},
+							"role": {
+								"type": "string",
+								"enum": [
+									"user",
+									"reformer"
+								]
+							},
+							"email": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"role",
+							"email",
+							"id"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"status",
+					"accessToken",
+					"refreshToken",
+					"user"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"KakaoAuthResponse": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KakaoSignupResponse"
+					},
+					{
+						"$ref": "#/components/schemas/KakaoLoginResponse"
+					}
+				]
+			},
+			"TsoaResponse_KakaoAuthResponse_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/KakaoAuthResponse"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LogoutResponse": {
+				"properties": {
+					"statusCode": {
+						"type": "number",
+						"format": "double"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"statusCode",
+					"message"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_LogoutResponse_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/LogoutResponse"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {}
@@ -376,6 +543,157 @@
 						}
 					}
 				}
+			}
+		},
+		"/auth/kakao": {
+			"get": {
+				"operationId": "LoginWithKakao",
+				"responses": {
+					"302": {
+						"description": "카카오 로그인 페이지로 리다이렉트",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"summary": "카카오 로그인 시작 (로그인 페이지로 리다이렉트)",
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "로그인 모드 (user: 일반, reformer: 리폼러)",
+						"in": "query",
+						"name": "mode",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"user",
+								"reformer"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/auth/kakao/callback": {
+			"get": {
+				"operationId": "KakaoCallback",
+				"responses": {
+					"200": {
+						"description": "카카오 로그인 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KakaoAuthResponse"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"status": "login",
+												"accessToken": "accessToken",
+												"refreshToken": "refreshToken",
+												"user": {
+													"id": "userId",
+													"email": "userEmail",
+													"role": "reformer",
+													"auth_status": "PENDING"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 내부 오류",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"summary": "카카오 로그인 콜백 (카카오 인증 후 회원 정보 조회)",
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/auth/logout": {
+			"post": {
+				"operationId": "Logout",
+				"responses": {
+					"200": {
+						"description": "로그아웃 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_LogoutResponse_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"statusCode": 200,
+												"message": "로그아웃이 성공적으로 완료되었습니다."
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "로그인 정보를 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 내부 오류",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": []
 			}
 		}
 	},

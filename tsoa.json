@@ -8,6 +8,7 @@
   },
   "routes": {
     "routesDir": "src/routes",
+    "authenticationModule": "src/routes/auth/authHandler.ts",
     "routesFileName": "tsoaRoutes.ts",
     "middleware": "express",
     "esm": true

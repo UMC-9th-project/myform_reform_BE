@@ -1,7 +1,9 @@
-import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError } from './auth.error.js';
+import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode } from '../../utils/validators.js';
+import * as jwt from 'jsonwebtoken';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload } from './auth.dto.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -51,7 +53,7 @@ export class AuthService {
       await redisClient.set(authKey, authData, { EX: 180 });
       console.log(`${cleanPhoneNumber} 번호로 ${authCode} 인증 코드를 Redis에 저장했습니다.`);
     } catch (error: any){
-      throw new RedisStorageError(`Redis 저장 실패 : ${error.message}`);
+      throw new RedisStorageError(`Redis 인증 코드 저장 실패 - ${cleanPhoneNumber} 번호로 인증 코드를 저장하지 못했습니다.`);
     }
     
     // SMS 전송 로직
@@ -108,4 +110,72 @@ export class AuthService {
     await redisClient.del(authKey);
     return true;
   }
+
+  async handleKakaoLogin(user: any): Promise<KakaoAuthResponse> {
+    // 신규 유저 - 회원가입 정보 반환
+    if (user.status === 'signup') {
+      return {
+        status: 'signup',
+        user: {
+          kakaoId: user.kakaoId,
+          email: user.email,
+          role: user.role        
+        }
+      } as KakaoSignupResponse;
+    }
+
+    if (!user.id || !user.email || !user.role) {
+      throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
+    }
+    // 기존 유저 - 로그인 토큰 
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role as 'user' | 'reformer',
+      auth_status: user.auth_status
+    };
+
+    // accessToken 발급
+    const accessToken = jwt.sign(
+      payload, 
+      process.env.JWT_SECRET!, 
+      { expiresIn: '1h' }
+    );
+    // refreshToken 발급 ( id만 저장 )
+    const refreshToken = jwt.sign(
+      { id: user.id }, 
+      process.env.JWT_SECRET!, 
+      { expiresIn: '14d' }
+    );
+
+    // refreshToken을 Redis에 저장 ( 14일 간 유지 )
+    try {
+      await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 60 * 60 * 24 * 14 });
+    } catch (error) {
+      console.error(`[Refresh Token Storage] Redis 저장 실패 - userId: ${user.id}`, error);
+      throw new RedisStorageError(`Redis refreshToken 저장 실패 - userId: ${user.id}의 리프레시 토큰을 저장하지 못했습니다.`);
+    }
+
+    return {
+      status: 'login',
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role as 'user' | 'reformer',
+        auth_status: user.auth_status as 'PENDING' | 'APPROVED' | 'REJECTED'
+      }
+    } as KakaoLoginResponse;
+  }
+
+  async logout(userId: string): Promise<void> {
+    try {
+      await redisClient.del(`refreshToken:${userId}`);      
+    } catch (error) {
+      // refreshToken 삭제 실패 시 에러 로깅만 하고 계속 진행
+      console.error(`[Logout] Redis refreshToken 삭제 실패 - userId: ${userId}`, error);
+    }
+  };
 }
+

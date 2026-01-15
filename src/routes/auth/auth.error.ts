@@ -41,3 +41,27 @@ export class UnknownAuthError extends BasicError {
     super(500, 'Auth_999', '인증 중 알 수 없는 오류가 발생했습니다.', description);
   }
 }
+
+export class UnauthorizedError extends BasicError {
+  constructor(description: string) {
+    super(401, 'Auth_105', '로그인 되어있지 않습니다.', description);
+  }
+}
+
+export class KakaoAuthError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_106', '카카오 로그인 후 회원 정보를 찾을 수 없습니다.', description);
+  }
+}
+
+export class InvalidStateError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_107', 'state 값이 유효하지 않습니다. \'user\' 또는 \'reformer\' 중 하나여야 합니다.', description);
+  }
+}
+
+export class MissingAuthInfoError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_503', '로그인에 필요한 유저 정보가 누락되었습니다.', description);
+  }
+}
