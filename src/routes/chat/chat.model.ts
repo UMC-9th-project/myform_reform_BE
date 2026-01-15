@@ -85,6 +85,15 @@ export class ChatRoom {
         }   
   ) {}
 
+  toPersistence() {
+    return {
+      type: this.props.type,
+      target_payload: this.props.target_payload,
+      owner_id: this.props.owner_id,
+      requester_id: this.props.requester_id,
+    };
+  }
+
   // DB에서 불러온 데이터를 ChatRoom 인스턴스로 변환하는 정적 메서드
   static fromPersistence(data: any): ChatRoom {
     return new ChatRoom({

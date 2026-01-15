@@ -20,12 +20,13 @@ export class ChatRepository {
     ChatRoomInstance: ChatRoom
   ): Promise<ChatRoom> {
     try {
+      const data = ChatRoomInstance.toPersistence();
       const raw = await prisma.chat_room.create({
         data: {
-          type: ChatRoomInstance['props'].type,
-          target_payload: ChatRoomInstance['props'].target_payload as unknown as Prisma.InputJsonValue,
-          owner_id: ChatRoomInstance['props'].owner_id,
-          requester_id: ChatRoomInstance['props'].requester_id  
+          type: data.type,
+          target_payload: data.target_payload as unknown as Prisma.InputJsonValue,
+          owner_id: data.owner_id,
+          requester_id: data.requester_id  
         }
       });
       return ChatRoom.fromPersistence(raw)  ;

@@ -54,12 +54,12 @@ model chat_room {
 model chat_message {
   message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   chat_room_id  String          @db.Uuid
-  created_at    DateTime?       @default(now()) @db.Timestamp(6)
-  message_type  message_type?
+  message_type  message_type
   payload       Json?
   sender_id     String?         @db.Uuid
   sender_type   sender_type?
   text_content  String?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
   updated_at    DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
   chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
   chat_proposal chat_proposal[]
