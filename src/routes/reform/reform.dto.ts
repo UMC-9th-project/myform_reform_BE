@@ -108,6 +108,7 @@ export type ProposalDetail = Partial<Reform> & {
   ownerId: string;
 };
 
+//FIXME : 타입이 너무 중구난방이라 추후 리팩터링 해야함
 export class ProposalDetailDto implements ProposalDetail {
   ownerId: string;
   images: {
@@ -122,8 +123,10 @@ export class ProposalDetailDto implements ProposalDetail {
 
   constructor(body: reform_proposal, images: reform_proposal_photo[]) {
     this.ownerId = body.owner_id;
+    //TODO: null인 타입 수정하기
     this.title = body.title!;
     this.content = body.content!;
+    //TODO: DB에 numeric을 interger로 바꿔야할듯
     this.price = body.price!.toNumber();
     this.delivery = body.delivery!.toNumber();
     this.expected_working = body.expected_working!.toNumber();

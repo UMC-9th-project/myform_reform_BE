@@ -29,36 +29,41 @@ model category {
 }
 
 model chat_message {
-  message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  chat_room_id  String          @db.Uuid
-  created_at    DateTime?       @default(now()) @db.Timestamp(6)
-  message_type  message_type?
-  payload       Json?
-  sender_id     String?         @db.Uuid
-  sender_type   sender_type?
-  text_content  String?
-  updated_at    DateTime?       @default(now()) @db.Timestamp(6)
-  chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
-  chat_proposal chat_proposal[]
-  chat_request  chat_request[]
+  message_id                                        String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chat_room_id                                      String          @db.Uuid
+  created_at                                        DateTime?       @default(now()) @db.Timestamp(6)
+  message_type                                      message_type?
+  payload                                           Json?
+  sender_id                                         String?         @db.Uuid
+  sender_type                                       sender_type?
+  text_content                                      String?
+  updated_at                                        DateTime?       @default(now()) @db.Timestamp(6)
+  chat_room                                         chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
+  chat_proposal                                     chat_proposal[]
+  chat_request                                      chat_request[]
+  chat_room_chat_room_last_message_idTochat_message chat_room[]     @relation("chat_room_last_message_idTochat_message")
 
   @@index([chat_room_id])
 }
 
 model chat_room {
-  chat_room_id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  owner_id               String         @db.Uuid
-  created_at             DateTime?      @default(now()) @db.Timestamp(6)
-  updated_at             DateTime?      @default(now()) @db.Timestamp(6)
-  is_active              Boolean        @default(true)
-  last_message_id        String?        @db.Uuid
-  owner_last_read_id     String?        @db.Uuid
-  requester_id           String         @db.Uuid
-  requester_last_read_id String?        @db.Uuid
-  target_payload         Json?
-  chat_message           chat_message[]
-  owner                  owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
-  user                   user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  chat_room_id                                         String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id                                             String         @db.Uuid
+  created_at                                           DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at                                           DateTime?      @default(now()) @db.Timestamp(6)
+  is_active                                            Boolean        @default(true)
+  last_message_id                                      String?        @db.Uuid
+  owner_last_read_id                                   String?        @db.Uuid
+  requester_id                                         String         @db.Uuid
+  requester_last_read_id                               String?        @db.Uuid
+  target_payload                                       Json?
+  type                                                 room_type
+  owner_unread_count                                   Int            @default(0)
+  requester_unread_count                               Int            @default(0)
+  chat_message                                         chat_message[]
+  chat_message_chat_room_last_message_idTochat_message chat_message?  @relation("chat_room_last_message_idTochat_message", fields: [last_message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
+  owner                                                owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
+  user                                                 user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([owner_id])
   @@index([requester_id])
@@ -398,6 +403,7 @@ model chat_proposal {
   image            String[]     @default([])
   created_at       DateTime?    @default(now()) @db.Timestamp(6)
   updated_at       DateTime?    @default(now()) @db.Timestamp(6)
+  content          String?
   chat_message     chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
 
   @@index([message_id])
@@ -416,11 +422,6 @@ model chat_request {
   chat_message    chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
 
   @@index([message_id])
-}
-
-enum chat_target_type_enum {
-  REQUEST
-  PROPOSAL
 }
 
 enum order_status_enum {
@@ -459,15 +460,21 @@ enum reformer_status_enum {
 }
 
 enum message_type {
-  image
-  request
-  proposal
-  text
-  payment
-  result
+  IMAGE
+  REQUEST
+  PROPOSAL
+  TEXT
+  PAYMENT
+  RESULT
 }
 
 enum sender_type {
   USER
   OWNER
+}
+
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
 }
