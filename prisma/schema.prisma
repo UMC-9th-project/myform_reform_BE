@@ -54,12 +54,12 @@ model chat_room {
 model chat_message {
   message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   chat_room_id  String          @db.Uuid
-  message_type  message_type
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  message_type  message_type?
   payload       Json?
   sender_id     String?         @db.Uuid
   sender_type   sender_type?
   text_content  String?
-  created_at    DateTime?       @default(now()) @db.Timestamp(6)
   updated_at    DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
   chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
   chat_proposal chat_proposal[]
@@ -88,6 +88,7 @@ model chat_proposal {
   chat_proposal_id String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   message_id       String       @db.Uuid
   is_accepted      Boolean      @default(false)
+  content          String?
   title            String?
   price            Int?
   delivery         Int?
@@ -95,7 +96,6 @@ model chat_proposal {
   image            String[]     @default([])
   created_at       DateTime?    @default(now()) @db.Timestamp(6)
   updated_at       DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
-  content          String?
   message          chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
 
   @@index([message_id])
@@ -232,14 +232,14 @@ model owner {
   created_at        DateTime?            @default(now()) @db.Timestamp(6)
   updated_at        DateTime?            @default(now()) @db.Timestamp(6)
   age_confirmed_at  DateTime             @default(now()) @db.Timestamp(6)
-  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
-  privacy_opt_in_at DateTime?            @db.Timestamp(6)
-  status            reformer_status_enum @default(PENDING)
-  profile_photo     String?              @db.VarChar(256)
+  avg_star          Decimal?             @db.Decimal
   bio               String?
   keywords          String[]             @default([])
-  avg_star          Decimal?             @db.Decimal
+  privacy_opt_in_at DateTime?            @db.Timestamp(6)
+  profile_photo     String?              @db.VarChar(256)
   review_count      Int?
+  status            reformer_status_enum @default(PENDING)
+  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
   trade_count       Int?
   chat_rooms        chat_room[]
   delivery_address  delivery_address[]
@@ -383,9 +383,9 @@ model user {
   created_at        DateTime?          @default(now()) @db.Timestamp(6)
   updated_at        DateTime?          @default(now()) @db.Timestamp(6)
   age_confirmed_at  DateTime           @default(now()) @db.Timestamp(6)
-  terms_agreed_at   DateTime           @default(now()) @db.Timestamp(6)
   privacy_opt_in_at DateTime?          @db.Timestamp(6)
   profile_photo     String?            @db.VarChar(256)
+  terms_agreed_at   DateTime           @default(now()) @db.Timestamp(6)
   cart              cart[]
   chat_rooms        chat_room[]
   delivery_address  delivery_address[]
