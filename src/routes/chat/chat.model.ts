@@ -44,7 +44,7 @@ export class ChatRoomFactory {
       };
     case 'FEED':
       return {  
-        id: target.feed_id,
+        id: target.feed_id
       };
     case 'REQUEST':
       return {

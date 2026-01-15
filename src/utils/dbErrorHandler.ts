@@ -4,26 +4,26 @@ import { BasicError } from '../middleware/error.js';
 export const handleDbError = (err: any): never => {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
-      case 'P2002': {
-        // 'email', 'phone' 같은 필드명만 추출
-        const fields = (err.meta?.target as string[])?.join(', ') ?? '알 수 없음';
-        throw new DatabaseUniqueConstraintError(fields);
-      }
+    case 'P2002': {
+      // 'email', 'phone' 같은 필드명만 추출
+      const fields = (err.meta?.target as string[])?.join(', ') ?? '알 수 없음';
+      throw new DatabaseUniqueConstraintError(fields);
+    }
 
-      case 'P2003': {
-        // 외래키 제약 조건이 걸린 필드명 추출
-        const field = (err.meta?.field_name as string) ?? '알 수 없음';
-        throw new DatabaseForeignKeyError(field);
-      }
+    case 'P2003': {
+      // 외래키 제약 조건이 걸린 필드명 추출
+      const field = (err.meta?.field_name as string) ?? '알 수 없음';
+      throw new DatabaseForeignKeyError(field);
+    }
 
-      case 'P2025': {
-        // meta.cause에 구체적인 이유가 담길 때가 있음
-        const cause = (err.meta?.cause as string) ?? '요청한 레코드를 찾을 수 없습니다.';
-        throw new DatabaseRecordNotFoundError(cause);
-      }
+    case 'P2025': {
+      // meta.cause에 구체적인 이유가 담길 때가 있음
+      const cause = (err.meta?.cause as string) ?? '요청한 레코드를 찾을 수 없습니다.';
+      throw new DatabaseRecordNotFoundError(cause);
+    }
 
-      default:
-        throw new BasicError(500, `DB-${err.code}`, '데이터베이스 작업 중 오류가 발생했습니다.', err.message);
+    default:
+      throw new BasicError(500, `DB-${err.code}`, '데이터베이스 작업 중 오류가 발생했습니다.', err.message);
     }
   }
 

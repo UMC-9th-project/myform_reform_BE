@@ -25,7 +25,7 @@ export class ChatService {
       ownerId = target.owner_id;
       requesterId  = request.myId; // 테스트용: 요청에서 직접 받음
       
-    } else if (request.type === "REQUEST") {
+    } else if (request.type === 'REQUEST') {
       target = await this.targetRepository.findRequestWithUserById(request.id);
       if (!target) { throw new TargetNotFoundError('요청글을 찾을 수 없습니다.');}
       // 요청글 채팅방 생성 로직(리폼러가 유저에게 채팅방 개설)
@@ -73,14 +73,14 @@ export class ChatService {
       return await this.chatRepository.getAllChatRooms(params);
     }
     switch (filter) {
-      case 'INQUIRY':
-        return await this.chatRepository.getInquiryChatRooms(params);
-      case 'ORDER':
-        return await this.chatRepository.getOrderChatRooms(params);
-      case 'UNREAD':
-        return await this.chatRepository.getUnreadChatRooms(params);
-      default:
-        throw new InvalidChatRoomFilterError('유효하지 않은 채팅방 필터 타입입니다.');
+    case 'INQUIRY':
+      return await this.chatRepository.getInquiryChatRooms(params);
+    case 'ORDER':
+      return await this.chatRepository.getOrderChatRooms(params);
+    case 'UNREAD':
+      return await this.chatRepository.getUnreadChatRooms(params);
+    default:
+      throw new InvalidChatRoomFilterError('유효하지 않은 채팅방 필터 타입입니다.');
     }
   }
 

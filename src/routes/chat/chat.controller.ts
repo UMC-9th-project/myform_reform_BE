@@ -15,11 +15,10 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { TargetNotFoundError, InvalidChatTypeError, InvalidChatRoomFilterError } from './chat.error.js';
 import { CreateChatRoomDTO, SimplePostResponseDTO,  ChatRoomListDTO } from './chat.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
-import { DatabaseForeignKeyError, DatabaseRecordNotFoundError, DbConnectionError, DatabaseUniqueConstraintError } from '../../utils/dbErrorHandler.js';
-
+// import { DatabaseForeignKeyError, DatabaseRecordNotFoundError, DbConnectionError, DatabaseUniqueConstraintError } from '../../utils/dbErrorHandler.js';
+// import { TargetNotFoundError, InvalidChatTypeError, InvalidChatRoomFilterError } from './chat.error.js';
 
 @Route('api/v1/chat')
 @Tags('채팅 기능')

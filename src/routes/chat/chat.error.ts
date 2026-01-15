@@ -5,7 +5,7 @@ import { BasicError } from '../../middleware/error.js';
  */
 export class TargetNotFoundError extends BasicError {
   constructor(message: string) {
-    super(404, 'CHAT-4004', "채팅방 생성 대상 리소스를 찾을 수 없습니다.", message);
+    super(404, 'CHAT-4004', '채팅방 생성 대상 리소스를 찾을 수 없습니다.', message);
   }
 }
 /**
@@ -13,7 +13,7 @@ export class TargetNotFoundError extends BasicError {
  */
 export class InvalidChatTypeError extends BasicError {
   constructor(message: string) {
-    super(400, 'CHAT-4000', "유효하지 않은 채팅방 타입입니다.", message);
+    super(400, 'CHAT-4000', '유효하지 않은 채팅방 타입입니다.', message);
   }
 }
 
@@ -22,7 +22,7 @@ export class InvalidChatTypeError extends BasicError {
  */
 export class ChatRoomQueryNotFoundError extends BasicError {
   constructor(message: string) {
-    super(404, 'CHAT-4014', "채팅방 조회 대상이 누락되었습니다.", message);
+    super(404, 'CHAT-4014', '채팅방 조회 대상이 누락되었습니다.', message);
   }
 }
 
@@ -31,6 +31,6 @@ export class ChatRoomQueryNotFoundError extends BasicError {
  */
 export class InvalidChatRoomFilterError extends BasicError {
   constructor(message: string) {
-    super(400, 'CHAT-4001', "유효하지 않은 채팅방 필터입니다.", message);
+    super(400, 'CHAT-4001', '유효하지 않은 채팅방 필터입니다.', message);
   } 
 }
