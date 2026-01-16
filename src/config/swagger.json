@@ -358,6 +358,140 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"UserSignupResponse": {
+				"properties": {
+					"user": {
+						"properties": {
+							"auth_status": {
+								"type": "string",
+								"enum": [
+									"PENDING",
+									"APPROVED",
+									"REJECTED"
+								]
+							},
+							"role": {
+								"type": "string",
+								"enum": [
+									"user",
+									"reformer"
+								]
+							},
+							"nickname": {
+								"type": "string"
+							},
+							"email": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"role",
+							"nickname",
+							"email",
+							"id"
+						],
+						"type": "object"
+					},
+					"accessToken": {
+						"type": "string"
+					},
+					"refreshToken": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"user",
+					"accessToken",
+					"refreshToken"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_UserSignupResponse_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/UserSignupResponse"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UserSignupRequest": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"nickname": {
+						"type": "string"
+					},
+					"phoneNumber": {
+						"type": "string"
+					},
+					"registration_type": {
+						"type": "string",
+						"enum": [
+							"LOCAL",
+							"KAKAO"
+						]
+					},
+					"oauthId": {
+						"type": "string"
+					},
+					"password": {
+						"type": "string"
+					},
+					"over14YearsOld": {
+						"type": "boolean"
+					},
+					"termsOfService": {
+						"type": "boolean"
+					},
+					"privacyPolicy": {
+						"type": "boolean"
+					},
+					"role": {
+						"type": "string",
+						"enum": [
+							"user",
+							"reformer"
+						]
+					}
+				},
+				"required": [
+					"name",
+					"email",
+					"nickname",
+					"phoneNumber",
+					"registration_type",
+					"over14YearsOld",
+					"termsOfService",
+					"privacyPolicy",
+					"role"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {}
@@ -613,6 +747,16 @@
 							}
 						}
 					},
+					"400": {
+						"description": "입력한 mode의 값이 유효하지 않습닏..",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
 					"401": {
 						"description": "카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.",
 						"content": {
@@ -694,6 +838,56 @@
 				],
 				"security": [],
 				"parameters": []
+			}
+		},
+		"/auth/signup/user": {
+			"post": {
+				"operationId": "SignupUser",
+				"responses": {
+					"201": {
+						"description": "회원가입 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_UserSignupResponse_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"user": {
+													"id": "userId",
+													"email": "userEmail",
+													"nickname": "userNickname",
+													"role": "user"
+												},
+												"accessToken": "accessToken",
+												"refreshToken": "refreshToken"
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UserSignupRequest"
+							}
+						}
+					}
+				}
 			}
 		}
 	},

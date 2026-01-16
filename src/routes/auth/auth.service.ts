@@ -1,10 +1,16 @@
-import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError } from './auth.error.js';
+import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, NicknameDuplicateError, VerificationRequiredError, EmailDuplicateError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
-import { validatePhoneNumber, validateCode } from '../../utils/validators.js';
-import * as jwt from 'jsonwebtoken';
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload } from './auth.dto.js';
+import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword } from '../../utils/validators.js';
+import pkg from 'jsonwebtoken';
+const { sign } = pkg;
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupResponse, UserSignupRequest, UserCreateDto } from './auth.dto.js';
 import dotenv from 'dotenv';
+import * as bcrypt from 'bcrypt';
+import prisma from '../../config/prisma.config.js';
+import { runInTransaction } from '../../config/prisma.config.js';
+import { AuthModel } from './auth.model.js';
+
 dotenv.config();
 
 const messageService = new SolapiMessageService(
@@ -13,22 +19,14 @@ const messageService = new SolapiMessageService(
 );
 
 export class AuthService {
-  private async checkBlockStatus(phoneNumber: string): Promise<void>{
-    const blockData = await redisClient.get(`block:${phoneNumber}`);
-    if (blockData){
-      const parsed = JSON.parse(blockData);
-      const now = Date.now();
-      const availableAt = parsed.generatedAt + 1800000;
-      const leftTime = Math.ceil((availableAt - now) / 60000);
-      throw new TooManyCodeAttemptsError(
-        {
-          blockedAt: new Date(parsed.generatedAt).toISOString(),
-          availableAt: new Date(availableAt).toISOString(),
-          leftTime: leftTime
-        }
-      );
-    }
+  // 솔트 라운드 10으로 고정
+  private readonly SALT_ROUNDS = 10;
+  private authModel: AuthModel;
+  
+  constructor() {
+    this.authModel = new AuthModel();
   }
+
   async sendSms(phoneNumber: string): Promise<void>{
     // 전화번호에서 숫자가 아닌 모든 문자 제거
     validatePhoneNumber(phoneNumber);
@@ -134,27 +132,7 @@ export class AuthService {
       role: user.role as 'user' | 'reformer',
       auth_status: user.auth_status
     };
-
-    // accessToken 발급
-    const accessToken = jwt.sign(
-      payload, 
-      process.env.JWT_SECRET!, 
-      { expiresIn: '1h' }
-    );
-    // refreshToken 발급 ( id만 저장 )
-    const refreshToken = jwt.sign(
-      { id: user.id }, 
-      process.env.JWT_SECRET!, 
-      { expiresIn: '14d' }
-    );
-
-    // refreshToken을 Redis에 저장 ( 14일 간 유지 )
-    try {
-      await redisClient.set(`refreshToken:${user.id}`, refreshToken, { EX: 60 * 60 * 24 * 14 });
-    } catch (error) {
-      console.error(`[Refresh Token Storage] Redis 저장 실패 - userId: ${user.id}`, error);
-      throw new RedisStorageError(`Redis refreshToken 저장 실패 - userId: ${user.id}의 리프레시 토큰을 저장하지 못했습니다.`);
-    }
+    const { accessToken, refreshToken } = await this.generateAndSaveTokens(payload);
 
     return {
       status: 'login',
@@ -169,6 +147,7 @@ export class AuthService {
     } as KakaoLoginResponse;
   }
 
+  // 로그아웃 처리 : Redis에서 Refresh Token 삭제
   async logout(userId: string): Promise<void> {
     try {
       await redisClient.del(`refreshToken:${userId}`);      
@@ -177,5 +156,155 @@ export class AuthService {
       console.error(`[Logout] Redis refreshToken 삭제 실패 - userId: ${userId}`, error);
     }
   };
-}
 
+  // 회원가입 처리 : 회원가입 정보 검증 후 DB에 저장 및 JWT 토큰 생성 후 반환
+  async signupUser(requestBody: UserSignupRequest): Promise<UserSignupResponse> {
+    const { password, registration_type, phoneNumber, ...rest } = requestBody;
+    // 회원 가입에 필요한 정보 검증 (입력값 유효성, 비즈니스 정책, 가입 유형에 따른 논리 검증, SMS 인증 확인 등)
+    await this.validateSignupRequest(requestBody);
+    const hashedPassword = password && registration_type === 'LOCAL' 
+      ? await bcrypt.hash(password, this.SALT_ROUNDS) 
+      : undefined;
+    const requestDto: UserCreateDto = { 
+      ...rest,
+      hashedPassword: hashedPassword,
+      registration_type: registration_type,
+      phoneNumber: phoneNumber,
+    };
+
+    // DB에 회원 정보 저장 및 JWT 토큰 생성 후 반환
+    return await runInTransaction(async () => {
+      // DB에 저장할 회원 정보 생성
+
+      
+      // DB에 회원 정보 저장 후 저장된 회원 정보 반환
+      const newUser = await this.authModel.createUser(requestDto);
+      
+      // JWT 토큰 생성 및 Redis에 저장
+      const { accessToken, refreshToken } = await this.generateAndSaveTokens(newUser);
+      
+      await redisClient.del(`verified:${phoneNumber}`);
+      
+      // 회원가입 성공 시 값 반환
+      return {
+        user: newUser,
+        accessToken,
+        refreshToken
+      } as UserSignupResponse;
+    });
+  }
+
+  // 인증 코드 제한 처리 : Redis에서 인증 코드 제한 처리
+  private async checkBlockStatus(phoneNumber: string): Promise<void>{
+    // Redis에 block:${phoneNumber} 키가 존재하면 인증 코드 제한 처리
+    const blockData = await redisClient.get(`block:${phoneNumber}`);
+    if (blockData){
+      const parsed = JSON.parse(blockData);
+      const now = Date.now();
+      const availableAt = parsed.generatedAt + 1800000;
+      const leftTime = Math.ceil((availableAt - now) / 60000);
+      // 인증 코드 제한 시 에러 반환
+      throw new TooManyCodeAttemptsError(
+        {
+          blockedAt: new Date(parsed.generatedAt).toISOString(),
+          availableAt: new Date(availableAt).toISOString(),
+          leftTime: leftTime
+        }
+      );
+    }
+  }
+
+  // JWT 토큰 생성 및 Redis에 저장
+  private async generateAndSaveTokens(payload: JwtPayload): Promise<LoginResponse> {
+    // JWT 토큰 생성
+    const accessToken = sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
+    // Refresh Token 생성
+    const refreshToken = sign({ id: payload.id }, process.env.JWT_SECRET!, { expiresIn: '14d' });
+    // Refresh Token Redis에 저장
+    try {
+      await redisClient.set(`refreshToken:${payload.id}`, refreshToken, { EX: 60 * 60 * 24 * 14 });
+    } catch (error) {
+      console.error(`[Refresh Token Storage] Redis 저장 실패 - userId: ${payload.id}`, error);
+      throw new RedisStorageError(`Redis refreshToken 저장 실패 - userId: ${payload.id}의 리프레시 토큰을 저장하지 못했습니다.`);
+    }
+    // JWT 토큰 반환
+    return { accessToken, refreshToken } as LoginResponse;
+  }
+
+  // 회원가입 정보 검증
+  private async validateSignupRequest(requestBody: UserSignupRequest): Promise<void> {
+    const { email, nickname, phoneNumber, role, registration_type, oauthId, password, over14YearsOld, termsOfService, privacyPolicy } = requestBody;
+    // 단순 형식 검증 (이메일, 닉네임, 전화번호, 비밀번호)
+    validateEmail(email);
+    validateNickname(nickname);
+    validatePhoneNumber(phoneNumber);
+    if (password){
+      validatePassword(password);
+    }
+
+    // 비즈니스 정책 검증 (14세 이상, 약관 동의)
+    validateTermsAgreement(over14YearsOld, termsOfService);
+    
+    // 가입 유형에 따른 논리 검증 (OAuth이면 password 필요없음, 로컬이면 password 필요, OAuth이면 oauthId 필요)
+    validateRegistrationType(registration_type, oauthId, password);
+
+    // SMS 인증 성공 시 Redis에 저장된 인증 코드 확인
+    await this.ensurePhoneVerified(phoneNumber);
+
+    // 닉네임 중복 검증
+    await this.checkNicknameDuplicate(nickname);
+
+    // 이메일 중복 검증
+    await this.checkEmailDuplicate(email, role);
+  }
+
+  // 휴대폰 인증 확인
+  private async ensurePhoneVerified(phoneNumber: string): Promise<void> {
+    const verified = await redisClient.get(`verified:${phoneNumber}`);
+    if (!verified){
+      throw new VerificationRequiredError('휴대폰 인증이 완료되지 않았거나 만료되었습니다.');
+    }
+  }
+
+  // 닉네임 중복 검증
+  private async checkNicknameDuplicate(nickname: string): Promise<void> {
+    const user = await prisma.user.findUnique({
+      where: {
+        nickname: nickname
+      }
+    });
+    const reformer = await prisma.owner.findUnique({
+      where: {
+        nickname: nickname
+      }
+    });
+    if (user || reformer){
+      throw new NicknameDuplicateError('이미 존재하는 닉네임입니다.');
+    }
+  }
+
+  // 이메일 중복 검증
+  private async checkEmailDuplicate(email: string, role: 'user' | 'reformer'): Promise<void> {
+    if (role === 'user'){
+      const account = await prisma.user.findFirst({
+        where: {
+          email: email
+        }
+      });
+      if (account){
+        throw new EmailDuplicateError('이미 존재하는 이메일입니다.');
+      }
+    }
+    
+    if (role === 'reformer'){
+      const account = await prisma.owner.findFirst({
+        where: {
+          email: email
+        }
+      });
+      if (account){
+        throw new EmailDuplicateError('이미 존재하는 이메일입니다.');
+      }
+    }
+  }
+}

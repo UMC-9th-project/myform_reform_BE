@@ -9,11 +9,13 @@ import {
   Example, 
   Tags,
   Request,
-  Query
+  Query,
+  FormField,
+  UploadedFiles
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, KakaoAuthResponse, LogoutResponse, PassportUserInfo } from './auth.dto.js';
+import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, KakaoAuthResponse, LogoutResponse, PassportUserInfo, UserSignupResponse, UserSignupRequest } from './auth.dto.js';
 import express from 'express';
 import passport from './passport.js';
 import { KakaoAuthError, UnauthorizedError } from './auth.error.js';
@@ -160,4 +162,27 @@ export class AuthController extends Controller {
       message: '로그아웃이 성공적으로 완료되었습니다.'
     });
   }
+
+  @SuccessResponse(201, '일반회원 회원가입 성공')
+  @Example<ResponseHandler<UserSignupResponse>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      user: {
+        id: 'userId',
+        email: 'userEmail',
+        nickname: 'userNickname',
+        role: 'user',
+        },
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken'
+    }
+  })
+  @Post('signup/user')
+  public async signupUser(
+    @Body() requestBody: UserSignupRequest): Promise<TsoaResponse<UserSignupResponse>> {
+    const result = await this.authService.signupUser(requestBody);
+    return new ResponseHandler<UserSignupResponse>(result)
+  }
+
 }

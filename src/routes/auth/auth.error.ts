@@ -65,3 +65,21 @@ export class MissingAuthInfoError extends BasicError {
     super(500, 'Auth_503', '로그인에 필요한 유저 정보가 누락되었습니다.', description);
   }
 }
+
+export class VerificationRequiredError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_108', '휴대폰 인증이 완료되지 않았거나 만료되었습니다.', description);
+  }
+}
+
+export class NicknameDuplicateError extends BasicError {
+  constructor(description: string) {
+    super(409, 'Auth_109', '이미 존재하는 닉네임입니다.', description);
+  }
+}
+
+export class EmailDuplicateError extends BasicError {
+  constructor(description: string) {
+    super(409, 'Auth_110', '이미 존재하는 이메일입니다.', description);
+  }
+}
