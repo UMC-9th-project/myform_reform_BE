@@ -5,7 +5,7 @@ import {
   reform_request_photo
 } from '@prisma/client';
 import prisma from '../../config/prisma.config.js';
-import { ReformRequestDto } from './reform.dto.js';
+import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
 import { ReformDBError } from './reform.error.js';
 
 export class ReformModel {
@@ -56,7 +56,7 @@ export class ReformModel {
     ]);
 
     if (!body) {
-      throw new ReformDBError(`Reform request with id ${id} not found`);
+      throw new ReformDBError('해당 상품이 존재하지 않습니다');
     }
 
     return { images, body };
@@ -75,9 +75,25 @@ export class ReformModel {
     ]);
 
     if (!body) {
-      throw new ReformDBError(`Reform request with id ${id} not found`);
+      throw new ReformDBError('해당 상품이 존재하지 않습니다');
     }
 
     return { images, body };
+  }
+
+  async addQuoteOrder(dto: OrderQuoteDto) {
+    await this.prisma.order.create({
+      data: {
+        status: dto.status,
+        target_type: dto.type,
+        target_id: dto.targetId,
+        price: dto.price,
+        delivery_fee: dto.delivery,
+        amount: dto.amount,
+        content: dto.content,
+        owner_id: dto.ownerId,
+        user_id: dto.userId
+      }
+    });
   }
 }

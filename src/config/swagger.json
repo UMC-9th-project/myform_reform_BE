@@ -463,6 +463,8 @@
 						"description": "No content"
 					}
 				},
+				"description": "모든 리폼 요청 목록을 조회",
+				"summary": "주문제작 페이지 목록 조회",
 				"tags": [
 					"Reform Router"
 				],
@@ -485,7 +487,8 @@
 						}
 					}
 				},
-				"description": "\n{\"title\":\"청바지 기장 수선 요청합니다\",\"contents\":\"너무 길어서 기장을 5cm 정도 줄이고 싶습니다. 밑단은 원단 그대로 살려서 작업해주시면 감사하겠습니다.\",\"minBudget\":15000,\"maxBudget\":30000,\"dueDate\":\"2026-01-20T00:00:00.000Z\",\"category\":{\"major\":\"의류\",\"sub\":\"하의\"}}",
+				"description": "{\"title\":\"청바지 기장 수선 요청합니다\",\"contents\":\"너무 길어서 기장을 5cm 정도 줄이고 싶습니다.\",\"minBudget\":15000,\"maxBudget\":30000,\"dueDate\":\"2026-01-20T00:00:00.000Z\",\"category\":{\"major\":\"의류\",\"sub\":\"하의\"}}",
+				"summary": "새로운 리폼요청서를 작성합니다",
 				"tags": [
 					"Reform Router"
 				],
@@ -500,7 +503,7 @@
 								"properties": {
 									"body": {
 										"type": "string",
-										"description": "JSOP stringfy된 입력 body"
+										"description": "JSON stringify된 객체"
 									},
 									"images": {
 										"items": {
@@ -508,7 +511,7 @@
 											"format": "binary"
 										},
 										"type": "array",
-										"description": "예시 사진"
+										"description": "리폼 요청에 첨부할 이미지 파일 배열"
 									}
 								},
 								"required": [
@@ -546,8 +549,8 @@
 											"title": "청바지 기장 수선 요청합니다",
 											"min_budget": 15000,
 											"max_budget": 30000,
-											"due_date": "2026-01-15T08:30:26.220Z",
-											"created_at": "2026-01-15T08:30:26.221Z"
+											"due_date": "2026-01-16T09:41:19.816Z",
+											"created_at": "2026-01-16T09:41:19.817Z"
 										}
 									}
 								}
@@ -555,12 +558,14 @@
 						}
 					}
 				},
+				"summary": "특정 리폼요청서의 상세 정보를 조회합니다.",
 				"tags": [
 					"Reform Router"
 				],
 				"security": [],
 				"parameters": [
 					{
+						"description": "리폼 요청 ID (UUID)",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -577,6 +582,7 @@
 						"description": "No content"
 					}
 				},
+				"summary": "특정 리폼 요청을 수정합니다.",
 				"tags": [
 					"Reform Router"
 				],
@@ -617,12 +623,14 @@
 						}
 					}
 				},
+				"summary": "특정 리폼제안서의 상세 정보를 조회합니다.",
 				"tags": [
 					"Reform Router"
 				],
 				"security": [],
 				"parameters": [
 					{
+						"description": "제안 ID (UUID)",
 						"in": "path",
 						"name": "id",
 						"required": true,
@@ -639,6 +647,7 @@
 						"description": "No content"
 					}
 				},
+				"summary": "특정 제안을 수정합니다",
 				"tags": [
 					"Reform Router"
 				],
@@ -646,19 +655,48 @@
 				"parameters": []
 			}
 		},
-		"/api/v1/reform/order": {
+		"/api/v1/reform/quote": {
 			"post": {
-				"operationId": "AddOrder",
+				"operationId": "AddQuote",
 				"responses": {
 					"204": {
 						"description": "No content"
 					}
 				},
+				"summary": "요청서를 바탕으로 새로운 견적서를 생성합니다.",
 				"tags": [
 					"Reform Router"
 				],
 				"security": [],
-				"parameters": []
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"multipart/form-data": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"body": {
+										"type": "string",
+										"description": "JSON stringify된 객체 {\"userId\":\"80f80aec-a750-4159-8e17-398a9dc6f14c\",\"reform_request_id\":\"03719d41-d021-4171-bdac-f26b511bb423\",\"price\":10000,\"delivery\":1000,\"content\":\"상세 제안 내용 텍스트 샘플입니다\",\"expected_working\":5}"
+									},
+									"images": {
+										"items": {
+											"type": "string",
+											"format": "binary"
+										},
+										"type": "array",
+										"description": "견적에 첨부할 이미지 파일 배열"
+									}
+								},
+								"required": [
+									"body",
+									"images"
+								]
+							}
+						}
+					}
+				}
 			}
 		},
 		"/api/v1/profile/add/item": {

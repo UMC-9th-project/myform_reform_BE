@@ -1,11 +1,15 @@
 import {
+  $Enums,
+  order_status_enum,
   reform_proposal,
   reform_proposal_photo,
   reform_request,
-  reform_request_photo
+  reform_request_photo,
+  target_type_enum
 } from '@prisma/client';
 import { Category } from '../../types/item.js';
 import { Reform } from '../profile/profile.dto.js';
+import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
 
 export interface RequestItems {
   thumbnail: string;
@@ -14,20 +18,7 @@ export interface RequestItems {
   reformer: string;
 }
 
-export interface ReformRequest {
-  images: {
-    content: string;
-    photo_order: number;
-  }[];
-  title: string;
-  contents: string;
-  minBudget: number;
-  maxBudget: number;
-  dueDate: Date;
-  category: Category;
-}
-
-export class ReformRequestDto implements ReformRequest {
+export class ReformRequestDto {
   userId: string;
   images: {
     content: string;
@@ -39,7 +30,7 @@ export class ReformRequestDto implements ReformRequest {
   dueDate: Date;
   category: Category;
   title: string;
-  constructor(body: any) {
+  constructor(body: ReformRequestReq) {
     this.userId = '';
     this.images = [];
     this.contents = body.contents;
@@ -142,5 +133,51 @@ export class ProposalDetailDto implements ProposalDetail {
       };
       this.images.push(obj);
     }
+  }
+}
+
+export interface Order {
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  price: number;
+  delivery: number;
+  content: string;
+  expected_working: number;
+  status: order_status_enum;
+  // userAddress: string;
+  // reformerAddress: string;
+  targetId: string | null;
+  type: target_type_enum;
+  amount: number;
+}
+
+export class OrderQuoteDto {
+  images: { content: string; photo_order: number }[];
+  price: number;
+  delivery: number;
+  content: string;
+  expected_working: number;
+  status: $Enums.order_status_enum;
+  type: $Enums.target_type_enum;
+  targetId: string;
+  amount: number;
+
+  ownerId: string;
+  userId: string;
+  constructor(body: AddQuoteReq, ownerId: string) {
+    this.ownerId = ownerId;
+    this.userId = body.userId;
+    this.targetId = body.reform_request_id;
+    this.price = body.price;
+    this.delivery = body.delivery;
+    this.content = body.content;
+    this.expected_working = body.expected_working;
+
+    this.images = [];
+    this.amount = 1;
+    this.status = order_status_enum.PENDING;
+    this.type = target_type_enum.REQUEST;
   }
 }

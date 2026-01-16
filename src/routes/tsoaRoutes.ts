@@ -388,24 +388,31 @@ export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof mult
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsReformController_addOrder: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsReformController_addQuote: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"formData","name":"body","required":true,"dataType":"string"},
+                images: {"in":"formData","name":"images","required":true,"dataType":"array","array":{"dataType":"file"}},
         };
-        app.post('/api/v1/reform/order',
+        app.post('/api/v1/reform/quote',
+            upload.fields([
+                {
+                    name: "images",
+                }
+            ]),
             ...(fetchMiddlewares<RequestHandler>(ReformController)),
-            ...(fetchMiddlewares<RequestHandler>(ReformController.prototype.addOrder)),
+            ...(fetchMiddlewares<RequestHandler>(ReformController.prototype.addQuote)),
 
-            async function ReformController_addOrder(request: ExRequest, response: ExResponse, next: any) {
+            async function ReformController_addQuote(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsReformController_addOrder, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsReformController_addQuote, request, response });
 
                 const controller = new ReformController();
 
               await templateService.apiHandler({
-                methodName: 'addOrder',
+                methodName: 'addQuote',
                 controller,
                 response,
                 next,

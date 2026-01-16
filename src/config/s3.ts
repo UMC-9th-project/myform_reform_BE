@@ -24,7 +24,7 @@ export class S3 {
 
   async uploadToS3(file: Express.Multer.File): Promise<string> {
     if (!file.mimetype.startsWith('image/')) {
-      throw new Error('지원되지 않는 파일 형식입니다.');
+      throw new S3UploadError('지원되지 않는 파일 형식입니다.');
     }
     const uniqueName = `${v5}${file.originalname}`;
     const command = new PutObjectCommand({

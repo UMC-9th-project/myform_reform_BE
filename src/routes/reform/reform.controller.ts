@@ -15,15 +15,17 @@ import {
 } from 'tsoa';
 import { ReformService } from './reform.service.js';
 import {
+  Order,
+  OrderQuoteDto,
   ProposalDetail,
   ProposalDetailDto,
-  ReformRequest,
   ReformRequestDto,
   RequestDetail,
   RequestDetailDto
 } from './reform.dto.js';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import RequestHandler from 'express';
+import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
 
 @Tags('Reform Router')
 @Route('/api/v1/reform')
@@ -34,14 +36,20 @@ export class ReformController extends Controller {
     this.reformService = new ReformService();
   }
 
+  /**
+   * 모든 리폼 요청 목록을 조회
+   * @summary 주문제작 페이지 목록 조회
+   */
   @Get('/')
   public async findAll() {}
 
   /**
    *
-   * {"title":"청바지 기장 수선 요청합니다","contents":"너무 길어서 기장을 5cm 정도 줄이고 싶습니다. 밑단은 원단 그대로 살려서 작업해주시면 감사하겠습니다.","minBudget":15000,"maxBudget":30000,"dueDate":"2026-01-20T00:00:00.000Z","category":{"major":"의류","sub":"하의"}}
-   * @param body JSOP stringfy된 입력 body
-   * @param images 예시 사진
+   *
+   * @summary 새로운 리폼요청서를 작성합니다
+   * @param body JSON stringify된 객체 {"title":"청바지 기장 수선 요청합니다","contents":"너무 길어서 기장을 5cm 정도 줄이고 싶습니다.","minBudget":15000,"maxBudget":30000,"dueDate":"2026-01-20T00:00:00.000Z","category":{"major":"의류","sub":"하의"}}
+   * @param images 리폼 요청에 첨부할 이미지 파일 배열
+   * @returns 생성 성공 메시지
    */
   @Post('/request')
   @SuccessResponse(200, '생성 성공')
@@ -50,13 +58,18 @@ export class ReformController extends Controller {
     @UploadedFiles() images: Express.Multer.File[]
   ): Promise<TsoaResponse<string>> {
     const userId = '80f80aec-a750-4159-8e17-398a9dc6f14c';
-    const dto = JSON.parse(body) as ReformRequest;
+    const dto = JSON.parse(body) as ReformRequestReq;
     const reformDto = new ReformRequestDto(dto);
     reformDto.userId = userId;
     await this.reformService.addRequest(reformDto, images);
     return new ResponseHandler('생성 성공');
   }
 
+  /**
+   * @summary 특정 리폼요청서의 상세 정보를 조회합니다.
+   * @param id 리폼 요청 ID (UUID)
+   * @returns 리폼 요청 상세 정보
+   */
   @Get('/request/:id')
   @SuccessResponse(200, '조회 성공')
   @Example<RequestDetail>({
@@ -83,9 +96,19 @@ export class ReformController extends Controller {
     return new ResponseHandler(ans);
   }
 
+  /**
+   * @summary 특정 리폼 요청을 수정합니다.
+   * @param id 리폼 요청 ID (UUID)
+   * @returns 수정된 리폼 요청 정보
+   */
   @Patch('/request/:id')
   public async modifyRequest() {}
 
+  /**
+   * @summary 특정 리폼제안서의 상세 정보를 조회합니다.
+   * @param id 제안 ID (UUID)
+   * @returns 제안 상세 정보
+   */
   @Get('/proposal/:id')
   @SuccessResponse(200, '조회 성공')
   @Example<ProposalDetail>({
@@ -110,9 +133,29 @@ export class ReformController extends Controller {
     return new ResponseHandler(ans);
   }
 
+  /**
+   * @summary 특정 제안을 수정합니다
+   * @param id 제안 ID (UUID)
+   * @returns 수정된 제안 정보
+   */
   @Patch('/proposal/:id')
   public async modifyProposal() {}
 
-  @Post('/order')
-  public async addOrder() {}
+  /**
+   * @summary 요청서를 바탕으로 새로운 견적서를 생성합니다.
+   * @param body JSON stringify된 객체 {"userId":"80f80aec-a750-4159-8e17-398a9dc6f14c","reform_request_id":"03719d41-d021-4171-bdac-f26b511bb423","price":10000,"delivery":1000,"content":"상세 제안 내용 텍스트 샘플입니다","expected_working":5}
+   * @param images 견적에 첨부할 이미지 파일 배열
+   * @returns 생성된 견적 정보
+   */
+  @Post('/quote')
+  @SuccessResponse(200, '생성 성공')
+  public async addQuote(
+    @FormField() body: string,
+    @UploadedFiles() images: Express.Multer.File[]
+  ) {
+    const ownerId = 'a209454d-5e95-4ffb-ba6f-beeabef34b50'; // ownerId는 reformer만 보내니까 JWT로 인증하도록
+    const dto = JSON.parse(body) as AddQuoteReq;
+    const orderDto = new OrderQuoteDto(dto, ownerId);
+    await this.reformService.addQuoteOrder(orderDto, images);
+  }
 }
