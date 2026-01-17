@@ -11,7 +11,7 @@
 				"type": "string",
 				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 			},
-			"CreateWishResDTO": {
+			"WishResDTO": {
 				"properties": {
 					"wishId": {
 						"$ref": "#/components/schemas/UUID",
@@ -29,7 +29,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TsoaResponse_CreateWishResDTO_": {
+			"TsoaResponse_WishResDTO_": {
 				"properties": {
 					"resultType": {
 						"type": "string"
@@ -42,7 +42,7 @@
 						"nullable": true
 					},
 					"success": {
-						"$ref": "#/components/schemas/CreateWishResDTO"
+						"$ref": "#/components/schemas/WishResDTO"
 					}
 				},
 				"required": [
@@ -53,7 +53,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ItemType": {
+			"WishType": {
 				"type": "string",
 				"enum": [
 					"PROPOSAL",
@@ -61,11 +61,11 @@
 					"REQUEST"
 				]
 			},
-			"CreateWishReqDTO": {
+			"WishReqDTO": {
 				"properties": {
 					"type": {
-						"$ref": "#/components/schemas/ItemType",
-						"description": "상품 타입 (Optional)"
+						"$ref": "#/components/schemas/WishType",
+						"description": "위시 타입"
 					},
 					"itemId": {
 						"$ref": "#/components/schemas/UUID",
@@ -75,6 +75,48 @@
 				"required": [
 					"type",
 					"itemId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DeleteWishResDTO": {
+				"properties": {
+					"wishId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					},
+					"deletedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"wishId",
+					"deletedAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_DeleteWishResDTO_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/DeleteWishResDTO"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -285,7 +327,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/TsoaResponse_CreateWishResDTO_"
+									"$ref": "#/components/schemas/TsoaResponse_WishResDTO_"
 								}
 							}
 						}
@@ -303,8 +345,41 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/CreateWishReqDTO",
+								"$ref": "#/components/schemas/WishReqDTO",
 								"description": "생성할 위시 정보"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteWish",
+				"responses": {
+					"200": {
+						"description": "위시 아이템 삭제 완료",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_DeleteWishResDTO_"
+								}
+							}
+						}
+					}
+				},
+				"summary": "위시 아이템 삭제",
+				"tags": [
+					"Wish"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "삭제할 위시 정보",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/WishReqDTO",
+								"description": "삭제할 위시 정보"
 							}
 						}
 					}

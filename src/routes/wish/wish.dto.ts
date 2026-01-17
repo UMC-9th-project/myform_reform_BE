@@ -3,7 +3,7 @@
  */
 export type UUID = string;
 
-export interface CreateWishResDTO {
+export interface WishResDTO {
   /**
    * @format uuid
    */
@@ -11,9 +11,17 @@ export interface CreateWishResDTO {
   createdAt: Date;
 }
 
+export interface DeleteWishResDTO {
+  /**
+   * @format uuid
+   */
+  wishId: UUID;
+  deletedAt: Date;
+}
+
 export type WishType = 'PROPOSAL' | 'ITEM' | 'REQUEST';
 
-export interface CreateWishReqDTO {
+export interface WishReqDTO {
   /**
    * 위시 타입
    * @example PROPOSAL

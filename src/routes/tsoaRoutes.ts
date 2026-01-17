@@ -21,7 +21,7 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"string","validators":{"pattern":{"value":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "CreateWishResDTO": {
+    "WishResDTO": {
         "dataType": "refObject",
         "properties": {
             "wishId": {"ref":"UUID","required":true},
@@ -30,26 +30,45 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TsoaResponse_CreateWishResDTO_": {
+    "TsoaResponse_WishResDTO_": {
         "dataType": "refObject",
         "properties": {
             "resultType": {"dataType":"string","required":true},
             "error": {"dataType":"enum","enums":[null],"required":true},
-            "success": {"ref":"CreateWishResDTO","required":true},
+            "success": {"ref":"WishResDTO","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ItemType": {
+    "WishType": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["PROPOSAL"]},{"dataType":"enum","enums":["ITEM"]},{"dataType":"enum","enums":["REQUEST"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "CreateWishReqDTO": {
+    "WishReqDTO": {
         "dataType": "refObject",
         "properties": {
-            "type": {"ref":"ItemType","required":true},
+            "type": {"ref":"WishType","required":true},
             "itemId": {"ref":"UUID","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DeleteWishResDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "wishId": {"ref":"UUID","required":true},
+            "deletedAt": {"dataType":"datetime","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TsoaResponse_DeleteWishResDTO_": {
+        "dataType": "refObject",
+        "properties": {
+            "resultType": {"dataType":"string","required":true},
+            "error": {"dataType":"enum","enums":[null],"required":true},
+            "success": {"ref":"DeleteWishResDTO","required":true},
         },
         "additionalProperties": false,
     },
@@ -147,7 +166,7 @@ export function RegisterRoutes(app: Router) {
 
     
         const argsWishController_createWish: Record<string, TsoaRoute.ParameterSchema> = {
-                body: {"in":"body","name":"body","required":true,"ref":"CreateWishReqDTO"},
+                body: {"in":"body","name":"body","required":true,"ref":"WishReqDTO"},
         };
         app.post('/wish',
             ...(fetchMiddlewares<RequestHandler>(WishController)),
@@ -170,6 +189,36 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsWishController_deleteWish: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"WishReqDTO"},
+        };
+        app.delete('/wish',
+            ...(fetchMiddlewares<RequestHandler>(WishController)),
+            ...(fetchMiddlewares<RequestHandler>(WishController.prototype.deleteWish)),
+
+            async function WishController_deleteWish(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsWishController_deleteWish, request, response });
+
+                const controller = new WishController();
+
+              await templateService.apiHandler({
+                methodName: 'deleteWish',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
               });
             } catch (err) {
                 return next(err);

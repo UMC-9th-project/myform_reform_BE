@@ -30,4 +30,34 @@ export const createOwnerWish = async (
   });
 };
 
-export default { createUserWish, createOwnerWish };
+export const deleteUserWish = async (
+  userId: string,
+  targetType: string,
+  targetId: string
+): Promise<user_wish | null> => {
+  const found = await prisma.user_wish.findFirst({
+    where: {
+      user_id: userId,
+      target_type: targetType as 'PROPOSAL' | 'ITEM',
+      target_id: targetId
+    }
+  });
+  if (!found) return null;
+  await prisma.user_wish.delete({ where: { wish_id: found.wish_id } });
+  return found;
+};
+
+export const deleteOwnerWish = async (
+  ownerId: string,
+  reformRequestId: string
+): Promise<owner_wish | null> => {
+  const found = await prisma.owner_wish.findFirst({
+    where: {
+      owner_id: ownerId,
+      reform_request_id: reformRequestId
+    }
+  });
+  if (!found) return null;
+  await prisma.owner_wish.delete({ where: { wish_id: found.wish_id } });
+  return found;
+};

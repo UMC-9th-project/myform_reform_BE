@@ -27,3 +27,9 @@ export class UnknownRoleError extends BasicError {
     super(400, 'Wish-400', 'UnknownRole', '알 수 없는 사용자입니다.');
   }
 }
+
+export class WishNotFoundError extends BasicError {
+  constructor() {
+    super(404, 'Wish-404', 'WishNotFound', '삭제할 위시를 찾을 수 없습니다.');
+  }
+}
