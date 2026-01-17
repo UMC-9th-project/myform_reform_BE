@@ -7,6 +7,78 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"UUID": {
+				"type": "string",
+				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+			},
+			"CreateWishResDTO": {
+				"properties": {
+					"wishId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"wishId",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_CreateWishResDTO_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/CreateWishResDTO"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ItemType": {
+				"type": "string",
+				"enum": [
+					"PROPOSAL",
+					"ITEM",
+					"REQUEST"
+				]
+			},
+			"CreateWishReqDTO": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/ItemType",
+						"description": "상품 타입 (Optional)"
+					},
+					"itemId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					}
+				},
+				"required": [
+					"type",
+					"itemId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"TsoaResponse_string_": {
 				"properties": {
 					"resultType": {
@@ -204,6 +276,41 @@
 		"contact": {}
 	},
 	"paths": {
+		"/wish": {
+			"post": {
+				"operationId": "CreateWish",
+				"responses": {
+					"201": {
+						"description": "위시 아이템 생성 완료",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_CreateWishResDTO_"
+								}
+							}
+						}
+					}
+				},
+				"summary": "새로운 위시 아이템 생성",
+				"tags": [
+					"Wish"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"description": "생성할 위시 정보",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateWishReqDTO",
+								"description": "생성할 위시 정보"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/project": {
 			"get": {
 				"operationId": "SetTest",
