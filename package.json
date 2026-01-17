@@ -18,6 +18,7 @@
   "dependencies": {
     "@prisma/client": "6.18.0",
     "aws-sdk": "^2.1692.0",
+    "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "2.0.2",
