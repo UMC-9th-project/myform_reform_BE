@@ -7,6 +7,1068 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"GetOrderSheetResponseDto": {
+				"properties": {
+					"order_item": {
+						"properties": {
+							"price": {
+								"type": "number",
+								"format": "double"
+							},
+							"quantity": {
+								"type": "number",
+								"format": "double"
+							},
+							"selected_options": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							"title": {
+								"type": "string"
+							},
+							"thumbnail": {
+								"type": "string"
+							},
+							"reformer_nickname": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"price",
+							"quantity",
+							"selected_options",
+							"title",
+							"thumbnail",
+							"reformer_nickname"
+						],
+						"type": "object"
+					},
+					"delivery_address": {
+						"properties": {
+							"address_detail": {
+								"type": "string",
+								"nullable": true
+							},
+							"address": {
+								"type": "string",
+								"nullable": true
+							},
+							"postal_code": {
+								"type": "string",
+								"nullable": true
+							},
+							"delivery_address_id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"address_detail",
+							"address",
+							"postal_code"
+						],
+						"type": "object",
+						"nullable": true
+					},
+					"payment": {
+						"properties": {
+							"total_amount": {
+								"type": "number",
+								"format": "double"
+							},
+							"delivery_fee": {
+								"type": "number",
+								"format": "double"
+							},
+							"product_amount": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"total_amount",
+							"delivery_fee",
+							"product_amount"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"order_item",
+					"delivery_address",
+					"payment"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetOrderSheetResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetOrderSheetResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ErrorResponse": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"properties": {
+							"data": {
+								"nullable": true
+							},
+							"reason": {
+								"type": "string",
+								"nullable": true
+							},
+							"errorCode": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"success": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetOrderSheetRequestDto": {
+				"properties": {
+					"item_id": {
+						"type": "string"
+					},
+					"option_item_ids": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery_address_id": {
+						"type": "string"
+					},
+					"new_address": {
+						"properties": {
+							"address_detail": {
+								"type": "string"
+							},
+							"address": {
+								"type": "string"
+							},
+							"postal_code": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"required": [
+					"item_id",
+					"option_item_ids",
+					"quantity"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateOrderResponseDto": {
+				"properties": {
+					"order_id": {
+						"type": "string"
+					},
+					"payment_status": {
+						"type": "string"
+					},
+					"payment_method": {
+						"type": "string",
+						"nullable": true
+					},
+					"payment_gateway": {
+						"type": "string",
+						"nullable": true
+					}
+				},
+				"required": [
+					"order_id",
+					"payment_status",
+					"payment_method",
+					"payment_gateway"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_CreateOrderResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/CreateOrderResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateOrderRequestDto": {
+				"properties": {
+					"item_id": {
+						"type": "string"
+					},
+					"option_item_ids": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery_address_id": {
+						"type": "string"
+					},
+					"new_address": {
+						"properties": {
+							"address_detail": {
+								"type": "string"
+							},
+							"address": {
+								"type": "string"
+							},
+							"postal_code": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"imp_uid": {
+						"type": "string"
+					},
+					"merchant_uid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"item_id",
+					"option_item_ids",
+					"quantity",
+					"merchant_uid"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetOrderResponseDto": {
+				"properties": {
+					"order_id": {
+						"type": "string"
+					},
+					"order_number": {
+						"type": "string"
+					},
+					"delivery_address": {
+						"properties": {
+							"address_detail": {
+								"type": "string",
+								"nullable": true
+							},
+							"address": {
+								"type": "string",
+								"nullable": true
+							},
+							"postal_code": {
+								"type": "string",
+								"nullable": true
+							}
+						},
+						"required": [
+							"address_detail",
+							"address",
+							"postal_code"
+						],
+						"type": "object"
+					},
+					"order_items": {
+						"items": {
+							"properties": {
+								"reformer_nickname": {
+									"type": "string"
+								},
+								"selected_options": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"title": {
+									"type": "string"
+								},
+								"thumbnail": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"reformer_nickname",
+								"selected_options",
+								"title",
+								"thumbnail"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"payment": {
+						"properties": {
+							"approved_at": {
+								"type": "string",
+								"format": "date-time",
+								"nullable": true
+							},
+							"card_info": {
+								"type": "string",
+								"nullable": true
+							},
+							"payment_method": {
+								"type": "string",
+								"nullable": true
+							},
+							"amount": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"approved_at",
+							"card_info",
+							"payment_method",
+							"amount"
+						],
+						"type": "object"
+					},
+					"total_amount": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery_fee": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"order_id",
+					"order_number",
+					"delivery_address",
+					"order_items",
+					"payment",
+					"total_amount",
+					"delivery_fee"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetOrderResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetOrderResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetItemListResponseDto": {
+				"properties": {
+					"items": {
+						"items": {
+							"properties": {
+								"is_wished": {
+									"type": "boolean"
+								},
+								"owner_nickname": {
+									"type": "string"
+								},
+								"review_count": {
+									"type": "number",
+									"format": "double"
+								},
+								"star": {
+									"type": "number",
+									"format": "double"
+								},
+								"price": {
+									"type": "number",
+									"format": "double"
+								},
+								"title": {
+									"type": "string"
+								},
+								"thumbnail": {
+									"type": "string"
+								},
+								"item_id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"is_wished",
+								"owner_nickname",
+								"review_count",
+								"star",
+								"price",
+								"title",
+								"thumbnail",
+								"item_id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"total_count": {
+						"type": "number",
+						"format": "double"
+					},
+					"page": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"items",
+					"total_count",
+					"page",
+					"limit"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetItemListResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetItemListResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetItemDetailResponseDto": {
+				"properties": {
+					"item_id": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true
+					},
+					"images": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery_info": {
+						"type": "string"
+					},
+					"option_groups": {
+						"items": {
+							"properties": {
+								"option_items": {
+									"items": {
+										"properties": {
+											"quantity": {
+												"type": "number",
+												"format": "double",
+												"nullable": true
+											},
+											"extra_price": {
+												"type": "number",
+												"format": "double"
+											},
+											"name": {
+												"type": "string"
+											},
+											"option_item_id": {
+												"type": "string"
+											}
+										},
+										"required": [
+											"quantity",
+											"extra_price",
+											"name",
+											"option_item_id"
+										],
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"name": {
+									"type": "string"
+								},
+								"option_group_id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"option_items",
+								"name",
+								"option_group_id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"reformer": {
+						"properties": {
+							"order_count": {
+								"type": "number",
+								"format": "double"
+							},
+							"star": {
+								"type": "number",
+								"format": "double"
+							},
+							"nickname": {
+								"type": "string",
+								"nullable": true
+							},
+							"profile_image": {
+								"type": "string",
+								"nullable": true
+							},
+							"owner_id": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"order_count",
+							"star",
+							"nickname",
+							"profile_image",
+							"owner_id"
+						],
+						"type": "object"
+					},
+					"is_wished": {
+						"type": "boolean"
+					},
+					"review_summary": {
+						"properties": {
+							"remaining_photo_count": {
+								"type": "number",
+								"format": "double"
+							},
+							"preview_photos": {
+								"items": {
+									"properties": {
+										"photo_url": {
+											"type": "string"
+										},
+										"review_id": {
+											"type": "string"
+										},
+										"photo_index": {
+											"type": "number",
+											"format": "double"
+										}
+									},
+									"required": [
+										"photo_url",
+										"review_id",
+										"photo_index"
+									],
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"avg_star": {
+								"type": "number",
+								"format": "double"
+							},
+							"photo_review_count": {
+								"type": "number",
+								"format": "double"
+							},
+							"total_review_count": {
+								"type": "number",
+								"format": "double"
+							}
+						},
+						"required": [
+							"remaining_photo_count",
+							"preview_photos",
+							"avg_star",
+							"photo_review_count",
+							"total_review_count"
+						],
+						"type": "object"
+					},
+					"reviews": {
+						"items": {
+							"properties": {
+								"photos": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"product_thumbnail": {
+									"type": "string",
+									"nullable": true
+								},
+								"content": {
+									"type": "string",
+									"nullable": true
+								},
+								"created_at": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"star": {
+									"type": "number",
+									"format": "double"
+								},
+								"user_nickname": {
+									"type": "string",
+									"nullable": true
+								},
+								"user_profile_image": {
+									"type": "string",
+									"nullable": true
+								},
+								"review_id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"photos",
+								"product_thumbnail",
+								"content",
+								"created_at",
+								"star",
+								"user_nickname",
+								"user_profile_image",
+								"review_id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"item_id",
+					"title",
+					"images",
+					"price",
+					"delivery",
+					"delivery_info",
+					"option_groups",
+					"reformer",
+					"is_wished",
+					"review_summary",
+					"reviews"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetItemDetailResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetItemDetailResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetItemReviewsResponseDto": {
+				"properties": {
+					"reviews": {
+						"items": {
+							"properties": {
+								"photos": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								},
+								"product_thumbnail": {
+									"type": "string",
+									"nullable": true
+								},
+								"content": {
+									"type": "string",
+									"nullable": true
+								},
+								"created_at": {
+									"type": "string",
+									"format": "date-time"
+								},
+								"star": {
+									"type": "number",
+									"format": "double"
+								},
+								"user_nickname": {
+									"type": "string",
+									"nullable": true
+								},
+								"user_profile_image": {
+									"type": "string",
+									"nullable": true
+								},
+								"review_id": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"photos",
+								"product_thumbnail",
+								"content",
+								"created_at",
+								"star",
+								"user_nickname",
+								"user_profile_image",
+								"review_id"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"total_count": {
+						"type": "number",
+						"format": "double"
+					},
+					"avg_star": {
+						"type": "number",
+						"format": "double"
+					},
+					"page": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"total_pages": {
+						"type": "number",
+						"format": "double"
+					},
+					"has_next_page": {
+						"type": "boolean"
+					},
+					"has_prev_page": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"reviews",
+					"total_count",
+					"avg_star",
+					"page",
+					"limit",
+					"total_pages",
+					"has_next_page",
+					"has_prev_page"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetItemReviewsResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetItemReviewsResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetItemReviewPhotosResponseDto": {
+				"properties": {
+					"photos": {
+						"items": {
+							"properties": {
+								"photo_order": {
+									"type": "number",
+									"format": "double"
+								},
+								"photo_url": {
+									"type": "string"
+								},
+								"review_id": {
+									"type": "string"
+								},
+								"photo_index": {
+									"type": "number",
+									"format": "double"
+								}
+							},
+							"required": [
+								"photo_order",
+								"photo_url",
+								"review_id",
+								"photo_index"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"has_more": {
+						"type": "boolean"
+					},
+					"offset": {
+						"type": "number",
+						"format": "double"
+					},
+					"limit": {
+						"type": "number",
+						"format": "double"
+					},
+					"total_count": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"photos",
+					"has_more",
+					"offset",
+					"limit",
+					"total_count"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetItemReviewPhotosResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetItemReviewPhotosResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetReviewDetailResponseDto": {
+				"properties": {
+					"review_id": {
+						"type": "string"
+					},
+					"user_profile_image": {
+						"type": "string",
+						"nullable": true
+					},
+					"user_nickname": {
+						"type": "string",
+						"nullable": true
+					},
+					"star": {
+						"type": "number",
+						"format": "double"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"content": {
+						"type": "string",
+						"nullable": true
+					},
+					"photo_urls": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"product_thumbnail": {
+						"type": "string",
+						"nullable": true
+					},
+					"current_photo_index": {
+						"type": "number",
+						"format": "double"
+					},
+					"total_photo_count": {
+						"type": "number",
+						"format": "double"
+					},
+					"has_prev": {
+						"type": "boolean"
+					},
+					"has_next": {
+						"type": "boolean"
+					},
+					"prev_photo_index": {
+						"type": "number",
+						"format": "double"
+					},
+					"next_photo_index": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"review_id",
+					"user_profile_image",
+					"user_nickname",
+					"star",
+					"created_at",
+					"content",
+					"photo_urls",
+					"product_thumbnail"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_GetReviewDetailResponseDto_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/GetReviewDetailResponseDto"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"TsoaResponse_string_": {
 				"properties": {
 					"resultType": {
@@ -43,6 +1105,721 @@
 		"contact": {}
 	},
 	"paths": {
+		"/orders/sheet": {
+			"post": {
+				"operationId": "GetOrderSheet",
+				"responses": {
+					"200": {
+						"description": "주문서 정보 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetOrderSheetResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"item_id": "550e8400-e29b-41d4-a716-446655440000",
+											"option_item_ids": [
+												"660e8400-e29b-41d4-a716-446655440001"
+											],
+											"quantity": 1
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "재고가 부족합니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "로그인이 필요합니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "상품을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "주문서 정보 조회",
+				"summary": "주문서 정보를 조회합니다",
+				"tags": [
+					"Orders"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "주문서 정보 조회 요청",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/GetOrderSheetRequestDto",
+								"description": "주문서 정보 조회 요청"
+							},
+							"examples": {
+								"Example 1": {
+									"value": {
+										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"option_item_ids": [
+											"660e8400-e29b-41d4-a716-446655440001"
+										],
+										"quantity": 1
+									}
+								},
+								"Example 2": {
+									"value": {
+										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"option_item_ids": [
+											"660e8400-e29b-41d4-a716-446655440001"
+										],
+										"quantity": 1,
+										"new_address": {
+											"postal_code": "12345",
+											"address": "서울시 강남구 테헤란로",
+											"address_detail": "123번지"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/orders": {
+			"post": {
+				"operationId": "CreateOrder",
+				"responses": {
+					"200": {
+						"description": "주문 생성 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_CreateOrderResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"item_id": "550e8400-e29b-41d4-a716-446655440000",
+											"option_item_ids": [
+												"660e8400-e29b-41d4-a716-446655440001"
+											],
+											"quantity": 1,
+											"delivery_address_id": "770e8400-e29b-41d4-a716-446655440002",
+											"merchant_uid": "order-1234567890"
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "결제 검증 실패",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "로그인이 필요합니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "상품을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "주문 생성",
+				"summary": "새로운 주문을 생성합니다",
+				"tags": [
+					"Orders"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"description": "주문 생성 요청",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateOrderRequestDto",
+								"description": "주문 생성 요청"
+							},
+							"examples": {
+								"Example 1": {
+									"value": {
+										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"option_item_ids": [
+											"660e8400-e29b-41d4-a716-446655440001"
+										],
+										"quantity": 1,
+										"delivery_address_id": "770e8400-e29b-41d4-a716-446655440002",
+										"merchant_uid": "order-1234567890"
+									}
+								},
+								"Example 2": {
+									"value": {
+										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"option_item_ids": [
+											"660e8400-e29b-41d4-a716-446655440001"
+										],
+										"quantity": 2,
+										"new_address": {
+											"postal_code": "12345",
+											"address": "서울시 강남구 테헤란로",
+											"address_detail": "123번지"
+										},
+										"merchant_uid": "order-1234567890",
+										"imp_uid": "imp_1234567890"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/orders/{orderId}": {
+			"get": {
+				"operationId": "GetOrder",
+				"responses": {
+					"200": {
+						"description": "주문 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetOrderResponseDto_"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "로그인이 필요합니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "주문을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "주문 조회 (결제 완료 정보)",
+				"summary": "주문 정보를 조회합니다",
+				"tags": [
+					"Orders"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "주문 ID",
+						"in": "path",
+						"name": "orderId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/market": {
+			"get": {
+				"operationId": "GetItemList",
+				"responses": {
+					"200": {
+						"description": "상품 목록 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetItemListResponseDto_"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "상품 목록 조회",
+				"summary": "마켓 상품 목록을 조회합니다",
+				"tags": [
+					"Market"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "카테고리 ID (선택)",
+						"in": "query",
+						"name": "categoryId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "정렬 기준 (popular/latest, 기본: popular)",
+						"in": "query",
+						"name": "sort",
+						"required": false,
+						"schema": {
+							"default": "popular",
+							"type": "string",
+							"enum": [
+								"popular",
+								"latest"
+							]
+						}
+					},
+					{
+						"description": "페이지 번호 (기본: 1)",
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"default": 1,
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "페이지당 개수 (기본: 15)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 15,
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/market/{itemId}": {
+			"get": {
+				"operationId": "GetItemDetail",
+				"responses": {
+					"200": {
+						"description": "상품 상세 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetItemDetailResponseDto_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "상품을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "상품 상세 조회",
+				"summary": "상품 상세 정보를 조회합니다",
+				"tags": [
+					"Market"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "상품 ID",
+						"in": "path",
+						"name": "itemId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/market/{itemId}/reviews": {
+			"get": {
+				"operationId": "GetItemReviews",
+				"responses": {
+					"200": {
+						"description": "리뷰 목록 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetItemReviewsResponseDto_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "상품을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "상품 리뷰 목록 조회",
+				"summary": "상품의 리뷰 목록을 조회합니다",
+				"tags": [
+					"Market"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "상품 ID",
+						"in": "path",
+						"name": "itemId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "페이지 번호 (기본: 1)",
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"default": 1,
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "페이지당 개수 (기본: 4)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 4,
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "정렬 기준 (latest: 최신순, star_high: 평점높은순, star_low: 평점낮은순, 기본: latest)",
+						"in": "query",
+						"name": "sort",
+						"required": false,
+						"schema": {
+							"default": "latest",
+							"type": "string",
+							"enum": [
+								"latest",
+								"star_high",
+								"star_low"
+							]
+						}
+					}
+				]
+			}
+		},
+		"/market/{itemId}/reviews/photos": {
+			"get": {
+				"operationId": "GetItemReviewPhotos",
+				"responses": {
+					"200": {
+						"description": "사진 후기 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetItemReviewPhotosResponseDto_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "상품을 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "사진 후기 조회 (무한 스크롤)",
+				"summary": "상품의 사진 후기를 조회합니다 (더보기 페이지에서 사용, 최신순 정렬)",
+				"tags": [
+					"Market"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "상품 ID",
+						"in": "path",
+						"name": "itemId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "시작 위치 (기본: 0, 스크롤 시 증가)",
+						"in": "query",
+						"name": "offset",
+						"required": false,
+						"schema": {
+							"default": 0,
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"description": "페이지당 개수 (기본: 15, 초기 로드 시 사용. 이후 스크롤 시 30개 권장)",
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 15,
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
+		"/market/{itemId}/reviews/{reviewId}": {
+			"get": {
+				"operationId": "GetReviewDetail",
+				"responses": {
+					"200": {
+						"description": "리뷰 상세 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_GetReviewDetailResponseDto_"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "리뷰를 찾을 수 없습니다.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 에러",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "리뷰 상세 조회",
+				"summary": "특정 리뷰의 상세 정보를 조회합니다",
+				"tags": [
+					"Market"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "상품 ID",
+						"in": "path",
+						"name": "itemId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "리뷰 ID",
+						"in": "path",
+						"name": "reviewId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "전체 사진 리스트에서의 인덱스 (선택사항)\n- 사진 후기 더보기에서 클릭한 경우: 전체 사진 리스트 기준 네비게이션 정보 제공\n- 전체 리뷰에서 사진 클릭한 경우: 해당 리뷰의 사진만 표시 (photo_urls 배열 사용)",
+						"in": "query",
+						"name": "photoIndex",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					}
+				]
+			}
+		},
 		"/project": {
 			"get": {
 				"operationId": "SetTest",
