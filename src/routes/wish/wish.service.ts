@@ -1,4 +1,10 @@
-import { WishReqDTO, WishResDTO, DeleteWishResDTO } from './wish.dto.js';
+import {
+  WishReqDTO,
+  WishResDTO,
+  DeleteWishResDTO,
+  WishListResDTO,
+  WishType
+} from './wish.dto.js';
 import {
   UserReqForbiddenError,
   OwnerReqForbiddenError,
@@ -9,7 +15,9 @@ import {
   createUserWish,
   createOwnerWish,
   deleteUserWish,
-  deleteOwnerWish
+  deleteOwnerWish,
+  getUserWishList,
+  getOwnerWishList
 } from './wish.model.js';
 
 type MockRole = 'USER' | 'OWNER';
@@ -77,6 +85,27 @@ export class WishService {
         wishId: deleted.wish_id,
         deletedAt: new Date()
       } as DeleteWishResDTO;
+    }
+
+    throw new UnknownRoleError();
+  }
+
+  async getWishList(type: WishType): Promise<WishListResDTO> {
+    const mockUser = {
+      id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
+      role: 'USER' as MockRole
+    };
+
+    if (mockUser.role === 'USER') {
+      if (type === 'REQUEST') throw new UserReqForbiddenError();
+      const list = await getUserWishList(mockUser.id, type);
+      return { list } as WishListResDTO;
+    }
+
+    if (mockUser.role === 'OWNER') {
+      if (type !== 'REQUEST') throw new OwnerReqForbiddenError();
+      const list = await getOwnerWishList(mockUser.id);
+      return { list } as WishListResDTO;
     }
 
     throw new UnknownRoleError();

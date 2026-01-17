@@ -121,6 +121,88 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"WishDetailDTO": {
+				"properties": {
+					"wishType": {
+						"$ref": "#/components/schemas/WishType"
+					},
+					"itemId": {
+						"$ref": "#/components/schemas/UUID"
+					},
+					"content": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"avgStar": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"reviewCount": {
+						"type": "number",
+						"format": "double",
+						"nullable": true
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"wishType",
+					"itemId",
+					"content",
+					"title",
+					"price",
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"WishListResDTO": {
+				"properties": {
+					"list": {
+						"items": {
+							"$ref": "#/components/schemas/WishDetailDTO"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"list"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_WishListResDTO_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/WishListResDTO"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"TsoaResponse_string_": {
 				"properties": {
 					"resultType": {
@@ -384,6 +466,37 @@
 						}
 					}
 				}
+			},
+			"get": {
+				"operationId": "GetWishList",
+				"responses": {
+					"200": {
+						"description": "위시 내역 조회 완료",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_WishListResDTO_"
+								}
+							}
+						}
+					}
+				},
+				"summary": "위시 내역 조회",
+				"tags": [
+					"Wish"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "위시 타입\nREQUEST: 요청글\nPROPOSAL: 제안글\nITEM: 마켓글",
+						"in": "query",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/WishType"
+						}
+					}
+				]
 			}
 		},
 		"/project": {

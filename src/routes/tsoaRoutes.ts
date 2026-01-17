@@ -73,6 +73,39 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WishDetailDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "wishType": {"ref":"WishType","required":true},
+            "itemId": {"ref":"UUID","required":true},
+            "content": {"dataType":"string","required":true},
+            "title": {"dataType":"string","required":true},
+            "avgStar": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}]},
+            "reviewCount": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}]},
+            "price": {"dataType":"double","required":true},
+            "name": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WishListResDTO": {
+        "dataType": "refObject",
+        "properties": {
+            "list": {"dataType":"array","array":{"dataType":"refObject","ref":"WishDetailDTO"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TsoaResponse_WishListResDTO_": {
+        "dataType": "refObject",
+        "properties": {
+            "resultType": {"dataType":"string","required":true},
+            "error": {"dataType":"enum","enums":[null],"required":true},
+            "success": {"ref":"WishListResDTO","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "TsoaResponse_string_": {
         "dataType": "refObject",
         "properties": {
@@ -214,6 +247,36 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'deleteWish',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 200,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsWishController_getWishList: Record<string, TsoaRoute.ParameterSchema> = {
+                type: {"in":"query","name":"type","required":true,"ref":"WishType"},
+        };
+        app.get('/wish',
+            ...(fetchMiddlewares<RequestHandler>(WishController)),
+            ...(fetchMiddlewares<RequestHandler>(WishController.prototype.getWishList)),
+
+            async function WishController_getWishList(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsWishController_getWishList, request, response });
+
+                const controller = new WishController();
+
+              await templateService.apiHandler({
+                methodName: 'getWishList',
                 controller,
                 response,
                 next,

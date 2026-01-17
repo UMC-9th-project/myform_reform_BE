@@ -32,3 +32,18 @@ export interface WishReqDTO {
    */
   itemId: UUID;
 }
+
+export interface WishDetailDTO {
+  wishType: WishType;
+  itemId: UUID;
+  content: string;
+  title: string;
+  avgStar?: number | null;
+  reviewCount?: number | null;
+  price: number;
+  name: string; // sellerName or userName
+}
+
+export interface WishListResDTO {
+  list: WishDetailDTO[];
+}
