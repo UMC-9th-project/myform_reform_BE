@@ -1,4 +1,11 @@
-import { HomeResponse } from './home.model.js';
+import {
+  HomeResponse,
+  UserSession,
+  Banner,
+  TrendingItem,
+  CustomOrder,
+  BestReformer
+} from './home.model.js';
 
 /**
  * JWT 토큰에서 추출할 사용자 정보 (임시 - JWT 구현 시 사용)
@@ -21,3 +28,35 @@ export interface GetHomeRequestDto {
  * 메인 페이지 응답 DTO
  */
 export interface GetHomeResponseDto extends HomeResponse {}
+
+/**
+ * Service Layer DTOs
+ */
+export interface UserSessionDto extends UserSession {}
+
+export interface BannerDto extends Banner {}
+
+export interface TrendingItemDto extends TrendingItem {}
+
+export interface CustomOrderDto extends CustomOrder {}
+
+export interface BestReformerDto extends BestReformer {}
+
+/**
+ * 홈 데이터 조회 결과 DTO
+ */
+export interface HomeDataDto {
+  banners: BannerDto[];
+  trending_items: TrendingItemDto[];
+  custom_orders: CustomOrderDto[];
+  best_reformers: BestReformerDto[];
+}
+
+/**
+ * 홈 전체 조회 결과 DTO
+ */
+export interface HomeDataResponseDto {
+  result: boolean;
+  user_session: UserSessionDto;
+  home_data: HomeDataDto;
+}
