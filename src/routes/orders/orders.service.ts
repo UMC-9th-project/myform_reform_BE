@@ -440,27 +440,72 @@ export class OrdersService {
         optionGroupIds.add(groupId);
       }
 
-      for (const optionItem of optionItems) {
-        if (optionItem.quantity !== null) {
-          const updateResult = await prisma.$executeRaw(
-            Prisma.sql`
-              UPDATE option_item
-              SET quantity = quantity - ${quantity}
-              WHERE option_item_id = ${optionItem.option_item_id}::uuid
-                AND quantity >= ${quantity}
-                AND quantity IS NOT NULL
-            `
-          );
+      const optionItemIdsWithQuantity = optionItems
+        .filter((item) => item.quantity !== null)
+        .map((item) => item.option_item_id);
 
-          if (updateResult === 0) {
-            const currentItem = await prisma.option_item.findUnique({
-              where: { option_item_id: optionItem.option_item_id }
-            });
-            throw new InsufficientStockError(
-              optionItem.name || '옵션',
-              `현재 재고: ${currentItem?.quantity || 0}, 요청 수량: ${quantity}`
-            );
+      if (optionItemIdsWithQuantity.length > 0) {
+        // 단일 쿼리로 모든 옵션 아이템 재고 일괄 차감
+        const updateResult = await prisma.$executeRaw(
+          Prisma.sql`
+            UPDATE option_item
+            SET quantity = quantity - ${quantity}
+            WHERE option_item_id = ANY(${optionItemIdsWithQuantity}::uuid[])
+              AND quantity >= ${quantity}
+              AND quantity IS NOT NULL
+          `
+        );
+
+        // 업데이트된 행 수가 예상과 다르면 재고 부족 검증
+        if (updateResult !== optionItemIdsWithQuantity.length) {
+          const updatedItems = await prisma.option_item.findMany({
+            where: {
+              option_item_id: { in: optionItemIdsWithQuantity }
+            },
+            select: {
+              option_item_id: true,
+              name: true,
+              quantity: true
+            }
+          });
+
+          // 업데이트 실패한 아이템 식별 및 예외 처리
+          for (const optionItem of optionItems) {
+            if (optionItem.quantity !== null) {
+              const updatedItem = updatedItems.find(
+                (item) => item.option_item_id === optionItem.option_item_id
+              );
+              
+              if (!updatedItem) {
+                throw new InsufficientStockError(
+                  optionItem.name || '옵션',
+                  `옵션 아이템을 찾을 수 없습니다.`
+                );
+              }
+              
+              const expectedQuantityAfterUpdate = optionItem.quantity - quantity;
+              const actualQuantity = updatedItem.quantity;
+              
+              if (actualQuantity === null) {
+                throw new InsufficientStockError(
+                  optionItem.name || '옵션',
+                  `재고 정보가 없습니다.`
+                );
+              }
+              
+              if (actualQuantity !== null && actualQuantity > expectedQuantityAfterUpdate) {
+                throw new InsufficientStockError(
+                  optionItem.name || '옵션',
+                  `현재 재고: ${actualQuantity}, 요청 수량: ${quantity}`
+                );
+              }
+            }
           }
+
+          throw new InsufficientStockError(
+            '일부 옵션의 재고가 부족합니다.',
+            `업데이트된 행 수: ${updateResult}, 예상 행 수: ${optionItemIdsWithQuantity.length}`
+          );
         }
       }
 
@@ -704,7 +749,8 @@ export class OrdersService {
               data: { payment_status: 'cancelled' }
             });
 
-            for (const optionItemId of optionItemIds) {
+            // 단일 쿼리로 모든 옵션 아이템 재고 일괄 복구
+            if (optionItemIds.length > 0) {
               let retryCount = 0;
               const maxRetries = 3;
               let restoreSuccess = false;
@@ -715,7 +761,7 @@ export class OrdersService {
                     Prisma.sql`
                       UPDATE option_item
                       SET quantity = quantity + ${quantity}
-                      WHERE option_item_id = ${optionItemId}::uuid
+                      WHERE option_item_id = ANY(${optionItemIds}::uuid[])
                         AND quantity IS NOT NULL
                     `
                   );
@@ -734,11 +780,11 @@ export class OrdersService {
                   retryCount++;
                   if (retryCount < maxRetries) {
                     await new Promise((resolve) =>
-                        setTimeout(resolve, 100 * Math.pow(2, retryCount - 1))
-                      );
-                    } else {
-                      console.error(
-                      `재고 복구 실패 (optionItemId: ${optionItemId}):`,
+                      setTimeout(resolve, 100 * Math.pow(2, retryCount - 1))
+                    );
+                  } else {
+                    console.error(
+                      `재고 복구 실패 (optionItemIds: ${optionItemIds.join(', ')}):`,
                       error
                     );
                   }
