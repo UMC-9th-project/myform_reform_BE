@@ -19,34 +19,36 @@ import {
   getUserWishList,
   getOwnerWishList
 } from './wish.model.js';
+import type { UserAllowedTarget } from './wish.model.js';
 
-type MockRole = 'USER' | 'OWNER';
+type Role = 'USER' | 'OWNER';
 
 export class WishService {
   constructor() {}
 
+  private validateRoleAccess(role: Role, type: WishType) {
+    if (role === 'USER' && type === 'REQUEST')
+      throw new UserReqForbiddenError();
+    if (role === 'OWNER' && type !== 'REQUEST')
+      throw new OwnerReqForbiddenError();
+  }
+
   async createWish(req: WishReqDTO): Promise<WishResDTO> {
     const mockUser = {
       id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as MockRole
+      role: 'USER' as Role
     };
 
-    // 사용자 유형에 따른 검증
-    if (mockUser.role === 'USER') {
-      if (req.type === 'REQUEST') {
-        throw new UserReqForbiddenError();
-      }
+    this.validateRoleAccess(mockUser.role, req.type);
 
-      const created = await createUserWish(mockUser.id, req.type, req.itemId);
+    // 사용자 유형에 따른 처리
+    if (mockUser.role === 'USER') {
+      const created = await createUserWish(mockUser.id, req.type as UserAllowedTarget, req.itemId);
       const wishId = (created as { wish_id: string }).wish_id;
       return { wishId, createdAt: new Date() } as WishResDTO;
     }
 
     if (mockUser.role === 'OWNER') {
-      if (req.type !== 'REQUEST') {
-        throw new OwnerReqForbiddenError();
-      }
-
       const created = await createOwnerWish(mockUser.id, req.itemId);
       const wishId = (created as { wish_id: string }).wish_id;
       return { wishId, createdAt: new Date() } as WishResDTO;
@@ -58,15 +60,13 @@ export class WishService {
   async deleteWish(req: WishReqDTO): Promise<DeleteWishResDTO> {
     const mockUser = {
       id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as MockRole
+      role: 'USER' as Role
     };
 
-    if (mockUser.role === 'USER') {
-      if (req.type === 'REQUEST') {
-        throw new UserReqForbiddenError();
-      }
+    this.validateRoleAccess(mockUser.role, req.type);
 
-      const deleted = await deleteUserWish(mockUser.id, req.type, req.itemId);
+    if (mockUser.role === 'USER') {
+      const deleted = await deleteUserWish(mockUser.id, req.type as UserAllowedTarget, req.itemId);
       if (!deleted) throw new WishNotFoundError();
       return {
         wishId: deleted.wish_id,
@@ -75,10 +75,6 @@ export class WishService {
     }
 
     if (mockUser.role === 'OWNER') {
-      if (req.type !== 'REQUEST') {
-        throw new OwnerReqForbiddenError();
-      }
-
       const deleted = await deleteOwnerWish(mockUser.id, req.itemId);
       if (!deleted) throw new WishNotFoundError();
       return {
@@ -93,17 +89,17 @@ export class WishService {
   async getWishList(type: WishType): Promise<WishListResDTO> {
     const mockUser = {
       id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as MockRole
+      role: 'USER' as Role
     };
 
+    this.validateRoleAccess(mockUser.role, type);
+
     if (mockUser.role === 'USER') {
-      if (type === 'REQUEST') throw new UserReqForbiddenError();
-      const list = await getUserWishList(mockUser.id, type);
+      const list = await getUserWishList(mockUser.id, type as UserAllowedTarget);
       return { list } as WishListResDTO;
     }
 
     if (mockUser.role === 'OWNER') {
-      if (type !== 'REQUEST') throw new OwnerReqForbiddenError();
       const list = await getOwnerWishList(mockUser.id);
       return { list } as WishListResDTO;
     }
