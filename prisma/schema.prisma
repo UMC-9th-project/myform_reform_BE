@@ -29,68 +29,61 @@ model category {
 }
 
 model chat_room {
-  chat_room_id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  owner_id               String         @db.Uuid
-  created_at             DateTime?      @default(now()) @db.Timestamp(6)
-  updated_at             DateTime?      @default(now()) @updatedAt @db.Timestamp(6)
-  is_active              Boolean        @default(true)
-  last_message_id        String?        @db.Uuid
-  owner_last_read_id     String?        @db.Uuid
-  requester_id           String         @db.Uuid
-  requester_last_read_id String?        @db.Uuid
+  chat_room_id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id               String    @db.Uuid
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  updated_at             DateTime? @default(now()) @updatedAt @db.Timestamp(6)
+  is_active              Boolean   @default(true)
+  last_message_id        String?   @db.Uuid
+  owner_last_read_id     String?   @db.Uuid
+  requester_id           String    @db.Uuid
+  requester_last_read_id String?   @db.Uuid
   target_payload         Json?
-  messages               chat_message[]
-  owner                  owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
-  requester              user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([owner_id])
-  @@index([requester_id])
+  type                   room_type
+  owner_unread_count     Int       @default(0)
+  requester_unread_count Int       @default(0)
 }
 
 model chat_message {
-  message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  chat_room_id  String          @db.Uuid
-  created_at    DateTime?       @default(now()) @db.Timestamp(6)
-  message_type  message_type?
-  payload       Json?
-  sender_id     String?         @db.Uuid
-  sender_type   sender_type?
-  text_content  String?
-  updated_at    DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
-  chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
-  chat_proposal chat_proposal[]
-  chat_request  chat_request[]
+  message_id   String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chat_room_id String        @db.Uuid
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  message_type message_type?
+  payload      Json?
+  sender_id    String?       @db.Uuid
+  sender_type  sender_type?
+  text_content String?
+  updated_at   DateTime?     @default(now()) @updatedAt @db.Timestamp(6)
 
   @@index([chat_room_id])
 }
 
 model chat_request {
-  chat_request_id String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  message_id      String       @db.Uuid
+  chat_request_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id      String    @db.Uuid
   title           String?
-  image           String[]     @default([])
+  image           String[]  @default([])
   content         String?
   min_budget      Int?
   max_budget      Int?
-  created_at      DateTime?    @default(now()) @db.Timestamp(6)
-  updated_at      DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
-  message         chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @updatedAt @db.Timestamp(6)
 
   @@index([message_id])
 }
 
 model chat_proposal {
-  chat_proposal_id String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  message_id       String       @db.Uuid
-  is_accepted      Boolean      @default(false)
+  chat_proposal_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id       String    @db.Uuid
+  is_accepted      Boolean   @default(false)
   title            String?
   price            Int?
   delivery         Int?
   expected_working Int?
-  image            String[]     @default([])
-  created_at       DateTime?    @default(now()) @db.Timestamp(6)
-  updated_at       DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
-  message          chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+  image            String[]  @default([])
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at       DateTime? @default(now()) @updatedAt @db.Timestamp(6)
+  content          String?
 
   @@index([message_id])
 }
@@ -154,6 +147,7 @@ model item_photo {
   content       String?   @db.VarChar(256)
   created_at    DateTime? @default(now()) @db.Timestamp(6)
   updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  photo_order   Int?
   item          item      @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_item_TO_item_photo_1")
 
   @@id([item_photo_id, item_id])
@@ -194,6 +188,7 @@ model order {
   updated_at       DateTime?          @default(now()) @db.Timestamp(6)
   owner_id         String             @db.Uuid
   user_id          String             @db.Uuid
+  order_number     String?            @unique @db.VarChar(20)
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
   order_option     order_option[]
@@ -217,7 +212,7 @@ model order_option {
 
 model owner {
   owner_id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email             String?              @db.VarChar(30)
+  email             String?              @unique(map: "owner_email_unique") @db.VarChar(30)
   hashed            String?              @db.VarChar(256)
   name              String?              @db.VarChar(50)
   nickname          String?              @unique(map: "owner_nickname_unique") @db.VarChar(50)
@@ -225,16 +220,15 @@ model owner {
   created_at        DateTime?            @default(now()) @db.Timestamp(6)
   updated_at        DateTime?            @default(now()) @db.Timestamp(6)
   age_confirmed_at  DateTime             @default(now()) @db.Timestamp(6)
-  avg_star          Decimal?             @db.Decimal
+  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
+  privacy_opt_in_at DateTime?            @db.Timestamp(6)
+  status            reformer_status_enum @default(PENDING)
+  profile_photo     String?              @db.VarChar(256)
   bio               String?
   keywords          String[]             @default([])
-  privacy_opt_in_at DateTime?            @db.Timestamp(6)
-  profile_photo     String?              @db.VarChar(256)
+  avg_star          Decimal?             @db.Decimal
   review_count      Int?
-  status            reformer_status_enum @default(PENDING)
-  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
   trade_count       Int?
-  chat_rooms        chat_room[]
   delivery_address  delivery_address[]
   feed              feed[]
   item              item[]
@@ -248,6 +242,7 @@ model owner_wish {
   wish_id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   owner_id          String         @db.Uuid
   reform_request_id String         @db.Uuid
+  created_at        DateTime?      @default(now()) @db.Timestamp(6)
   owner             owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_owner_wish_1")
   reform_request    reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_owner_wish_1")
 }
@@ -259,7 +254,7 @@ model reciept {
   payment_status  String?   @db.VarChar(255)
   payment_method  String?   @db.VarChar(20)
   payment_gateway String?   @db.VarChar(20)
-  transaction     String?   @db.VarChar(200)
+  transaction     String?
   order_id        String    @db.Uuid
   order           order     @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_TO_reciept_1")
   review          review[]
@@ -368,7 +363,7 @@ model review_photo {
 
 model user {
   user_id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email             String?            @db.VarChar(30)
+  email             String?            @unique(map: "user_email_unique") @db.VarChar(30)
   hashed            String?            @db.VarChar(256)
   name              String?            @db.VarChar(50)
   nickname          String?            @unique(map: "user_nickname_unique") @db.VarChar(50)
@@ -376,11 +371,10 @@ model user {
   created_at        DateTime?          @default(now()) @db.Timestamp(6)
   updated_at        DateTime?          @default(now()) @db.Timestamp(6)
   age_confirmed_at  DateTime           @default(now()) @db.Timestamp(6)
+  terms_agreed_at   DateTime           @default(now()) @db.Timestamp(6)
   privacy_opt_in_at DateTime?          @db.Timestamp(6)
   profile_photo     String?            @db.VarChar(256)
-  terms_agreed_at   DateTime           @default(now()) @db.Timestamp(6)
   cart              cart[]
-  chat_rooms        chat_room[]
   delivery_address  delivery_address[]
   order             order[]
   reform_request    reform_request[]
@@ -392,13 +386,13 @@ model user_wish {
   target_type target_type_enum?
   target_id   String?           @db.Uuid
   user_id     String            @db.Uuid
+  created_at  DateTime?         @default(now()) @db.Timestamp(6)
   user        user              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_user_wish_1")
 }
 
 model banner {
   banner_id  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   image_url  String    @db.VarChar(256)
-  link       String?   @db.VarChar(256)
   sort_order Int?      @default(0)
   is_active  Boolean?  @default(true)
   created_at DateTime? @default(now()) @db.Timestamp(6)
@@ -470,4 +464,10 @@ enum message_type {
   text
   payment
   result
+}
+
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
 }
