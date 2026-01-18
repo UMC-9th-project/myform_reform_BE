@@ -7,7 +7,32 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"UserSession": {
+			"TsoaResponse_string_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UserSessionDto": {
+				"description": "Service Layer DTOs",
 				"properties": {
 					"is_logged_in": {
 						"type": "boolean"
@@ -49,7 +74,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Banner": {
+			"BannerDto": {
 				"properties": {
 					"id": {
 						"type": "string"
@@ -65,7 +90,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TrendingItem": {
+			"TrendingItemDto": {
 				"properties": {
 					"item_id": {
 						"type": "string"
@@ -112,7 +137,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"CustomOrder": {
+			"CustomOrderDto": {
 				"properties": {
 					"proposal_id": {
 						"type": "string"
@@ -145,7 +170,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"BestReformer": {
+			"BestReformerDto": {
 				"properties": {
 					"owner_id": {
 						"type": "string"
@@ -169,29 +194,30 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"HomeData": {
+			"HomeDataDto": {
+				"description": "홈 데이터 조회 결과 DTO",
 				"properties": {
 					"banners": {
 						"items": {
-							"$ref": "#/components/schemas/Banner"
+							"$ref": "#/components/schemas/BannerDto"
 						},
 						"type": "array"
 					},
 					"trending_items": {
 						"items": {
-							"$ref": "#/components/schemas/TrendingItem"
+							"$ref": "#/components/schemas/TrendingItemDto"
 						},
 						"type": "array"
 					},
 					"custom_orders": {
 						"items": {
-							"$ref": "#/components/schemas/CustomOrder"
+							"$ref": "#/components/schemas/CustomOrderDto"
 						},
 						"type": "array"
 					},
 					"best_reformers": {
 						"items": {
-							"$ref": "#/components/schemas/BestReformer"
+							"$ref": "#/components/schemas/BestReformerDto"
 						},
 						"type": "array"
 					}
@@ -205,17 +231,17 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"GetHomeResponseDto": {
-				"description": "메인 페이지 응답 DTO",
+			"HomeDataResponseDto": {
+				"description": "홈 전체 조회 결과 DTO",
 				"properties": {
 					"result": {
 						"type": "boolean"
 					},
 					"user_session": {
-						"$ref": "#/components/schemas/UserSession"
+						"$ref": "#/components/schemas/UserSessionDto"
 					},
 					"home_data": {
-						"$ref": "#/components/schemas/HomeData"
+						"$ref": "#/components/schemas/HomeDataDto"
 					}
 				},
 				"required": [
@@ -226,7 +252,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TsoaResponse_GetHomeResponseDto_": {
+			"TsoaResponse_HomeDataResponseDto_": {
 				"properties": {
 					"resultType": {
 						"type": "string"
@@ -239,7 +265,7 @@
 						"nullable": true
 					},
 					"success": {
-						"$ref": "#/components/schemas/GetHomeResponseDto"
+						"$ref": "#/components/schemas/HomeDataResponseDto"
 					}
 				},
 				"required": [
@@ -250,20 +276,32 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TsoaResponse_string_": {
+			"ErrorResponse": {
 				"properties": {
 					"resultType": {
 						"type": "string"
 					},
 					"error": {
+						"properties": {
+							"data": {
+								"nullable": true
+							},
+							"reason": {
+								"type": "string",
+								"nullable": true
+							},
+							"errorCode": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"success": {
 						"type": "number",
 						"enum": [
 							null
 						],
 						"nullable": true
-					},
-					"success": {
-						"type": "string"
 					}
 				},
 				"required": [
@@ -286,73 +324,6 @@
 		"contact": {}
 	},
 	"paths": {
-		"/home": {
-			"get": {
-				"operationId": "GetHome",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/TsoaResponse_GetHomeResponseDto_"
-								}
-							}
-						}
-					}
-				},
-				"description": "메인 페이지 데이터 조회",
-				"summary": "메인 페이지 진입 시 로그인/비로그인 여부를 확인하고 그에 맞는 데이터를 반환합니다.",
-				"tags": [
-					"Main Page"
-				],
-				"security": [],
-				"parameters": [
-					{
-						"description": "- 사용자 ID (헤더 또는 쿼리 파라미터, 임시 - JWT 구현 시 제거)",
-						"in": "header",
-						"name": "x-user-id",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "- 사용자 역할 ('USER' 또는 'OWNER', 임시 - JWT 구현 시 제거)",
-						"in": "header",
-						"name": "x-user-role",
-						"required": false,
-						"schema": {
-							"type": "string",
-							"enum": [
-								"USER",
-								"OWNER"
-							]
-						}
-					},
-					{
-						"in": "query",
-						"name": "user_id",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "role",
-						"required": false,
-						"schema": {
-							"type": "string",
-							"enum": [
-								"USER",
-								"OWNER"
-							]
-						}
-					}
-				]
-			}
-		},
 		"/project": {
 			"get": {
 				"operationId": "SetTest",
@@ -373,6 +344,85 @@
 				],
 				"security": [],
 				"parameters": []
+			}
+		},
+		"/home": {
+			"get": {
+				"operationId": "GetHome",
+				"responses": {
+					"200": {
+						"description": "메인 페이지 데이터 조회 성공",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_HomeDataResponseDto_"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "서버 오류",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "메인 페이지 데이터 조회",
+				"summary": "메인 페이지 진입 시 로그인/비로그인 여부를 확인하고 그에 맞는 데이터를 반환합니다.",
+				"tags": [
+					"Main Page"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"description": "사용자 ID (헤더, 임시 - JWT 구현 시 제거)",
+						"in": "header",
+						"name": "x-user-id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "사용자 역할 ('USER' 또는 'OWNER', 헤더, 임시 - JWT 구현 시 제거)",
+						"in": "header",
+						"name": "x-user-role",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"USER",
+								"OWNER"
+							]
+						}
+					},
+					{
+						"description": "사용자 ID (쿼리 파라미터, 임시 - JWT 구현 시 제거)",
+						"in": "query",
+						"name": "user_id",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "사용자 역할 ('USER' 또는 'OWNER', 쿼리 파라미터, 임시 - JWT 구현 시 제거)",
+						"in": "query",
+						"name": "role",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"USER",
+								"OWNER"
+							]
+						}
+					}
+				]
 			}
 		}
 	},

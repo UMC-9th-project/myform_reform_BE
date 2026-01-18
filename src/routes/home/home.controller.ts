@@ -58,6 +58,64 @@ export class HomeController extends Controller {
    */
   @Get('/')
   @SuccessResponse(200, '메인 페이지 데이터 조회 성공')
+  @Response<TsoaResponse<HomeDataResponseDto>>(
+    200,
+    '메인 페이지 데이터 조회 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        result: true,
+        user_session: {
+          is_logged_in: true,
+          user_id: '550e8400-e29b-41d4-a716-446655440000',
+          role: 'USER',
+          nickname: '사용자닉네임',
+          profile_image: 'https://example.com/profile.jpg',
+          cart_count: 3
+        },
+        home_data: {
+          banners: [
+            {
+              id: '660e8400-e29b-41d4-a716-446655440001',
+              image_url: 'https://example.com/banner1.jpg'
+            }
+          ],
+          trending_items: [
+            {
+              item_id: '770e8400-e29b-41d4-a716-446655440002',
+              thumbnail: 'https://example.com/item1.jpg',
+              title: '인기 상품',
+              price: 50000,
+              star: 4.5,
+              review_count: 123,
+              owner_id: '880e8400-e29b-41d4-a716-446655440003',
+              owner_nickname: '리포머닉네임',
+              is_wished: false
+            }
+          ],
+          custom_orders: [
+            {
+              proposal_id: '880e8400-e29b-41d4-a716-446655440003',
+              thumbnail: 'https://example.com/proposal1.jpg',
+              title: '커스텀 오더',
+              min_price: 100000,
+              owner_id: '990e8400-e29b-41d4-a716-446655440004',
+              owner_nickname: '리포머닉네임'
+            }
+          ],
+          best_reformers: [
+            {
+              owner_id: '990e8400-e29b-41d4-a716-446655440004',
+              nickname: '베스트 리폼러',
+              profile_image: 'https://example.com/reformer.jpg',
+              bio: '최고의 리폼 전문가'
+            }
+          ]
+        }
+      }
+    }
+  )
   @Response<ErrorResponse>(500, '서버 오류', commonError.serverError)
   public async getHome(
     @Header('x-user-id') userId?: string,
