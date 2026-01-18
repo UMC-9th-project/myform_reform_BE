@@ -59,6 +59,8 @@ export interface OrderItemSummary {
 export interface PaymentInfo {
   amount: number;
   payment_method: string | null;
+  card_name: string | null;
+  masked_card_number: string | null;
   card_info: string | null;
   approved_at: Date | null;
 }
@@ -68,6 +70,8 @@ export interface OrderResponse {
   order_number: string;
   status: string | null;
   delivery_address: DeliveryAddressInfo;
+  first_item: OrderItemSummary | null;
+  remaining_items_count: number;
   order_items: OrderItemSummary[];
   payment: PaymentInfo;
   total_amount: number;

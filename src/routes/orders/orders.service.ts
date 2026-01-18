@@ -18,6 +18,7 @@ import type {
   CreateOrderResponse,
   OrderResponse
 } from './orders.model.js';
+import type { GetOrderResponseDto } from './orders.dto.js';
 
 export class OrdersService {
   /**
@@ -70,6 +71,33 @@ export class OrdersService {
   }
 
   /**
+   * 카드번호 마스킹 (가운데 별 처리)
+   * @param cardNumber 카드번호 (예: "1234567890123456")
+   * @returns 마스킹된 카드번호 (예: "1234-****-****-3456")
+   */
+  private maskCardNumber(cardNumber: string | null | undefined): string | null {
+    if (!cardNumber) {
+      return null;
+    }
+
+    const cleaned = cardNumber.replace(/\D/g, '');
+    if (cleaned.length < 8) {
+      return cardNumber;
+    }
+
+    if (cleaned.length === 16) {
+      return `${cleaned.slice(0, 4)}-****-****-${cleaned.slice(-4)}`;
+    } else if (cleaned.length === 15) {
+      return `${cleaned.slice(0, 4)}-****-***-${cleaned.slice(-4)}`;
+    } else {
+      const first4 = cleaned.slice(0, 4);
+      const last4 = cleaned.slice(-4);
+      const middle = '*'.repeat(Math.max(0, cleaned.length - 8));
+      return `${first4}-${middle}-${last4}`;
+    }
+  }
+
+  /**
    * 카드 정보 파싱 (포트원 응답 또는 JSON 문자열에서)
    * @param transaction receipt.transaction 필드 값 (JSON 문자열 또는 null)
    * @returns 포맷팅된 카드 정보 문자열 또는 null
@@ -97,6 +125,44 @@ export class OrdersService {
       return transaction;
     } catch {
       return transaction;
+    }
+  }
+
+  /**
+   * 카드 정보 추출 (카드명, 마스킹된 카드번호)
+   * @param transaction receipt.transaction 필드 값 (JSON 문자열 또는 null)
+   * @returns 카드명과 마스킹된 카드번호 객체
+   */
+  private extractCardDetails(transaction: string | null): {
+    card_name: string | null;
+    masked_card_number: string | null;
+  } {
+    if (!transaction) {
+      return {
+        card_name: null,
+        masked_card_number: null
+      };
+    }
+
+    try {
+      const cardData = JSON.parse(transaction);
+      
+      if (cardData.card_name && cardData.card_number) {
+        return {
+          card_name: cardData.card_name,
+          masked_card_number: this.maskCardNumber(cardData.card_number)
+        };
+      }
+      
+      return {
+        card_name: null,
+        masked_card_number: null
+      };
+    } catch {
+      return {
+        card_name: null,
+        masked_card_number: null
+      };
     }
   }
 
@@ -778,7 +844,7 @@ export class OrdersService {
    * @param orderIdOrNumber UUID 또는 주문번호
    * @param userId 사용자 ID
    */
-  async getOrder(orderIdOrNumber: string, userId: string): Promise<OrderResponse> {
+  async getOrder(orderIdOrNumber: string, userId: string): Promise<GetOrderResponseDto> {
     const order = await this.findOrderByIdOrNumber(orderIdOrNumber, userId);
 
     if (!order) {
@@ -833,18 +899,26 @@ export class OrdersService {
     });
 
     const receipt = order.reciept[0];
+    const cardDetails = this.extractCardDetails(receipt?.transaction || null);
     const paymentInfo = {
       amount: order.amount ? Number(order.amount) : 0,
       payment_method: receipt?.payment_method || null,
+      card_name: cardDetails.card_name,
+      masked_card_number: cardDetails.masked_card_number,
       card_info: this.parseCardInfo(receipt?.transaction || null),
       approved_at: receipt?.created_at || null
     };
+
+    const firstItem = orderItems.length > 0 ? orderItems[0] : null;
+    const remainingItemsCount = Math.max(0, orderItems.length - 1);
 
     return {
       order_id: order.order_id,
       order_number: order.order_number || order.order_id,
       status: order.status || null,
       delivery_address: deliveryAddress,
+      first_item: firstItem,
+      remaining_items_count: remainingItemsCount,
       order_items: orderItems,
       payment: paymentInfo,
       total_amount: order.amount ? Number(order.amount) : 0,

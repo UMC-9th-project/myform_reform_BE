@@ -59,15 +59,40 @@ export class OrdersController extends Controller {
    */
   @Post('/sheet')
   @SuccessResponse(200, '주문서 정보 조회 성공')
+  @Response<TsoaResponse<GetOrderSheetResponseDto>>(
+    200,
+    '주문서 정보 조회 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        order_number: '20241201-00001',
+        order_item: {
+          reformer_nickname: '리포머닉네임',
+          thumbnail: 'https://example.com/thumbnail.jpg',
+          title: '상품명',
+          selected_options: ['옵션그룹1 옵션1'],
+          quantity: 1,
+          price: 50000
+        },
+        delivery_address: {
+          delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
+          postal_code: '12345',
+          address: '서울시 강남구 테헤란로',
+          address_detail: '123번지'
+        },
+        payment: {
+          product_amount: 50000,
+          delivery_fee: 3000,
+          total_amount: 53000
+        }
+      }
+    }
+  )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(400, '재고가 부족합니다.', commonError.badRequest)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
-  @Example<GetOrderSheetRequestDto>({
-    item_id: '550e8400-e29b-41d4-a716-446655440000',
-    option_item_ids: ['660e8400-e29b-41d4-a716-446655440001'],
-    quantity: 1
-  })
   public async getOrderSheet(
     @Body() requestBody: GetOrderSheetRequestDto,
     @Header('x-user-id') userId?: string
@@ -101,8 +126,7 @@ export class OrdersController extends Controller {
    * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet)에서 받은 order_number와 동일한 값이어야 합니다.
    *              프론트엔드에서 주문 시트 조회 시 받은 order_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
    *              결제 완료 후 같은 order_number를 merchant_uid로 전달해야 합니다.
-   * @example requestBody 결제 완료 후 주문 생성 - 결제가 완료된 후 imp_uid와 merchant_uid(order_number)와 함께 주문을 생성하는 경우
-   * {
+   * @example requestBody {
    *   "item_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
    *   "option_item_ids": ["5cb0251c-cbfe-44b9-9f0f-8a1884989cf3"],
    *   "quantity": 1,
@@ -110,8 +134,7 @@ export class OrdersController extends Controller {
    *   "merchant_uid": "20241201-00001",
    *   "imp_uid": "imp_test_1234567890"
    * }
-   * @example requestBody 새 배송지로 주문 생성 - 새로운 배송지를 입력하여 결제 완료 후 주문 생성
-   * {
+   * @example requestBody {
    *   "item_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
    *   "option_item_ids": ["5cb0251c-cbfe-44b9-9f0f-8a1884989cf3"],
    *   "quantity": 2,
@@ -126,19 +149,25 @@ export class OrdersController extends Controller {
    */
   @Post('/')
   @SuccessResponse(200, '주문 생성 성공')
+  @Response<TsoaResponse<CreateOrderResponseDto>>(
+    200,
+    '주문 생성 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        order_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
+        payment_status: 'paid',
+        payment_method: 'card',
+        payment_gateway: 'portone'
+      }
+    }
+  )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(400, '재고가 부족합니다.', commonError.badRequest)
   @Response<ErrorResponse>(400, '결제 검증 실패', commonError.badRequest)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
-  @Example<CreateOrderRequestDto>({
-    item_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
-    option_item_ids: ['5cb0251c-cbfe-44b9-9f0f-8a1884989cf3'],
-    quantity: 1,
-    delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
-    merchant_uid: 'order-test-20241201-001',
-    imp_uid: 'imp_test_1234567890'
-  })
   public async createOrder(
     @Body() requestBody: CreateOrderRequestDto,
     @Header('x-user-id') userId?: string
@@ -184,6 +213,55 @@ export class OrdersController extends Controller {
    */
   @Get('/{orderId}')
   @SuccessResponse(200, '주문 조회 성공')
+  @Response<TsoaResponse<GetOrderResponseDto>>(
+    200,
+    '주문 조회 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        order_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
+        order_number: '20241201-00001',
+        status: 'PAID',
+        delivery_address: {
+          postal_code: '12345',
+          address: '서울시 강남구 테헤란로',
+          address_detail: '123번지'
+        },
+        first_item: {
+          thumbnail: 'https://example.com/thumbnail.jpg',
+          title: '상품명',
+          selected_options: ['옵션그룹1 옵션1'],
+          reformer_nickname: '리포머닉네임'
+        },
+        remaining_items_count: 1,
+        order_items: [
+          {
+            thumbnail: 'https://example.com/thumbnail.jpg',
+            title: '상품명',
+            selected_options: ['옵션그룹1 옵션1'],
+            reformer_nickname: '리포머닉네임'
+          },
+          {
+            thumbnail: 'https://example.com/thumbnail2.jpg',
+            title: '상품명2',
+            selected_options: ['옵션그룹2 옵션2'],
+            reformer_nickname: '리포머닉네임'
+          }
+        ],
+        payment: {
+          amount: 53000,
+          payment_method: 'card',
+          card_name: '신한카드',
+          masked_card_number: '1234-****-****-3456',
+          card_info: '신한카드 1234-5678-9012-3456',
+          approved_at: new Date('2024-12-01T10:30:00Z')
+        },
+        total_amount: 53000,
+        delivery_fee: 3000
+      }
+    }
+  )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
   @Response<ErrorResponse>(404, '주문을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)

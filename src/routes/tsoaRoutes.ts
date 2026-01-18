@@ -4,11 +4,11 @@
 import type { TsoaRoute } from '@tsoa/runtime';
 import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { TestController } from './tes/test.controller.js';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { OrdersController } from './orders/orders.controller.js';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { MarketController } from './market/market.controller.js';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { TestController } from './tes/test.controller.js';
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
 
 
@@ -16,9 +16,20 @@ import type { Request as ExRequest, Response as ExResponse, RequestHandler, Rout
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "TsoaResponse_string_": {
+        "dataType": "refObject",
+        "properties": {
+            "resultType": {"dataType":"string","required":true},
+            "error": {"dataType":"enum","enums":[null],"required":true},
+            "success": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "GetOrderSheetResponseDto": {
         "dataType": "refObject",
         "properties": {
+            "order_number": {"dataType":"string","required":true},
             "order_item": {"dataType":"nestedObjectLiteral","nestedProperties":{"price":{"dataType":"double","required":true},"quantity":{"dataType":"double","required":true},"selected_options":{"dataType":"array","array":{"dataType":"string"},"required":true},"title":{"dataType":"string","required":true},"thumbnail":{"dataType":"string","required":true},"reformer_nickname":{"dataType":"string","required":true}},"required":true},
             "delivery_address": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"address_detail":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"address":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"postal_code":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"delivery_address_id":{"dataType":"string"}}},{"dataType":"enum","enums":[null]}],"required":true},
             "payment": {"dataType":"nestedObjectLiteral","nestedProperties":{"total_amount":{"dataType":"double","required":true},"delivery_fee":{"dataType":"double","required":true},"product_amount":{"dataType":"double","required":true}},"required":true},
@@ -87,7 +98,7 @@ const models: TsoaRoute.Models = {
             "quantity": {"dataType":"double","required":true},
             "delivery_address_id": {"dataType":"string"},
             "new_address": {"dataType":"nestedObjectLiteral","nestedProperties":{"address_detail":{"dataType":"string"},"address":{"dataType":"string"},"postal_code":{"dataType":"string"}}},
-            "imp_uid": {"dataType":"string"},
+            "imp_uid": {"dataType":"string","required":true},
             "merchant_uid": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
@@ -98,9 +109,12 @@ const models: TsoaRoute.Models = {
         "properties": {
             "order_id": {"dataType":"string","required":true},
             "order_number": {"dataType":"string","required":true},
+            "status": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "delivery_address": {"dataType":"nestedObjectLiteral","nestedProperties":{"address_detail":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"address":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"postal_code":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true}},"required":true},
             "order_items": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"reformer_nickname":{"dataType":"string","required":true},"selected_options":{"dataType":"array","array":{"dataType":"string"},"required":true},"title":{"dataType":"string","required":true},"thumbnail":{"dataType":"string","required":true}}},"required":true},
-            "payment": {"dataType":"nestedObjectLiteral","nestedProperties":{"approved_at":{"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},"card_info":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"payment_method":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"amount":{"dataType":"double","required":true}},"required":true},
+            "payment": {"dataType":"nestedObjectLiteral","nestedProperties":{"approved_at":{"dataType":"union","subSchemas":[{"dataType":"datetime"},{"dataType":"enum","enums":[null]}],"required":true},"card_info":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"masked_card_number":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"card_name":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"payment_method":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},"amount":{"dataType":"double","required":true}},"required":true},
+            "first_item": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"reformer_nickname":{"dataType":"string","required":true},"selected_options":{"dataType":"array","array":{"dataType":"string"},"required":true},"title":{"dataType":"string","required":true},"thumbnail":{"dataType":"string","required":true}}},{"dataType":"enum","enums":[null]}],"required":true},
+            "remaining_items_count": {"dataType":"double","required":true},
             "total_amount": {"dataType":"double","required":true},
             "delivery_fee": {"dataType":"double","required":true},
         },
@@ -244,16 +258,6 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "TsoaResponse_string_": {
-        "dataType": "refObject",
-        "properties": {
-            "resultType": {"dataType":"string","required":true},
-            "error": {"dataType":"enum","enums":[null],"required":true},
-            "success": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 };
 const templateService = new ExpressTemplateService(models, {"noImplicitAdditionalProperties":"throw-on-extras","bodyCoercion":true});
 
@@ -271,6 +275,35 @@ export function RegisterRoutes(app: Router) {
 
 
     
+        const argsTestController_setTest: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.get('/project',
+            ...(fetchMiddlewares<RequestHandler>(TestController)),
+            ...(fetchMiddlewares<RequestHandler>(TestController.prototype.setTest)),
+
+            async function TestController_setTest(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsTestController_setTest, request, response });
+
+                const controller = new TestController();
+
+              await templateService.apiHandler({
+                methodName: 'setTest',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsOrdersController_getOrderSheet: Record<string, TsoaRoute.ParameterSchema> = {
                 requestBody: {"in":"body","name":"requestBody","required":true,"ref":"GetOrderSheetRequestDto"},
                 userId: {"in":"header","name":"x-user-id","dataType":"string"},
@@ -520,35 +553,6 @@ export function RegisterRoutes(app: Router) {
                 next,
                 validatedArgs,
                 successStatus: 200,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsTestController_setTest: Record<string, TsoaRoute.ParameterSchema> = {
-        };
-        app.get('/project',
-            ...(fetchMiddlewares<RequestHandler>(TestController)),
-            ...(fetchMiddlewares<RequestHandler>(TestController.prototype.setTest)),
-
-            async function TestController_setTest(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsTestController_setTest, request, response });
-
-                const controller = new TestController();
-
-              await templateService.apiHandler({
-                methodName: 'setTest',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
               });
             } catch (err) {
                 return next(err);

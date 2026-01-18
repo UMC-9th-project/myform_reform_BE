@@ -1,5 +1,6 @@
 import {
   Controller,
+  Example,
   Get,
   Header,
   Path,
@@ -42,6 +43,27 @@ export class MarketController extends Controller {
   @Get('/')
   @SuccessResponse(200, '상품 목록 조회 성공')
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<GetItemListResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      items: [
+        {
+          item_id: '550e8400-e29b-41d4-a716-446655440000',
+          thumbnail: 'https://example.com/thumbnail.jpg',
+          title: '상품명',
+          price: 50000,
+          star: 4.5,
+          review_count: 123,
+          owner_nickname: '리포머닉네임',
+          is_wished: false
+        }
+      ],
+      total_count: 100,
+      page: 1,
+      limit: 15
+    }
+  })
   public async getItemList(
     @Query() categoryId?: string,
     @Query() sort: 'popular' | 'latest' = 'popular',
@@ -75,6 +97,65 @@ export class MarketController extends Controller {
   @SuccessResponse(200, '상품 상세 조회 성공')
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<GetItemDetailResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      item_id: '550e8400-e29b-41d4-a716-446655440000',
+      title: '상품명',
+      images: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+      price: 50000,
+      delivery: 3000,
+      delivery_info: '배송 정보',
+      option_groups: [
+        {
+          option_group_id: '660e8400-e29b-41d4-a716-446655440001',
+          name: '옵션그룹1',
+          option_items: [
+            {
+              option_item_id: '770e8400-e29b-41d4-a716-446655440002',
+              name: '옵션1',
+              extra_price: 5000,
+              quantity: 10
+            }
+          ]
+        }
+      ],
+      reformer: {
+        owner_id: '880e8400-e29b-41d4-a716-446655440003',
+        profile_image: 'https://example.com/profile.jpg',
+        nickname: '리포머닉네임',
+        star: 4.8,
+        order_count: 500
+      },
+      is_wished: false,
+      review_summary: {
+        total_review_count: 123,
+        photo_review_count: 45,
+        avg_star: 4.5,
+        preview_photos: [
+          {
+            photo_index: 0,
+            review_id: '990e8400-e29b-41d4-a716-446655440004',
+            photo_url: 'https://example.com/review1.jpg'
+          }
+        ],
+        remaining_photo_count: 44
+      },
+      reviews: [
+        {
+          review_id: '990e8400-e29b-41d4-a716-446655440004',
+          user_profile_image: 'https://example.com/user.jpg',
+          user_nickname: '사용자닉네임',
+          star: 5,
+          created_at: new Date('2024-12-01T10:30:00Z'),
+          content: '리뷰 내용',
+          product_thumbnail: 'https://example.com/product.jpg',
+          photos: ['https://example.com/review1.jpg']
+        }
+      ]
+    }
+  })
   public async getItemDetail(
     @Path() itemId: string,
     @Header('x-user-id') userId?: string
@@ -101,6 +182,31 @@ export class MarketController extends Controller {
   @SuccessResponse(200, '리뷰 목록 조회 성공')
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<GetItemReviewsResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      reviews: [
+        {
+          review_id: '990e8400-e29b-41d4-a716-446655440004',
+          user_profile_image: 'https://example.com/user.jpg',
+          user_nickname: '사용자닉네임',
+          star: 5,
+          created_at: new Date('2024-12-01T10:30:00Z'),
+          content: '리뷰 내용',
+          product_thumbnail: 'https://example.com/product.jpg',
+          photos: ['https://example.com/review1.jpg']
+        }
+      ],
+      total_count: 123,
+      avg_star: 4.5,
+      page: 1,
+      limit: 4,
+      total_pages: 31,
+      has_next_page: true,
+      has_prev_page: false
+    }
+  })
   public async getItemReviews(
     @Path() itemId: string,
     @Query() page: number = 1,
@@ -128,6 +234,24 @@ export class MarketController extends Controller {
   @SuccessResponse(200, '사진 후기 조회 성공')
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<GetItemReviewPhotosResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      photos: [
+        {
+          photo_index: 0,
+          review_id: '990e8400-e29b-41d4-a716-446655440004',
+          photo_url: 'https://example.com/review1.jpg',
+          photo_order: 1
+        }
+      ],
+      has_more: true,
+      offset: 0,
+      limit: 15,
+      total_count: 45
+    }
+  })
   public async getItemReviewPhotos(
     @Path() itemId: string,
     @Query() offset: number = 0,
@@ -162,6 +286,26 @@ export class MarketController extends Controller {
   @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(404, '리뷰를 찾을 수 없습니다.', commonError.notFound)
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<GetReviewDetailResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      review_id: '990e8400-e29b-41d4-a716-446655440004',
+      user_profile_image: 'https://example.com/user.jpg',
+      user_nickname: '사용자닉네임',
+      star: 5,
+      created_at: new Date('2024-12-01T10:30:00Z'),
+      content: '리뷰 내용',
+      photo_urls: ['https://example.com/review1.jpg', 'https://example.com/review2.jpg'],
+      product_thumbnail: 'https://example.com/product.jpg',
+      current_photo_index: 0,
+      total_photo_count: 2,
+      has_prev: false,
+      has_next: true,
+      prev_photo_index: undefined,
+      next_photo_index: 1
+    }
+  })
   public async getReviewDetail(
     @Path() itemId: string,
     @Path() reviewId: string,

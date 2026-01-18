@@ -72,9 +72,18 @@ export interface GetOrderResponseDto {
   payment: {
     amount: number;
     payment_method: string | null;
+    card_name: string | null;
+    masked_card_number: string | null;
     card_info: string | null;
     approved_at: Date | null;
   };
+  first_item: {
+    thumbnail: string;
+    title: string;
+    selected_options: string[];
+    reformer_nickname: string;
+  } | null;
+  remaining_items_count: number;
   total_amount: number;
   delivery_fee: number;
 }

@@ -7,8 +7,35 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"TsoaResponse_string_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"GetOrderSheetResponseDto": {
 				"properties": {
+					"order_number": {
+						"type": "string"
+					},
 					"order_item": {
 						"properties": {
 							"price": {
@@ -95,6 +122,7 @@
 					}
 				},
 				"required": [
+					"order_number",
 					"order_item",
 					"delivery_address",
 					"payment"
@@ -296,6 +324,7 @@
 					"item_id",
 					"option_item_ids",
 					"quantity",
+					"imp_uid",
 					"merchant_uid"
 				],
 				"type": "object",
@@ -308,6 +337,10 @@
 					},
 					"order_number": {
 						"type": "string"
+					},
+					"status": {
+						"type": "string",
+						"nullable": true
 					},
 					"delivery_address": {
 						"properties": {
@@ -371,6 +404,14 @@
 								"type": "string",
 								"nullable": true
 							},
+							"masked_card_number": {
+								"type": "string",
+								"nullable": true
+							},
+							"card_name": {
+								"type": "string",
+								"nullable": true
+							},
 							"payment_method": {
 								"type": "string",
 								"nullable": true
@@ -383,10 +424,43 @@
 						"required": [
 							"approved_at",
 							"card_info",
+							"masked_card_number",
+							"card_name",
 							"payment_method",
 							"amount"
 						],
 						"type": "object"
+					},
+					"first_item": {
+						"properties": {
+							"reformer_nickname": {
+								"type": "string"
+							},
+							"selected_options": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							"title": {
+								"type": "string"
+							},
+							"thumbnail": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"reformer_nickname",
+							"selected_options",
+							"title",
+							"thumbnail"
+						],
+						"type": "object",
+						"nullable": true
+					},
+					"remaining_items_count": {
+						"type": "number",
+						"format": "double"
 					},
 					"total_amount": {
 						"type": "number",
@@ -400,9 +474,12 @@
 				"required": [
 					"order_id",
 					"order_number",
+					"status",
 					"delivery_address",
 					"order_items",
 					"payment",
+					"first_item",
+					"remaining_items_count",
 					"total_amount",
 					"delivery_fee"
 				],
@@ -1068,30 +1145,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"TsoaResponse_string_": {
-				"properties": {
-					"resultType": {
-						"type": "string"
-					},
-					"error": {
-						"type": "number",
-						"enum": [
-							null
-						],
-						"nullable": true
-					},
-					"success": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"resultType",
-					"error",
-					"success"
-				],
-				"type": "object",
-				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {}
@@ -1105,6 +1158,28 @@
 		"contact": {}
 	},
 	"paths": {
+		"/project": {
+			"get": {
+				"operationId": "SetTest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TsoaResponse_string_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"project node CRUD"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
 		"/orders/sheet": {
 			"post": {
 				"operationId": "GetOrderSheet",
@@ -1115,17 +1190,6 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetOrderSheetResponseDto_"
-								},
-								"examples": {
-									"Example 1": {
-										"value": {
-											"item_id": "550e8400-e29b-41d4-a716-446655440000",
-											"option_item_ids": [
-												"660e8400-e29b-41d4-a716-446655440001"
-											],
-											"quantity": 1
-										}
-									}
 								}
 							}
 						}
@@ -1172,7 +1236,7 @@
 					}
 				},
 				"description": "주문서 정보 조회",
-				"summary": "주문서 정보를 조회합니다",
+				"summary": "주문서 정보를 조회하고 주문 번호(order_number)를 미리 생성하여 반환합니다",
 				"tags": [
 					"Orders"
 				],
@@ -1237,19 +1301,6 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_CreateOrderResponseDto_"
-								},
-								"examples": {
-									"Example 1": {
-										"value": {
-											"item_id": "550e8400-e29b-41d4-a716-446655440000",
-											"option_item_ids": [
-												"660e8400-e29b-41d4-a716-446655440001"
-											],
-											"quantity": 1,
-											"delivery_address_id": "770e8400-e29b-41d4-a716-446655440002",
-											"merchant_uid": "order-1234567890"
-										}
-									}
 								}
 							}
 						}
@@ -1296,7 +1347,7 @@
 					}
 				},
 				"description": "주문 생성",
-				"summary": "새로운 주문을 생성합니다",
+				"summary": "결제 완료 후 새로운 주문을 생성합니다",
 				"tags": [
 					"Orders"
 				],
@@ -1313,40 +1364,41 @@
 					}
 				],
 				"requestBody": {
-					"description": "주문 생성 요청",
+					"description": "주문 생성 요청 (imp_uid, merchant_uid 필수)",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/CreateOrderRequestDto",
-								"description": "주문 생성 요청"
+								"description": "주문 생성 요청 (imp_uid, merchant_uid 필수)"
 							},
 							"examples": {
 								"Example 1": {
 									"value": {
-										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"item_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
 										"option_item_ids": [
-											"660e8400-e29b-41d4-a716-446655440001"
+											"5cb0251c-cbfe-44b9-9f0f-8a1884989cf3"
 										],
 										"quantity": 1,
-										"delivery_address_id": "770e8400-e29b-41d4-a716-446655440002",
-										"merchant_uid": "order-1234567890"
+										"delivery_address_id": "0dcb2293-5c2a-43f6-b128-6e274bac7871",
+										"merchant_uid": "20241201-00001",
+										"imp_uid": "imp_test_1234567890"
 									}
 								},
 								"Example 2": {
 									"value": {
-										"item_id": "550e8400-e29b-41d4-a716-446655440000",
+										"item_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
 										"option_item_ids": [
-											"660e8400-e29b-41d4-a716-446655440001"
+											"5cb0251c-cbfe-44b9-9f0f-8a1884989cf3"
 										],
 										"quantity": 2,
 										"new_address": {
-											"postal_code": "12345",
-											"address": "서울시 강남구 테헤란로",
-											"address_detail": "123번지"
+											"postal_code": "54321",
+											"address": "서울시 서초구 서초대로",
+											"address_detail": "456번지"
 										},
-										"merchant_uid": "order-1234567890",
-										"imp_uid": "imp_1234567890"
+										"merchant_uid": "20241201-00002",
+										"imp_uid": "imp_test_9876543210"
 									}
 								}
 							}
@@ -1438,6 +1490,31 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetItemListResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"items": [
+													{
+														"item_id": "550e8400-e29b-41d4-a716-446655440000",
+														"thumbnail": "https://example.com/thumbnail.jpg",
+														"title": "상품명",
+														"price": 50000,
+														"star": 4.5,
+														"review_count": 123,
+														"owner_nickname": "리포머닉네임",
+														"is_wished": false
+													}
+												],
+												"total_count": 100,
+												"page": 1,
+												"limit": 15
+											}
+										}
+									}
 								}
 							}
 						}
@@ -1527,6 +1604,74 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetItemDetailResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"item_id": "550e8400-e29b-41d4-a716-446655440000",
+												"title": "상품명",
+												"images": [
+													"https://example.com/image1.jpg",
+													"https://example.com/image2.jpg"
+												],
+												"price": 50000,
+												"delivery": 3000,
+												"delivery_info": "배송 정보",
+												"option_groups": [
+													{
+														"option_group_id": "660e8400-e29b-41d4-a716-446655440001",
+														"name": "옵션그룹1",
+														"option_items": [
+															{
+																"option_item_id": "770e8400-e29b-41d4-a716-446655440002",
+																"name": "옵션1",
+																"extra_price": 5000,
+																"quantity": 10
+															}
+														]
+													}
+												],
+												"reformer": {
+													"owner_id": "880e8400-e29b-41d4-a716-446655440003",
+													"profile_image": "https://example.com/profile.jpg",
+													"nickname": "리포머닉네임",
+													"star": 4.8,
+													"order_count": 500
+												},
+												"is_wished": false,
+												"review_summary": {
+													"total_review_count": 123,
+													"photo_review_count": 45,
+													"avg_star": 4.5,
+													"preview_photos": [
+														{
+															"photo_index": 0,
+															"review_id": "990e8400-e29b-41d4-a716-446655440004",
+															"photo_url": "https://example.com/review1.jpg"
+														}
+													],
+													"remaining_photo_count": 44
+												},
+												"reviews": [
+													{
+														"review_id": "990e8400-e29b-41d4-a716-446655440004",
+														"user_profile_image": "https://example.com/user.jpg",
+														"user_nickname": "사용자닉네임",
+														"star": 5,
+														"created_at": "2024-12-01T10:30:00.000Z",
+														"content": "리뷰 내용",
+														"product_thumbnail": "https://example.com/product.jpg",
+														"photos": [
+															"https://example.com/review1.jpg"
+														]
+													}
+												]
+											}
+										}
+									}
 								}
 							}
 						}
@@ -1590,6 +1735,37 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetItemReviewsResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"reviews": [
+													{
+														"review_id": "990e8400-e29b-41d4-a716-446655440004",
+														"user_profile_image": "https://example.com/user.jpg",
+														"user_nickname": "사용자닉네임",
+														"star": 5,
+														"created_at": "2024-12-01T10:30:00.000Z",
+														"content": "리뷰 내용",
+														"product_thumbnail": "https://example.com/product.jpg",
+														"photos": [
+															"https://example.com/review1.jpg"
+														]
+													}
+												],
+												"total_count": 123,
+												"avg_star": 4.5,
+												"page": 1,
+												"limit": 4,
+												"total_pages": 31,
+												"has_next_page": true,
+												"has_prev_page": false
+											}
+										}
+									}
 								}
 							}
 						}
@@ -1681,6 +1857,28 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetItemReviewPhotosResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"photos": [
+													{
+														"photo_index": 0,
+														"review_id": "990e8400-e29b-41d4-a716-446655440004",
+														"photo_url": "https://example.com/review1.jpg",
+														"photo_order": 1
+													}
+												],
+												"has_more": true,
+												"offset": 0,
+												"limit": 15,
+												"total_count": 45
+											}
+										}
+									}
 								}
 							}
 						}
@@ -1757,6 +1955,32 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/TsoaResponse_GetReviewDetailResponseDto_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"resultType": "SUCCESS",
+											"error": null,
+											"success": {
+												"review_id": "990e8400-e29b-41d4-a716-446655440004",
+												"user_profile_image": "https://example.com/user.jpg",
+												"user_nickname": "사용자닉네임",
+												"star": 5,
+												"created_at": "2024-12-01T10:30:00.000Z",
+												"content": "리뷰 내용",
+												"photo_urls": [
+													"https://example.com/review1.jpg",
+													"https://example.com/review2.jpg"
+												],
+												"product_thumbnail": "https://example.com/product.jpg",
+												"current_photo_index": 0,
+												"total_photo_count": 2,
+												"has_prev": false,
+												"has_next": true,
+												"next_photo_index": 1
+											}
+										}
+									}
 								}
 							}
 						}
@@ -1808,7 +2032,7 @@
 						}
 					},
 					{
-						"description": "전체 사진 리스트에서의 인덱스 (선택사항)\n- 사진 후기 더보기에서 클릭한 경우: 전체 사진 리스트 기준 네비게이션 정보 제공\n- 전체 리뷰에서 사진 클릭한 경우: 해당 리뷰의 사진만 표시 (photo_urls 배열 사용)",
+						"description": "전체 사진 리스트에서의 인덱스 (선택사항)\r\n- 사진 후기 더보기에서 클릭한 경우: 전체 사진 리스트 기준 네비게이션 정보 제공\r\n- 전체 리뷰에서 사진 클릭한 경우: 해당 리뷰의 사진만 표시 (photo_urls 배열 사용)",
 						"in": "query",
 						"name": "photoIndex",
 						"required": false,
@@ -1818,28 +2042,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/project": {
-			"get": {
-				"operationId": "SetTest",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/TsoaResponse_string_"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"project node CRUD"
-				],
-				"security": [],
-				"parameters": []
 			}
 		}
 	},
