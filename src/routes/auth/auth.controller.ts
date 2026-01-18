@@ -6,7 +6,7 @@ import {
   Body, 
   Response, 
   Example, 
-  Tags,
+  Tags
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
