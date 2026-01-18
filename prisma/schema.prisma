@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cart {
+  cart_id String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  item_id String? @db.Uuid
+  user_id String  @db.Uuid
+  user    user    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_cart_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model category {
+  category_id     String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  parent_id       String?           @db.Uuid
+  name            String            @db.VarChar(50)
+  depth           Int
+  sort_order      Int
+  category        category?         @relation("categoryTocategory", fields: [parent_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_category_TO_category_1")
+  other_category  category[]        @relation("categoryTocategory")
+  item            item[]
+  reform_proposal reform_proposal[]
+  reform_request  reform_request[]
+}
+
+model chat_room {
+  chat_room_id           String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id               String         @db.Uuid
+  created_at             DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?      @default(now()) @updatedAt @db.Timestamp(6)
+  is_active              Boolean        @default(true)
+  last_message_id        String?        @db.Uuid
+  owner_last_read_id     String?        @db.Uuid
+  requester_id           String         @db.Uuid
+  requester_last_read_id String?        @db.Uuid
+  target_payload         Json?
+  type                   room_type
+  owner_unread_count     Int            @default(0)
+  requester_unread_count Int            @default(0)
+  messages               chat_message[]
+  last_message           chat_message?  @relation("LastMessage", fields: [last_message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
+  owner                  owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
+  requester              user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([owner_id])
+  @@index([requester_id])
+}
+
+model chat_message {
+  message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chat_room_id  String          @db.Uuid
+  message_type  message_type
+  payload       Json?
+  sender_id     String?         @db.Uuid
+  sender_type   sender_type?
+  text_content  String?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
+  chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
+  chat_proposal chat_proposal[]
+  chat_request  chat_request[]
+  last_in_room  chat_room[]     @relation("LastMessage")
+
+  @@index([chat_room_id])
+}
+
+model chat_request {
+  chat_request_id String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id      String       @db.Uuid
+  title           String?
+  image           String[]     @default([])
+  content         String?
+  min_budget      Int?
+  max_budget      Int?
+  created_at      DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
+  message         chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+
+  @@index([message_id])
+}
+
+model chat_proposal {
+  chat_proposal_id String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id       String       @db.Uuid
+  is_accepted      Boolean      @default(false)
+  title            String?
+  price            Int?
+  delivery         Int?
+  expected_working Int?
+  image            String[]     @default([])
+  created_at       DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
+  content          String?
+  message          chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
+
+  @@index([message_id])
+}
+
+model delivery_address {
+  delivery_address_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  postal_code         String?  @db.VarChar(200)
+  address             String?  @db.VarChar(200)
+  address_detail      String?  @db.VarChar(200)
+  is_default          Boolean? @default(false)
+  user_id             String   @db.Uuid
+  owner_id            String   @db.Uuid
+  owner               owner    @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_delivery_address_1")
+  user                user     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_delivery_address_1")
+}
+
+model feed {
+  feed_id    String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  owner_id   String       @db.Uuid
+  created_at DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at DateTime?    @default(now()) @db.Timestamp(6)
+  is_pinned  Boolean?     @default(false)
+  owner      owner        @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_feed_1")
+  feed_photo feed_photo[]
+}
+
+model feed_photo {
+  feed_photo_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  feed_id       String    @db.Uuid
+  content       String?   @db.VarChar(256)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  photo_order   Int?
+  feed          feed      @relation(fields: [feed_id], references: [feed_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_feed_TO_feed_photo_1")
+}
+
+model item {
+  item_id      String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title        String?        @db.VarChar(50)
+  content      String?
+  price        Decimal?       @db.Decimal
+  delivery     Decimal?       @db.Decimal
+  created_at   DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?      @default(now()) @db.Timestamp(6)
+  owner_id     String         @db.Uuid
+  category_id  String         @db.Uuid
+  avg_star     Decimal?       @db.Decimal
+  review_count Int?
+  category     category       @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_category_TO_item_1")
+  owner        owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_item_1")
+  item_photo   item_photo[]
+  option_group option_group[]
+
+  @@index([category_id], map: "idx_item_category")
+  @@index([owner_id], map: "idx_item_owner")
+}
+
+model item_photo {
+  item_photo_id String    @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  item_id       String    @db.Uuid
+  content       String?   @db.VarChar(256)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+  photo_order   Int?
+  item          item      @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_item_TO_item_photo_1")
+
+  @@id([item_photo_id, item_id])
+}
+
+model option_group {
+  option_group_id String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  item_id         String        @db.Uuid
+  name            String?       @db.VarChar(100)
+  sort_order      Int?
+  item            item          @relation(fields: [item_id], references: [item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_item_TO_option_group_1")
+  option_item     option_item[]
+}
+
+model option_item {
+  option_item_id  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  option_group_id String         @db.Uuid
+  name            String?        @db.VarChar(100)
+  extra_price     Int?
+  sort_order      Int?
+  quantity        Int?
+  option_group    option_group   @relation(fields: [option_group_id], references: [option_group_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_option_group_TO_option_item_1")
+  order_option    order_option[]
+}
+
+model order {
+  order_id         String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  status           order_status_enum?
+  reformer_address String?            @db.Uuid
+  user_address     String?            @db.Uuid
+  target_type      target_type_enum?
+  target_id        String?            @db.Uuid
+  price            Decimal?           @db.Decimal
+  delivery_fee     Decimal?           @db.Decimal
+  amount           Decimal?           @db.Decimal
+  content          String?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  owner_id         String             @db.Uuid
+  user_id          String             @db.Uuid
+  owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
+  user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
+  order_option     order_option[]
+  reciept          reciept[]
+
+  @@index([owner_id], map: "idx_order_owner")
+  @@index([status], map: "idx_order_status")
+  @@index([user_id], map: "idx_order_user")
+}
+
+model order_option {
+  order_option_id String      @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  order_id        String      @db.Uuid
+  option_item_id  String      @db.Uuid
+  created_at      DateTime?   @default(now()) @db.Timestamp(6)
+  option_item     option_item @relation(fields: [option_item_id], references: [option_item_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_option_item_TO_order_option_1")
+  order           order       @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_TO_order_option_1")
+
+  @@id([order_option_id, order_id, option_item_id])
+}
+
+model owner {
+  owner_id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email             String?              @db.VarChar(30)
+  hashed            String?              @db.VarChar(256)
+  name              String?              @db.VarChar(50)
+  nickname          String?              @unique(map: "owner_nickname_unique") @db.VarChar(50)
+  phone             String?              @db.VarChar(50)
+  created_at        DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?            @default(now()) @db.Timestamp(6)
+  age_confirmed_at  DateTime             @default(now()) @db.Timestamp(6)
+  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
+  privacy_opt_in_at DateTime?            @db.Timestamp(6)
+  status            reformer_status_enum @default(PENDING)
+  profile_photo     String?              @db.VarChar(256)
+  bio               String?
+  keywords          String[]             @default([])
+  avg_star          Decimal?             @db.Decimal
+  review_count      Int?
+  trade_count       Int?
+  chat_rooms        chat_room[]
+  delivery_address  delivery_address[]
+  feed              feed[]
+  item              item[]
+  order             order[]
+  owner_wish        owner_wish[]
+  reform_proposal   reform_proposal[]
+  reformer_auth     reformer_auth[]
+}
+
+model owner_wish {
+  wish_id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  owner_id          String         @db.Uuid
+  reform_request_id String         @db.Uuid
+  owner             owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_owner_wish_1")
+  reform_request    reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_owner_wish_1")
+}
+
+model reciept {
+  reciept_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  payment_status  String?   @db.VarChar(255)
+  payment_method  String?   @db.VarChar(20)
+  payment_gateway String?   @db.VarChar(20)
+  transaction     String?   @db.VarChar(200)
+  order_id        String    @db.Uuid
+  order           order     @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_TO_reciept_1")
+  review          review[]
+}
+
+model reform_proposal {
+  reform_proposal_id    String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title                 String?                 @db.VarChar(50)
+  content               String?
+  price                 Decimal?                @db.Decimal
+  delivery              Decimal?                @db.Decimal
+  expected_working      Decimal?                @db.Decimal
+  created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamp(6)
+  owner_id              String                  @db.Uuid
+  category_id           String                  @db.Uuid
+  avg_star              Decimal?                @db.Decimal
+  review_count          Int?
+  category              category                @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_category_TO_reform_proposal_1")
+  owner                 owner                   @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_reform_proposal_1")
+  reform_proposal_photo reform_proposal_photo[]
+
+  @@index([owner_id], map: "idx_reform_proposal_owner")
+}
+
+model reform_proposal_photo {
+  reform_proposal_photo_id String          @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reform_proposal_id       String          @db.Uuid
+  content                  String?         @db.VarChar(256)
+  created_at               DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at               DateTime?       @default(now()) @db.Timestamp(6)
+  photo_order              Int?
+  reform_proposal          reform_proposal @relation(fields: [reform_proposal_id], references: [reform_proposal_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_proposal_TO_reform_proposal_photo_1")
+
+  @@id([reform_proposal_photo_id, reform_proposal_id])
+}
+
+model reform_request {
+  reform_request_id    String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title                String?                @db.VarChar(50)
+  content              String?
+  min_budget           Decimal?               @db.Decimal
+  max_budget           Decimal?               @db.Decimal
+  due_date             DateTime?              @db.Timestamp(6)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamp(6)
+  user_id              String                 @db.Uuid
+  category_id          String                 @db.Uuid
+  owner_wish           owner_wish[]
+  category             category               @relation(fields: [category_id], references: [category_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_category_TO_reform_request_1")
+  user                 user                   @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_reform_request_1")
+  reform_request_photo reform_request_photo[]
+
+  @@index([user_id], map: "idx_reform_request_user")
+}
+
+model reform_request_photo {
+  reform_request_photo_id String         @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reform_request_id       String         @db.Uuid
+  content                 String?        @db.VarChar(256)
+  created_at              DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?      @default(now()) @db.Timestamp(6)
+  photo_order             Int?
+  reform_request          reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_reform_request_photo_1")
+
+  @@id([reform_request_photo_id, reform_request_id])
+}
+
+model reformer_auth {
+  reformer_auth   String    @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  owner_id        String    @db.Uuid
+  portfolio       String?
+  photo           String?   @db.VarChar(256)
+  business_number Int?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  owner           owner     @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_reformer_auth_1")
+
+  @@id([reformer_auth, owner_id])
+}
+
+model review {
+  review_id    String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String?        @db.Uuid
+  owner_id     String?        @db.Uuid
+  star         Int?           @db.SmallInt
+  content      String?
+  created_at   DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?      @default(now()) @db.Timestamp(6)
+  reciept_id   String         @db.Uuid
+  reciept      reciept        @relation(fields: [reciept_id], references: [reciept_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reciept_TO_review_1")
+  review_photo review_photo[]
+
+  @@index([reciept_id], map: "idx_review_reciept")
+}
+
+model review_photo {
+  review_photo_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  content         String?   @db.VarChar(256)
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  review_id       String    @db.Uuid
+  photo_order     Int?
+  review          review    @relation(fields: [review_id], references: [review_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_review_TO_review_photo_1")
+}
+
+model user {
+  user_id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email             String?            @db.VarChar(30)
+  hashed            String?            @db.VarChar(256)
+  name              String?            @db.VarChar(50)
+  nickname          String?            @unique(map: "user_nickname_unique") @db.VarChar(50)
+  phone             String?            @db.VarChar(50)
+  created_at        DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?          @default(now()) @db.Timestamp(6)
+  age_confirmed_at  DateTime           @default(now()) @db.Timestamp(6)
+  terms_agreed_at   DateTime           @default(now()) @db.Timestamp(6)
+  privacy_opt_in_at DateTime?          @db.Timestamp(6)
+  profile_photo     String?            @db.VarChar(256)
+  cart              cart[]
+  chat_rooms        chat_room[]
+  delivery_address  delivery_address[]
+  order             order[]
+  reform_request    reform_request[]
+  user_wish         user_wish[]
+}
+
+model user_wish {
+  wish_id     String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  target_type target_type_enum?
+  target_id   String?           @db.Uuid
+  user_id     String            @db.Uuid
+  user        user              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_user_wish_1")
+}
+
+model banner {
+  banner_id  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  image_url  String    @db.VarChar(256)
+  sort_order Int?      @default(0)
+  is_active  Boolean?  @default(true)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model social_account {
+  social_account_id String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider          provider_type
+  provider_id       String
+  role              account_role
+  user_id           String?       @db.Uuid
+  owner_id          String?       @db.Uuid
+
+  @@unique([owner_id, provider], map: "social_account_owner_provider_key")
+  @@unique([provider, provider_id, role], map: "social_account_provider_identity_key")
+  @@unique([user_id, provider], map: "social_account_user_provider_key")
+}
+
+enum order_status_enum {
+  PENDING
+  PAID
+  SENT
+  WORKING
+  DELIVERY
+  COMPLETE
+  SETTLEMENT
+  CANCELLED
+  REFUNDED
+}
+
+enum target_type_enum {
+  REQUEST
+  PROPOSAL
+  ITEM
+}
+
+enum sender_type {
+  USER
+  OWNER
+}
+
+enum account_role {
+  USER
+  OWNER
+}
+
+enum provider_type {
+  GOOGLE
+  KAKAO
+  APPLE
+}
+
+enum reformer_status_enum {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum message_type {
+  IMAGE
+  REQUEST
+  PROPOSAL
+  TEXT
+  PAYMENT
+  RESULT
+}
+
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
+}

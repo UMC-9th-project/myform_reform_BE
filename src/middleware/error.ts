@@ -96,10 +96,10 @@ export class CustomExample extends BasicError {
   constructor(description: string) {
     super(400, 'errcode', 'err message', description);
   }
-}
+};
 
 export class S3UploadError extends BasicError {
   constructor(des: string) {
     super(500, 'e-s3', '서버에 사진을 올리는중 오류가 발생했습니다.', des);
   }
-}
+};
