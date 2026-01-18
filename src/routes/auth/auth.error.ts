@@ -83,3 +83,21 @@ export class EmailDuplicateError extends BasicError {
     super(409, 'Auth_110', '이미 존재하는 이메일입니다.', description);
   }
 }
+
+export class InvalidPhotoNumberError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_111', '입력한 사진의 개수가 올바르지 않습니다.', description);
+  }
+}
+
+export class InvalidBusinessNumberError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_112', '입력한 사업자 번호의 형식이 올바르지 않습니다.', description);
+  }
+}
+
+export class InvalidDescriptionLengthError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_113', '자기 소개 설명은 1자 이상 500자 이하로 입력해주세요.', description);
+  }
+}

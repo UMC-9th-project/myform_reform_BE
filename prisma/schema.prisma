@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -349,8 +348,8 @@ model reformer_auth {
   reformer_auth   String    @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   owner_id        String    @db.Uuid
   portfolio       String?
-  photo           String?   @db.VarChar(256)
-  business_number Int?
+  photo           String[]
+  business_number String?   @db.VarChar(20)
   created_at      DateTime? @default(now()) @db.Timestamp(6)
   updated_at      DateTime? @default(now()) @db.Timestamp(6)
   owner           owner     @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_reformer_auth_1")

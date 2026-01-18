@@ -28,6 +28,10 @@ export interface VerifySmsRequest {
   code: string;
 }
 
+export type AuthStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type Role = 'user' | 'reformer';
+export type RegistrationType = 'LOCAL' | 'KAKAO';
+
 export interface SendSmsResponse {
   statusCode: number;
   message: string;
@@ -54,8 +58,8 @@ export interface KakaoLoginResponse {
   user: {
     id: string;
     email: string;
-    role: 'user' | 'reformer';
-    auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    role: Role;
+    auth_status?: AuthStatus;
   };
 }
 
@@ -64,8 +68,8 @@ export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse
 export interface JwtPayload {
   id: string;
   email: string;
-  role: 'user' | 'reformer';
-  auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  role: Role;
+  auth_status?: AuthStatus;
 }
 
 export interface LogoutResponse {
@@ -75,36 +79,16 @@ export interface LogoutResponse {
 
 export interface PassportUserInfo {
   status: 'signup' | 'login';
-  role: 'user' | 'reformer';
+  role: Role;
   kakaoId?: string;
   email?: string;
   id?: string;
-  auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  auth_status?: AuthStatus;
 }
 
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-}
-
-export interface SingupRequest {
-  email: string;
-  nickname: string;
-  role: 'USER' | 'REFORMER';
-  registration_type: 'LOCAL' | 'KAKAO';
-  password?: string;
-  kakaoId?: string;
-
-  reformerInfo?: {
-    businessNumber: string;
-    description: string;
-    //폼데이터의 사진들
-    portfolioPhotos: string[];
-  }
-}
-
-export interface SignupReformerFormFields {
-  data: string;
 }
 
 export interface ReformerSignupRequest extends UserSignupRequest {
@@ -118,13 +102,13 @@ export interface UserSignupRequest {
   email: string;
   nickname: string;
   phoneNumber: string;
-  registration_type: 'LOCAL' | 'KAKAO';
+  registration_type: RegistrationType;
   oauthId?: string;
   password?: string;
   over14YearsOld: boolean;
   termsOfService: boolean;
   privacyPolicy: boolean;
-  role: 'user' | 'reformer';
+  role: Role;
 }
 
 // Service -> Controller 반환할 유저 데이터
@@ -133,8 +117,7 @@ export interface UserSignupResponse {
     id: string;
     email: string;
     nickname: string;
-    role: 'user' | 'reformer';
-    auth_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    role: Role;
   };
   accessToken: string;
   refreshToken: string;
@@ -144,12 +127,12 @@ export interface UserSignupResponse {
 export interface UserCreateDto {
   name: string;
   email: string;
-  registration_type: 'LOCAL' | 'KAKAO';
+  registration_type: RegistrationType;
   oauthId?: string;
   hashedPassword?: string;
   nickname: string;
   phoneNumber: string;
-  role: 'user' | 'reformer';
+  role: Role;
   privacyPolicy: boolean;
 }
 
@@ -158,5 +141,34 @@ export interface UserCreateResponseDto {
   id: string;
   email: string;
   nickname: string;
-  role: 'user' | 'reformer';
+  role: Role;
+}
+
+// Controller -> Service 전달할 리폼러 데이터
+export interface ReformerSignupRequest extends UserSignupRequest {
+  businessNumber: string;
+  description: string;
+}
+
+// Service -> Controller 반환할 리폼러 데이터
+export interface ReformerSignupResponse {
+  user: {
+    id: string;
+    email: string;
+    nickname: string;
+    role: Role;
+    auth_status: AuthStatus;
+  };
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface OwnerCreateDto extends UserCreateDto {
+  businessNumber: string;
+  description: string;
+  portfolioPhotos: string[];
+}
+
+export interface OwnerCreateResponseDto extends UserCreateResponseDto {
+  auth_status: AuthStatus;
 }

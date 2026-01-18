@@ -10,6 +10,8 @@ import { AuthController } from './auth/auth.controller.js';
 import { expressAuthentication } from './auth/authHandler.js';
 // @ts-ignore - no great way to install types from subpackage
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
+import multer from 'multer';
+
 
 const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, securityName: string, scopes?: string[], res?: ExResponse) => Promise<any>;
 
@@ -101,13 +103,23 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Role": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["reformer"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthStatus": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["PENDING"]},{"dataType":"enum","enums":["APPROVED"]},{"dataType":"enum","enums":["REJECTED"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "KakaoLoginResponse": {
         "dataType": "refObject",
         "properties": {
             "status": {"dataType":"enum","enums":["login"],"required":true},
             "accessToken": {"dataType":"string","required":true},
             "refreshToken": {"dataType":"string","required":true},
-            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"auth_status":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["PENDING"]},{"dataType":"enum","enums":["APPROVED"]},{"dataType":"enum","enums":["REJECTED"]}]},"role":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["reformer"]}],"required":true},"email":{"dataType":"string","required":true},"id":{"dataType":"string","required":true}},"required":true},
+            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"auth_status":{"ref":"AuthStatus"},"role":{"ref":"Role","required":true},"email":{"dataType":"string","required":true},"id":{"dataType":"string","required":true}},"required":true},
         },
         "additionalProperties": false,
     },
@@ -149,7 +161,7 @@ const models: TsoaRoute.Models = {
     "UserSignupResponse": {
         "dataType": "refObject",
         "properties": {
-            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"auth_status":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["PENDING"]},{"dataType":"enum","enums":["APPROVED"]},{"dataType":"enum","enums":["REJECTED"]}]},"role":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["reformer"]}],"required":true},"nickname":{"dataType":"string","required":true},"email":{"dataType":"string","required":true},"id":{"dataType":"string","required":true}},"required":true},
+            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"role":{"ref":"Role","required":true},"nickname":{"dataType":"string","required":true},"email":{"dataType":"string","required":true},"id":{"dataType":"string","required":true}},"required":true},
             "accessToken": {"dataType":"string","required":true},
             "refreshToken": {"dataType":"string","required":true},
         },
@@ -166,6 +178,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RegistrationType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["LOCAL"]},{"dataType":"enum","enums":["KAKAO"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "UserSignupRequest": {
         "dataType": "refObject",
         "properties": {
@@ -173,13 +190,33 @@ const models: TsoaRoute.Models = {
             "email": {"dataType":"string","required":true},
             "nickname": {"dataType":"string","required":true},
             "phoneNumber": {"dataType":"string","required":true},
-            "registration_type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["LOCAL"]},{"dataType":"enum","enums":["KAKAO"]}],"required":true},
+            "registration_type": {"ref":"RegistrationType","required":true},
             "oauthId": {"dataType":"string"},
             "password": {"dataType":"string"},
             "over14YearsOld": {"dataType":"boolean","required":true},
             "termsOfService": {"dataType":"boolean","required":true},
             "privacyPolicy": {"dataType":"boolean","required":true},
-            "role": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["user"]},{"dataType":"enum","enums":["reformer"]}],"required":true},
+            "role": {"ref":"Role","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ReformerSignupResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "user": {"dataType":"nestedObjectLiteral","nestedProperties":{"auth_status":{"ref":"AuthStatus","required":true},"role":{"ref":"Role","required":true},"nickname":{"dataType":"string","required":true},"email":{"dataType":"string","required":true},"id":{"dataType":"string","required":true}},"required":true},
+            "accessToken": {"dataType":"string","required":true},
+            "refreshToken": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TsoaResponse_ReformerSignupResponse_": {
+        "dataType": "refObject",
+        "properties": {
+            "resultType": {"dataType":"string","required":true},
+            "error": {"dataType":"enum","enums":[null],"required":true},
+            "success": {"ref":"ReformerSignupResponse","required":true},
         },
         "additionalProperties": false,
     },
@@ -192,13 +229,14 @@ const templateService = new ExpressTemplateService(models, {"noImplicitAdditiona
 
 
 
-export function RegisterRoutes(app: Router) {
+export function RegisterRoutes(app: Router,opts?:{multer?:ReturnType<typeof multer>}) {
 
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
     //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
     // ###########################################################################################################
 
+    const upload = opts?.multer ||  multer({"limits":{"fileSize":8388608}});
 
     
         const argsTestController_setTest: Record<string, TsoaRoute.ParameterSchema> = {
@@ -400,6 +438,42 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'signupUser',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: 201,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAuthController_signupReformer: Record<string, TsoaRoute.ParameterSchema> = {
+                data: {"in":"formData","name":"data","required":true,"dataType":"string"},
+                portfolioPhotos: {"in":"formData","name":"portfolios","required":true,"dataType":"array","array":{"dataType":"file"}},
+        };
+        app.post('/auth/signup/reformer',
+            upload.fields([
+                {
+                    name: "portfolios",
+                }
+            ]),
+            ...(fetchMiddlewares<RequestHandler>(AuthController)),
+            ...(fetchMiddlewares<RequestHandler>(AuthController.prototype.signupReformer)),
+
+            async function AuthController_signupReformer(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAuthController_signupReformer, request, response });
+
+                const controller = new AuthController();
+
+              await templateService.apiHandler({
+                methodName: 'signupReformer',
                 controller,
                 response,
                 next,

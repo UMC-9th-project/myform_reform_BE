@@ -1,15 +1,16 @@
 import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, NicknameDuplicateError, VerificationRequiredError, EmailDuplicateError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
-import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword } from '../../utils/validators.js';
+import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos} from '../../utils/validators.js';
 import pkg from 'jsonwebtoken';
 const { sign } = pkg;
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupResponse, UserSignupRequest, UserCreateDto } from './auth.dto.js';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, ReformerSignupResponse, OwnerCreateDto } from './auth.dto.js';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import prisma from '../../config/prisma.config.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { AuthModel } from './auth.model.js';
+import { S3 } from '../../config/s3.js';
 
 dotenv.config();
 
@@ -162,27 +163,24 @@ export class AuthService {
     const { password, registration_type, phoneNumber, ...rest } = requestBody;
     // 회원 가입에 필요한 정보 검증 (입력값 유효성, 비즈니스 정책, 가입 유형에 따른 논리 검증, SMS 인증 확인 등)
     await this.validateSignupRequest(requestBody);
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
     const hashedPassword = password && registration_type === 'LOCAL' 
       ? await bcrypt.hash(password, this.SALT_ROUNDS) 
       : undefined;
     const requestDto: UserCreateDto = { 
       ...rest,
+      phoneNumber: cleanPhoneNumber,
       hashedPassword: hashedPassword,
       registration_type: registration_type,
-      phoneNumber: phoneNumber,
     };
 
     // DB에 회원 정보 저장 및 JWT 토큰 생성 후 반환
     return await runInTransaction(async () => {
-      // DB에 저장할 회원 정보 생성
-
-      
-      // DB에 회원 정보 저장 후 저장된 회원 정보 반환
-      const newUser = await this.authModel.createUser(requestDto);
-      
+      // DB에 회원 정보 저장 (생성)
+      const newUser = await this.authModel.createUser(requestDto);      
       // JWT 토큰 생성 및 Redis에 저장
       const { accessToken, refreshToken } = await this.generateAndSaveTokens(newUser);
-      
+      // SMS 인증 확인 상태 Redis에서 삭제
       await redisClient.del(`verified:${phoneNumber}`);
       
       // 회원가입 성공 시 값 반환
@@ -191,6 +189,44 @@ export class AuthService {
         accessToken,
         refreshToken
       } as UserSignupResponse;
+    });
+  }
+
+  async signupReformer(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[]): Promise<ReformerSignupResponse> {
+    const { password, registration_type, phoneNumber, businessNumber, description, ...rest } = requestBody;
+    const s3 = new S3();
+    await this.validateReformerSignupRequest(requestBody, portfolioPhotos);
+    const cleanPhoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+    const cleanBusinessNumber = businessNumber.replace(/[^0-9]/g, '');
+    const hashedPassword = password && registration_type === 'LOCAL' 
+      ? await bcrypt.hash(password, this.SALT_ROUNDS) 
+      : undefined;
+    const portfolioUrls = await s3.uploadManyToS3(portfolioPhotos);
+
+    // portfolioPhotos를 문자열 배열로 변환
+    const requestDto: OwnerCreateDto = {
+      ...rest,
+      businessNumber: cleanBusinessNumber,
+      description: description,
+      hashedPassword: hashedPassword,
+      phoneNumber: cleanPhoneNumber,
+      registration_type: registration_type,
+      portfolioPhotos: portfolioUrls,
+    };
+
+    return await runInTransaction(async () => {
+      // DB에 회원 정보 저장 (생성)
+      const newOwner = await this.authModel.createOwner(requestDto);
+      // JWT 토큰 생성 및 Redis에 저장
+      const { accessToken, refreshToken } = await this.generateAndSaveTokens(newOwner);
+      // SMS 인증 확인 상태 Redis에서 삭제
+      await redisClient.del(`verified:${phoneNumber}`);
+      
+      return {
+        user: newOwner,
+        accessToken,
+        refreshToken
+      } as ReformerSignupResponse;
     });
   }
 
@@ -232,7 +268,7 @@ export class AuthService {
   }
 
   // 회원가입 정보 검증
-  private async validateSignupRequest(requestBody: UserSignupRequest): Promise<void> {
+  private async validateSignupRequest(requestBody: UserSignupRequest | ReformerSignupRequest): Promise<void> {
     const { email, nickname, phoneNumber, role, registration_type, oauthId, password, over14YearsOld, termsOfService, privacyPolicy } = requestBody;
     // 단순 형식 검증 (이메일, 닉네임, 전화번호, 비밀번호)
     validateEmail(email);
@@ -256,6 +292,13 @@ export class AuthService {
 
     // 이메일 중복 검증
     await this.checkEmailDuplicate(email, role);
+  }
+
+  private async validateReformerSignupRequest(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[]): Promise<void> {
+    await this.validateSignupRequest(requestBody);
+    validateBusinessNumber(requestBody.businessNumber);
+    validateDescription(requestBody.description);
+    validatePortfolioPhotos(portfolioPhotos);
   }
 
   // 휴대폰 인증 확인

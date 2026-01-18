@@ -1,4 +1,4 @@
-import { InputValidationError } from '../routes/auth/auth.error.js';
+import { InputValidationError, InvalidDescriptionLengthError, InvalidBusinessNumberError, InvalidPhotoNumberError } from '../routes/auth/auth.error.js';
 
 export const validatePhoneNumber = (phoneNumber: string): void => {
   //한국 전화번호 형식 (하이픈 포함 또는 미포함)
@@ -66,3 +66,21 @@ export const validateRegistrationType = (
     }
   }
 };
+
+export const validateBusinessNumber = (businessNumber: string): void => {
+  if (!/^[0-9]{3}-[0-9]{2}-[0-9]{5}$/.test(businessNumber)){
+    throw new InvalidBusinessNumberError(`${businessNumber} 는 올바른 사업자 번호 형식이 아닙니다.`);
+  }
+}
+
+export const validateDescription = (description: string): void => {
+  if (!description || description.length < 1 || description.length > 500){
+    throw new InvalidDescriptionLengthError('자기 소개의 길이가 적절하지 않습니다. 1자 이상 500자 이하로 입력해주세요.');
+  }
+}
+
+export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]): void => {
+  if (portfolioPhotos.length === 0 || portfolioPhotos.length > 9){
+    throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
+  }
+}

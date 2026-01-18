@@ -41,6 +41,18 @@ export class S3 {
     return `https://${process.env.S3_NAME}.s3.ap-northeast-2.amazonaws.com/${uniqueName}`;
   }
 
+  // 여러 파일을 한번에 S3에 업로드
+  async uploadManyToS3(files: Express.Multer.File[]): Promise<string[]> {
+    if(!files || files. length === 0) return [];
+    try {
+      const uploadPromises = files.map(async (file) => this.uploadToS3(file));
+      const urls = await Promise.all(uploadPromises);
+      return urls;
+    } catch (err) {
+      throw new S3UploadError('사진을 올리는 중 오류가 발생했습니다');
+    }
+  }
+
   async deleteFromS3(fileUrl: string): Promise<boolean> {
     try {
       const fileKey = this.extractFileKeyFromUrl(fileUrl);
