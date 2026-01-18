@@ -42,7 +42,6 @@ export class OrdersService {
         WHERE "created_at" >= ${dayStart}::timestamp
           AND "created_at" <= ${dayEnd}::timestamp
           AND "order_number" IS NOT NULL
-        FOR UPDATE
       `;
       
       const orderCount = Number(orderCountResult[0]?.count || 0);
@@ -333,7 +332,10 @@ export class OrdersService {
       }
     }
 
+    const orderNumber = await this.generateOrderNumber(new Date());
+
     return {
+      order_number: orderNumber,
       order_item: {
         reformer_nickname: item.owner.nickname || '',
         thumbnail: item.item_photo[0]?.content || '',
@@ -368,6 +370,20 @@ export class OrdersService {
     merchantUid?: string,
     impUid?: string
   ): Promise<CreateOrderResponse> {
+    if (!impUid) {
+      throw new OrderError(
+        '결제 정보가 필요합니다.',
+        'imp_uid는 필수입니다.'
+      );
+    }
+
+    if (!merchantUid) {
+      throw new OrderError(
+        '주문 번호가 필요합니다.',
+        'merchant_uid(order_number)는 필수입니다.'
+      );
+    }
+
     const item = await prisma.item.findUnique({
       where: { item_id: itemId },
       include: {
@@ -384,24 +400,6 @@ export class OrdersService {
     }
 
     const result = await runInTransaction(async () => {
-      const existingPendingOrder = await prisma.order.findFirst({
-        where: {
-          user_id: userId,
-          target_id: itemId,
-          target_type: 'ITEM',
-          status: {
-            in: ['PENDING', 'PAID']
-          }
-        }
-      });
-
-      if (existingPendingOrder) {
-        throw new OrderError(
-          '이미 진행 중인 주문이 있습니다.',
-          `주문 ID: ${existingPendingOrder.order_id}`
-        );
-      }
-
       const optionItems = await prisma.option_item.findMany({
         where: {
           option_item_id: { in: optionItemIds }
@@ -555,68 +553,34 @@ export class OrdersService {
       const deliveryFee = item.delivery ? Number(item.delivery) : 0;
       const totalAmount = productAmount + deliveryFee;
 
-      let order: {
-        order_id: string;
-        order_number: string | null;
-      } | null = null;
-      let orderNumber: string;
-      const maxOrderNumberRetries = 5;
+      const orderNumber = merchantUid;
+      const existingOrder = await prisma.order.findUnique({
+        where: { order_number: orderNumber },
+        select: { order_id: true }
+      });
       
-      for (let retryCount = 0; retryCount < maxOrderNumberRetries; retryCount++) {
-        try {
-          orderNumber = await this.generateOrderNumber(new Date());
-          
-          order = await prisma.order.create({
-            data: {
-              user_id: userId,
-              owner_id: item.owner_id,
-              target_type: 'ITEM',
-              target_id: itemId,
-              user_address: finalDeliveryAddressId,
-              price: productAmount,
-              delivery_fee: deliveryFee,
-              amount: totalAmount,
-              status: impUid ? 'PAID' : 'PENDING',
-              order_number: orderNumber
-            }
-          });
-          
-          break;
-        } catch (error: any) {
-          if (error.code === 'P2002' && error.meta?.target?.includes('order_number')) {
-            if (retryCount < maxOrderNumberRetries - 1) {
-              await new Promise((resolve) => setTimeout(resolve, 50 * (retryCount + 1)));
-              continue;
-            } else {
-              const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-              const timestamp = Date.now().toString().slice(-6);
-              orderNumber = `${dateStr}-${timestamp}`;
-              
-              order = await prisma.order.create({
-                data: {
-                  user_id: userId,
-                  owner_id: item.owner_id,
-                  target_type: 'ITEM',
-                  target_id: itemId,
-                  user_address: finalDeliveryAddressId,
-                  price: productAmount,
-                  delivery_fee: deliveryFee,
-                  amount: totalAmount,
-                  status: impUid ? 'PAID' : 'PENDING',
-                  order_number: orderNumber
-                }
-              });
-              break;
-            }
-          } else {
-            throw error;
-          }
-        }
+      if (existingOrder) {
+        throw new OrderError(
+          '이미 사용된 주문 번호입니다.',
+          `order_number: ${orderNumber}`
+        );
       }
 
-      if (!order) {
-        throw new Error('주문 생성에 실패했습니다.');
-      }
+      const order = await prisma.order.create({
+        data: {
+          user_id: userId,
+          owner_id: item.owner_id,
+          target_type: 'ITEM',
+          target_id: itemId,
+          user_address: finalDeliveryAddressId,
+          price: productAmount,
+          delivery_fee: deliveryFee,
+          amount: totalAmount,
+          status: 'PAID',
+          order_number: orderNumber
+        }
+      });
+
 
       if (optionItemIds.length > 0) {
         await prisma.order_option.createMany({
@@ -630,10 +594,10 @@ export class OrdersService {
       const receipt = await prisma.reciept.create({
         data: {
           order_id: order.order_id,
-          payment_status: impUid ? 'paid' : 'pending',
-          payment_method: impUid ? 'card' : null,
-          payment_gateway: impUid ? 'portone' : null,
-          transaction: impUid || null
+          payment_status: 'paid',
+          payment_method: 'card',
+          payment_gateway: 'portone',
+          transaction: null
         }
       });
 
@@ -644,8 +608,7 @@ export class OrdersService {
       };
     });
 
-    if (impUid) {
-      try {
+    try {
         let paymentInfo: PortonePaymentInfo | null = null;
         let retryCount = 0;
         const maxRetries = 3;
@@ -797,26 +760,16 @@ export class OrdersService {
         }
         
         throw error;
-      }
-    } else {
-      await prisma.cart.deleteMany({
-        where: {
-          user_id: userId,
-          item_id: itemId
-        }
-      });
     }
 
     return {
       order_id: result.order_id,
-      payment_required: !impUid,
-      payment_info: impUid
-        ? {
-            imp_uid: impUid,
-            merchant_uid: merchantUid || result.order_id,
-            amount: result.total_amount
-          }
-        : undefined
+      payment_required: false,
+      payment_info: {
+        imp_uid: impUid,
+        merchant_uid: merchantUid,
+        amount: result.total_amount
+      }
     };
   }
 
@@ -890,6 +843,7 @@ export class OrdersService {
     return {
       order_id: order.order_id,
       order_number: order.order_number || order.order_id,
+      status: order.status || null,
       delivery_address: deliveryAddress,
       order_items: orderItems,
       payment: paymentInfo,

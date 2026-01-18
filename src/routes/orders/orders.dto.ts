@@ -11,6 +11,7 @@ export interface GetOrderSheetRequestDto {
 }
 
 export interface GetOrderSheetResponseDto {
+  order_number: string;
   order_item: {
     reformer_nickname: string;
     thumbnail: string;
@@ -42,7 +43,7 @@ export interface CreateOrderRequestDto {
     address?: string;
     address_detail?: string;
   };
-  imp_uid?: string;
+  imp_uid: string;
   merchant_uid: string;
 }
 
@@ -56,6 +57,7 @@ export interface CreateOrderResponseDto {
 export interface GetOrderResponseDto {
   order_id: string;
   order_number: string;
+  status: string | null;
   delivery_address: {
     postal_code: string | null;
     address: string | null;
