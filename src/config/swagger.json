@@ -46,7 +46,29 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"TsoaResponse_any_": {
+			"UUID": {
+				"type": "string",
+				"pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+			},
+			"CreateCartResDTO": {
+				"properties": {
+					"cartId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": [
+					"cartId",
+					"createdAt"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"TsoaResponse_CreateCartResDTO_": {
 				"properties": {
 					"resultType": {
 						"type": "string"
@@ -59,8 +81,7 @@
 						"nullable": true
 					},
 					"success": {
-						"additionalProperties": false,
-						"type": "object"
+						"$ref": "#/components/schemas/CreateCartResDTO"
 					}
 				},
 				"required": [
@@ -87,6 +108,154 @@
 				"required": [
 					"quantity",
 					"optionItemIds"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OptionDTO": {
+				"properties": {
+					"option_item_id": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							}
+						],
+						"nullable": true,
+						"format": "uuid"
+					},
+					"name": {
+						"type": "string",
+						"nullable": true
+					},
+					"extra_price": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"option_item_id",
+					"name",
+					"extra_price"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CartItemDTO": {
+				"properties": {
+					"cartId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					},
+					"itemId": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/UUID"
+							}
+						],
+						"nullable": true,
+						"format": "uuid"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true
+					},
+					"imageUrl": {
+						"type": "string",
+						"nullable": true
+					},
+					"price": {
+						"type": "number",
+						"format": "double"
+					},
+					"quantity": {
+						"type": "number",
+						"format": "double"
+					},
+					"delivery": {
+						"type": "number",
+						"format": "double"
+					},
+					"options": {
+						"items": {
+							"$ref": "#/components/schemas/OptionDTO"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"cartId",
+					"itemId",
+					"title",
+					"imageUrl",
+					"price",
+					"quantity",
+					"delivery",
+					"options"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SellerCartDTO": {
+				"properties": {
+					"ownerId": {
+						"$ref": "#/components/schemas/UUID",
+						"format": "uuid"
+					},
+					"ownerName": {
+						"type": "string",
+						"nullable": true
+					},
+					"deliveryFee": {
+						"type": "number",
+						"format": "double"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					},
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/CartItemDTO"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"ownerId",
+					"ownerName",
+					"deliveryFee",
+					"total",
+					"items"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CartGroupedResDTO": {
+				"items": {
+					"$ref": "#/components/schemas/SellerCartDTO"
+				},
+				"type": "array"
+			},
+			"TsoaResponse_CartGroupedResDTO_": {
+				"properties": {
+					"resultType": {
+						"type": "string"
+					},
+					"error": {
+						"type": "number",
+						"enum": [
+							null
+						],
+						"nullable": true
+					},
+					"success": {
+						"$ref": "#/components/schemas/CartGroupedResDTO"
+					}
+				},
+				"required": [
+					"resultType",
+					"error",
+					"success"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -301,17 +470,20 @@
 						}
 					}
 				},
+				"summary": "장바구니 아이템 삭제",
 				"tags": [
 					"Cart Controller"
 				],
 				"security": [],
 				"parameters": [],
 				"requestBody": {
+					"description": "삭제할 장바구니 아이템 ID 목록",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/DeleteItemsDTO"
+								"$ref": "#/components/schemas/DeleteItemsDTO",
+								"description": "삭제할 장바구니 아이템 ID 목록"
 							}
 						}
 					}
@@ -327,18 +499,20 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/TsoaResponse_any_"
+									"$ref": "#/components/schemas/TsoaResponse_CreateCartResDTO_"
 								}
 							}
 						}
 					}
 				},
+				"summary": "장바구니에 아이템 추가",
 				"tags": [
 					"Cart Controller"
 				],
 				"security": [],
 				"parameters": [
 					{
+						"description": "추가할 아이템 ID",
 						"in": "path",
 						"name": "itemId",
 						"required": true,
@@ -348,11 +522,13 @@
 					}
 				],
 				"requestBody": {
+					"description": "추가할 아이템 정보",
 					"required": true,
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/AddToCartDTO"
+								"$ref": "#/components/schemas/AddToCartDTO",
+								"description": "추가할 아이템 정보"
 							}
 						}
 					}
@@ -368,12 +544,13 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/TsoaResponse_any_"
+									"$ref": "#/components/schemas/TsoaResponse_CartGroupedResDTO_"
 								}
 							}
 						}
 					}
 				},
+				"summary": "장바구니 조회",
 				"tags": [
 					"Cart Controller"
 				],
