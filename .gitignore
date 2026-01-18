@@ -8,3 +8,4 @@ dist/
 
 ./src/routes/tsoaRoutes
 ./src/config/swagger.json
+.vscode/
