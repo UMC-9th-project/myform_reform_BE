@@ -29,19 +29,26 @@ model category {
 }
 
 model chat_room {
-  chat_room_id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  owner_id               String    @db.Uuid
-  created_at             DateTime? @default(now()) @db.Timestamp(6)
-  updated_at             DateTime? @default(now()) @updatedAt @db.Timestamp(6)
-  is_active              Boolean   @default(true)
-  last_message_id        String?   @db.Uuid
-  owner_last_read_id     String?   @db.Uuid
-  requester_id           String    @db.Uuid
-  requester_last_read_id String?   @db.Uuid
+  chat_room_id           String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id               String         @db.Uuid
+  created_at             DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?      @default(now()) @updatedAt @db.Timestamp(6)
+  is_active              Boolean        @default(true)
+  last_message_id        String?        @db.Uuid
+  owner_last_read_id     String?        @db.Uuid
+  requester_id           String         @db.Uuid
+  requester_last_read_id String?        @db.Uuid
   target_payload         Json?
   type                   room_type
-  owner_unread_count     Int       @default(0)
-  requester_unread_count Int       @default(0)
+  owner_unread_count     Int            @default(0)
+  requester_unread_count Int            @default(0)
+  messages               chat_message[]
+  last_message           chat_message?  @relation("LastMessage", fields: [last_message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
+  owner                  owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
+  requester              user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([owner_id])
+  @@index([requester_id])
 }
 
 model chat_message {
@@ -53,7 +60,38 @@ model chat_message {
   sender_id    String?       @db.Uuid
   sender_type  sender_type?
   text_content String?
-  updated_at   DateTime?     @default(now()) @updatedAt @db.Timestamp(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
+
+  @@index([chat_room_id])
+}
+
+model chat_room {
+  chat_room_id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id               String    @db.Uuid
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  updated_at             DateTime? @default(now()) @db.Timestamp(6)
+  is_active              Boolean   @default(true)
+  last_message_id        String?   @db.Uuid
+  owner_last_read_id     String?   @db.Uuid
+  requester_id           String    @db.Uuid
+  requester_last_read_id String?   @db.Uuid
+  target_payload         Json?
+  type                   room_type
+  owner_unread_count     Int       @default(0)
+  requester_unread_count Int       @default(0)
+  message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chat_room_id  String          @db.Uuid
+  message_type  message_type
+  payload       Json?
+  sender_id     String?         @db.Uuid
+  sender_type   sender_type?
+  text_content  String?
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
+  chat_room     chat_room       @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: Cascade)
+  chat_proposal chat_proposal[]
+  chat_request  chat_request[]
+  last_in_room  chat_room[]     @relation("LastMessage")
 
   @@index([chat_room_id])
 }
@@ -80,10 +118,11 @@ model chat_proposal {
   price            Int?
   delivery         Int?
   expected_working Int?
-  image            String[]  @default([])
-  created_at       DateTime? @default(now()) @db.Timestamp(6)
-  updated_at       DateTime? @default(now()) @updatedAt @db.Timestamp(6)
+  image            String[]     @default([])
+  created_at       DateTime?    @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?    @default(now()) @updatedAt @db.Timestamp(6)
   content          String?
+  message          chat_message @relation(fields: [message_id], references: [message_id], onDelete: Cascade)
 
   @@index([message_id])
 }
@@ -213,6 +252,7 @@ model order_option {
 model owner {
   owner_id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email             String?              @unique(map: "owner_email_unique") @db.VarChar(30)
+  email             String?              @db.VarChar(30)
   hashed            String?              @db.VarChar(256)
   name              String?              @db.VarChar(50)
   nickname          String?              @unique(map: "owner_nickname_unique") @db.VarChar(50)
@@ -364,6 +404,7 @@ model review_photo {
 model user {
   user_id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email             String?            @unique(map: "user_email_unique") @db.VarChar(30)
+  email             String?            @db.VarChar(30)
   hashed            String?            @db.VarChar(256)
   name              String?            @db.VarChar(50)
   nickname          String?            @unique(map: "user_nickname_unique") @db.VarChar(50)
@@ -397,6 +438,36 @@ model banner {
   is_active  Boolean?  @default(true)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   updated_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model chat_proposal {
+  chat_proposal_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id       String    @db.Uuid
+  is_accepted      Boolean   @default(false)
+  title            String?
+  price            Int?
+  delivery         Int?
+  expected_working Int?
+  image            String[]  @default([])
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at       DateTime? @default(now()) @db.Timestamp(6)
+  content          String?
+
+  @@index([message_id])
+}
+
+model chat_request {
+  chat_request_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id      String    @db.Uuid
+  title           String?
+  image           String[]  @default([])
+  content         String?
+  min_budget      Int?
+  max_budget      Int?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([message_id])
 }
 
 model social_account {
@@ -435,14 +506,18 @@ enum target_type_enum {
   ITEM
 }
 
-enum sender_type {
+enum account_role {
   USER
   OWNER
 }
 
-enum account_role {
-  USER
-  OWNER
+enum message_type {
+  image
+  request
+  proposal
+  text
+  payment
+  result
 }
 
 enum provider_type {
@@ -457,13 +532,28 @@ enum reformer_status_enum {
   REJECTED
 }
 
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
 enum message_type {
-  image
-  request
-  proposal
-  text
-  payment
-  result
+  IMAGE
+  REQUEST
+  PROPOSAL
+  TEXT
+  PAYMENT
+  RESULT
+}
+
+enum sender_type {
+  USER
+  OWNER
+}
+
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
 }
 
 enum room_type {
