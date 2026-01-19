@@ -442,11 +442,6 @@ enum target_type_enum {
   ITEM
 }
 
-enum sender_type {
-  USER
-  OWNER
-}
-
 enum account_role {
   USER
   OWNER
@@ -471,6 +466,11 @@ enum message_type {
   TEXT
   PAYMENT
   RESULT
+}
+
+enum sender_type {
+  USER
+  OWNER
 }
 
 enum room_type {
