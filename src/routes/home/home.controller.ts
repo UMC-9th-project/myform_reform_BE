@@ -116,6 +116,84 @@ export class HomeController extends Controller {
       }
     }
   )
+  @Response<ErrorResponse>(
+    404,
+    '배너 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-002',
+        reason: '배너를 찾을 수 없습니다.',
+        data: '배너 데이터 조회에 실패했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '사용자 세션 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-003',
+        reason: '사용자 세션 조회에 실패했습니다.',
+        data: '사용자 또는 오너 정보 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '인기 상품 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-004',
+        reason: '인기 상품 조회에 실패했습니다.',
+        data: '인기 상품 데이터 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '커스텀 오더 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-005',
+        reason: '커스텀 오더 조회에 실패했습니다.',
+        data: '커스텀 오더 데이터 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '베스트 리폼러 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-006',
+        reason: '베스트 리폼러 조회에 실패했습니다.',
+        data: '베스트 리폼러 데이터 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '메인 페이지 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'HOME-ERR-001',
+        reason: '메인 페이지 조회 중 오류가 발생했습니다.',
+        data: null
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 오류', commonError.serverError)
   public async getHome(
     @Header('x-user-id') userId?: string,
