@@ -13,15 +13,17 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { BasicError } from '../../middleware/error.js';
-import prisma from '../../config/prisma.config.js';
 import { OrdersService } from './orders.service.js';
-import type {
+import {
   GetOrderSheetRequestDto,
   GetOrderSheetResponseDto,
   CreateOrderRequestDto,
   CreateOrderResponseDto,
   GetOrderResponseDto
 } from './orders.dto.js';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { ValidateError } from 'tsoa';
 
 @Route('orders')
 @Tags('Orders')
@@ -90,8 +92,62 @@ export class OrdersController extends Controller {
     }
   )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
-  @Response<ErrorResponse>(400, '재고가 부족합니다.', commonError.badRequest)
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          item_id: ['item_id는 UUID 형식이어야 합니다'],
+          option_item_ids: ['option_item_ids의 각 값은 UUID 형식이어야 합니다'],
+          quantity: ['quantity는 정수여야 합니다', 'quantity는 1 이상이어야 합니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    400,
+    '재고가 부족합니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'INSUFFICIENT-STOCK',
+        reason: '재고가 부족합니다.',
+        data: 'Item: {itemName}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '주문서 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ORDER-ERROR',
+        reason: '주문서 조회 실패',
+        data: '주문서 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getOrderSheet(
     @Body() requestBody: GetOrderSheetRequestDto,
@@ -101,13 +157,40 @@ export class OrdersController extends Controller {
       throw new BasicError(401, 'UNAUTHORIZED', '로그인이 필요합니다.', '');
     }
 
+    let dto: GetOrderSheetRequestDto;
+    try {
+      dto = plainToInstance(GetOrderSheetRequestDto, requestBody);
+      const errors = await validate(dto);
+      if (errors.length > 0) {
+        const formattedErrors: Record<string, { message: string; value?: any }> = {};
+        errors.forEach((error) => {
+          if (error.constraints) {
+            const constraintMessages = Object.values(error.constraints);
+            formattedErrors[error.property] = {
+              message: constraintMessages[0] || '입력값 검증 실패',
+              value: error.value
+            };
+          }
+        });
+        throw new ValidateError(formattedErrors, '입력값 검증 실패');
+      }
+    } catch (error) {
+      if (error instanceof ValidateError) {
+        throw error;
+      }
+      throw new ValidateError(
+        { requestBody: { message: '잘못된 요청 본문 형식입니다' } },
+        '입력값 검증 실패'
+      );
+    }
+
     const result = await this.ordersService.getOrderSheet(
-      requestBody.item_id,
-      requestBody.option_item_ids,
-      requestBody.quantity,
+      dto.item_id,
+      dto.option_item_ids,
+      dto.quantity,
       userId,
-      requestBody.delivery_address_id,
-      requestBody.new_address
+      dto.delivery_address_id,
+      dto.new_address
     );
 
     return {
@@ -164,9 +247,90 @@ export class OrdersController extends Controller {
     }
   )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
-  @Response<ErrorResponse>(400, '재고가 부족합니다.', commonError.badRequest)
-  @Response<ErrorResponse>(400, '결제 검증 실패', commonError.badRequest)
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          item_id: ['item_id는 UUID 형식이어야 합니다'],
+          option_item_ids: ['option_item_ids의 각 값은 UUID 형식이어야 합니다'],
+          quantity: ['quantity는 정수여야 합니다', 'quantity는 1 이상이어야 합니다'],
+          imp_uid: ['imp_uid는 필수입니다'],
+          merchant_uid: ['merchant_uid는 필수입니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    400,
+    '재고가 부족합니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'INSUFFICIENT-STOCK',
+        reason: '재고가 부족합니다.',
+        data: 'Item: {itemName}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    400,
+    '결제 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'PAYMENT-VERIFICATION-ERROR',
+        reason: '결제 검증 실패',
+        data: '결제 정보 검증 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    400,
+    '결제 금액 불일치',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'PAYMENT-AMOUNT-MISMATCH',
+        reason: '결제 금액이 일치하지 않습니다.',
+        data: '예상 금액: {expected}, 실제 금액: {actual}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '주문 생성 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ORDER-ERROR',
+        reason: '주문 생성 실패',
+        data: '주문 생성 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async createOrder(
     @Body() requestBody: CreateOrderRequestDto,
@@ -176,21 +340,45 @@ export class OrdersController extends Controller {
       throw new BasicError(401, 'UNAUTHORIZED', '로그인이 필요합니다.', '');
     }
 
+    let dto: CreateOrderRequestDto;
+    try {
+      dto = plainToInstance(CreateOrderRequestDto, requestBody);
+      const errors = await validate(dto);
+      if (errors.length > 0) {
+        const formattedErrors: Record<string, { message: string; value?: any }> = {};
+        errors.forEach((error) => {
+          if (error.constraints) {
+            const constraintMessages = Object.values(error.constraints);
+            formattedErrors[error.property] = {
+              message: constraintMessages[0] || '입력값 검증 실패',
+              value: error.value
+            };
+          }
+        });
+        throw new ValidateError(formattedErrors, '입력값 검증 실패');
+      }
+    } catch (error) {
+      if (error instanceof ValidateError) {
+        throw error;
+      }
+      throw new ValidateError(
+        { requestBody: { message: '잘못된 요청 본문 형식입니다' } },
+        '입력값 검증 실패'
+      );
+    }
+
     const result = await this.ordersService.createOrder(
-      requestBody.item_id,
-      requestBody.option_item_ids,
-      requestBody.quantity,
+      dto.item_id,
+      dto.option_item_ids,
+      dto.quantity,
       userId,
-      requestBody.delivery_address_id,
-      requestBody.new_address,
-      requestBody.merchant_uid,
-      requestBody.imp_uid
+      dto.delivery_address_id,
+      dto.new_address,
+      dto.merchant_uid,
+      dto.imp_uid
     );
 
-    const receipt = await prisma.reciept.findFirst({
-      where: { order_id: result.order_id },
-      orderBy: { created_at: 'desc' }
-    });
+    const receipt = await this.ordersService.getReceiptByOrderId(result.order_id);
 
     return {
       resultType: 'SUCCESS',
@@ -263,7 +451,32 @@ export class OrdersController extends Controller {
     }
   )
   @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
-  @Response<ErrorResponse>(404, '주문을 찾을 수 없습니다.', commonError.notFound)
+  @Response<ErrorResponse>(
+    404,
+    '주문을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ORDER-NOT-FOUND',
+        reason: '주문을 찾을 수 없습니다.',
+        data: 'Order ID: {orderId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '주문 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ORDER-ERROR',
+        reason: '주문 조회 실패',
+        data: '주문 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getOrder(
     @Path() orderId: string,

@@ -1,13 +1,41 @@
-export interface GetOrderSheetRequestDto {
-  item_id: string;
-  option_item_ids: string[];
-  quantity: number;
+import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, ValidateNested, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class NewAddressDto {
+  @IsOptional()
+  @IsString()
+  postal_code?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  address_detail?: string;
+}
+
+export class GetOrderSheetRequestDto {
+  @IsUUID()
+  item_id!: string;
+
+  @IsArray()
+  @ArrayMinSize(0)
+  @IsUUID(undefined, { each: true })
+  option_item_ids!: string[];
+
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+
+  @IsOptional()
+  @IsUUID()
   delivery_address_id?: string;
-  new_address?: {
-    postal_code?: string;
-    address?: string;
-    address_detail?: string;
-  };
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NewAddressDto)
+  new_address?: NewAddressDto;
 }
 
 export interface GetOrderSheetResponseDto {
@@ -33,18 +61,35 @@ export interface GetOrderSheetResponseDto {
   };
 }
 
-export interface CreateOrderRequestDto {
-  item_id: string;
-  option_item_ids: string[];
-  quantity: number;
+export class CreateOrderRequestDto {
+  @IsUUID()
+  item_id!: string;
+
+  @IsArray()
+  @ArrayMinSize(0)
+  @IsUUID(undefined, { each: true })
+  option_item_ids!: string[];
+
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+
+  @IsOptional()
+  @IsUUID()
   delivery_address_id?: string;
-  new_address?: {
-    postal_code?: string;
-    address?: string;
-    address_detail?: string;
-  };
-  imp_uid: string;
-  merchant_uid: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NewAddressDto)
+  new_address?: NewAddressDto;
+
+  @IsString()
+  @IsNotEmpty()
+  imp_uid!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  merchant_uid!: string;
 }
 
 export interface CreateOrderResponseDto {

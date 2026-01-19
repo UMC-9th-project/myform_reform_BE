@@ -12,13 +12,20 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { MarketService } from './market.service.js';
-import type {
-  GetItemListResponseDto,
-  GetItemDetailResponseDto,
-  GetItemReviewsResponseDto,
-  GetItemReviewPhotosResponseDto,
-  GetReviewDetailResponseDto
+import {
+  GetItemListRequestDto,
+  GetItemReviewsRequestDto,
+  GetItemReviewPhotosRequestDto,
+  GetReviewDetailRequestDto,
+  type GetItemListResponseDto,
+  type GetItemDetailResponseDto,
+  type GetItemReviewsResponseDto,
+  type GetItemReviewPhotosResponseDto,
+  type GetReviewDetailResponseDto
 } from './market.dto.js';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { ValidateError } from 'tsoa';
 
 @Route('market')
 @Tags('Market')
@@ -42,6 +49,37 @@ export class MarketController extends Controller {
    */
   @Get('/')
   @SuccessResponse(200, '상품 목록 조회 성공')
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          categoryId: ['categoryId는 UUID 형식이어야 합니다'],
+          sort: ['sort는 popular 또는 latest여야 합니다'],
+          page: ['page는 1 이상의 정수여야 합니다'],
+          limit: ['limit는 1 이상 100 이하의 정수여야 합니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '상품 목록 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'MARKET-ERROR',
+        reason: '상품 목록 조회 실패',
+        data: '상품 목록 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemListResponseDto>>({
     resultType: 'SUCCESS',
@@ -71,6 +109,27 @@ export class MarketController extends Controller {
     @Query() limit: number = 15,
     @Header('x-user-id') userId?: string
   ): Promise<TsoaResponse<GetItemListResponseDto>> {
+    const dto = plainToInstance(GetItemListRequestDto, {
+      category_id: categoryId,
+      sort,
+      page,
+      limit
+    });
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      const formattedErrors: Record<string, { message: string; value?: any }> = {};
+      errors.forEach((error) => {
+        if (error.constraints) {
+          const constraintMessages = Object.values(error.constraints);
+          formattedErrors[error.property] = {
+            message: constraintMessages[0] || '입력값 검증 실패',
+            value: error.value
+          };
+        }
+      });
+      throw new ValidateError(formattedErrors, '입력값 검증 실패');
+    }
+
     const result = await this.marketService.getItemList(
       categoryId,
       sort,
@@ -95,7 +154,32 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}')
   @SuccessResponse(200, '상품 상세 조회 성공')
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '상품 상세 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'MARKET-ERROR',
+        reason: '상품 상세 조회 실패',
+        data: '상품 상세 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemDetailResponseDto>>({
     resultType: 'SUCCESS',
@@ -180,7 +264,49 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews')
   @SuccessResponse(200, '리뷰 목록 조회 성공')
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          page: ['page는 1 이상의 정수여야 합니다'],
+          limit: ['limit는 1 이상 100 이하의 정수여야 합니다'],
+          sort: ['sort는 latest, star_high, star_low 중 하나여야 합니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '리뷰 목록 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'MARKET-ERROR',
+        reason: '리뷰 목록 조회 실패',
+        data: '리뷰 목록 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemReviewsResponseDto>>({
     resultType: 'SUCCESS',
@@ -213,6 +339,22 @@ export class MarketController extends Controller {
     @Query() limit: number = 4,
     @Query() sort: 'latest' | 'star_high' | 'star_low' = 'latest'
   ): Promise<TsoaResponse<GetItemReviewsResponseDto>> {
+    const dto = plainToInstance(GetItemReviewsRequestDto, { page, limit, sort });
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      const formattedErrors: Record<string, { message: string; value?: any }> = {};
+      errors.forEach((error) => {
+        if (error.constraints) {
+          const constraintMessages = Object.values(error.constraints);
+          formattedErrors[error.property] = {
+            message: constraintMessages[0] || '입력값 검증 실패',
+            value: error.value
+          };
+        }
+      });
+      throw new ValidateError(formattedErrors, '입력값 검증 실패');
+    }
+
     const result = await this.marketService.getItemReviews(itemId, page, limit, sort);
 
     return {
@@ -232,7 +374,48 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews/photos')
   @SuccessResponse(200, '사진 후기 조회 성공')
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          offset: ['offset는 0 이상의 정수여야 합니다'],
+          limit: ['limit는 1 이상 100 이하의 정수여야 합니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '사진 후기 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'MARKET-ERROR',
+        reason: '사진 후기 조회 실패',
+        data: '사진 후기 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemReviewPhotosResponseDto>>({
     resultType: 'SUCCESS',
@@ -257,7 +440,23 @@ export class MarketController extends Controller {
     @Query() offset: number = 0,
     @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemReviewPhotosResponseDto>> {
-    const actualLimit = offset === 0 ? (limit || 15) : (limit || 30);
+    const dto = plainToInstance(GetItemReviewPhotosRequestDto, { offset, limit });
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      const formattedErrors: Record<string, { message: string; value?: any }> = {};
+      errors.forEach((error) => {
+        if (error.constraints) {
+          const constraintMessages = Object.values(error.constraints);
+          formattedErrors[error.property] = {
+            message: constraintMessages[0] || '입력값 검증 실패',
+            value: error.value
+          };
+        }
+      });
+      throw new ValidateError(formattedErrors, '입력값 검증 실패');
+    }
+
+    const actualLimit = offset === 0 ? (limit ?? 15) : (limit ?? 30);
     const result = await this.marketService.getItemReviewPhotos(
       itemId,
       offset,
@@ -283,8 +482,60 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews/{reviewId}')
   @SuccessResponse(200, '리뷰 상세 조회 성공')
-  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', commonError.notFound)
-  @Response<ErrorResponse>(404, '리뷰를 찾을 수 없습니다.', commonError.notFound)
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          photoIndex: ['photoIndex는 0 이상의 정수여야 합니다']
+        }
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '상품을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ITEM-NOT-FOUND',
+        reason: '상품을 찾을 수 없습니다.',
+        data: 'Item ID: {itemId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '리뷰를 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'REVIEW-NOT-FOUND',
+        reason: '리뷰를 찾을 수 없습니다.',
+        data: 'Review ID: {reviewId}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    500,
+    '리뷰 상세 조회 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'MARKET-ERROR',
+        reason: '리뷰 상세 조회 실패',
+        data: '리뷰 상세 조회 중 오류가 발생했습니다.'
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetReviewDetailResponseDto>>({
     resultType: 'SUCCESS',
@@ -311,6 +562,24 @@ export class MarketController extends Controller {
     @Path() reviewId: string,
     @Query() photoIndex?: number
   ): Promise<TsoaResponse<GetReviewDetailResponseDto>> {
+    if (photoIndex !== undefined) {
+      const dto = plainToInstance(GetReviewDetailRequestDto, { photoIndex });
+      const errors = await validate(dto);
+      if (errors.length > 0) {
+        const formattedErrors: Record<string, { message: string; value?: any }> = {};
+        errors.forEach((error) => {
+          if (error.constraints) {
+            const constraintMessages = Object.values(error.constraints);
+            formattedErrors[error.property] = {
+              message: constraintMessages[0] || '입력값 검증 실패',
+              value: error.value
+            };
+          }
+        });
+        throw new ValidateError(formattedErrors, '입력값 검증 실패');
+      }
+    }
+
     const result = await this.marketService.getReviewDetail(
       itemId,
       reviewId,

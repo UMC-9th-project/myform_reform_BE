@@ -1,5 +1,5 @@
-import prisma, { runInTransaction } from '../../config/prisma.config.js';
-import { Prisma } from '@prisma/client';
+import { runInTransaction } from '../../config/prisma.config.js';
+import { order_status_enum, target_type_enum } from '@prisma/client';
 import {
   getPortonePayment,
   type PortonePaymentInfo
@@ -9,6 +9,7 @@ import {
   InsufficientStockError,
   OrderNotFoundError,
   OrderError,
+  PaymentError,
   PaymentVerificationError,
   PaymentAmountMismatchError
 } from './orders.error.js';
@@ -19,8 +20,10 @@ import type {
   OrderResponse
 } from './orders.model.js';
 import type { GetOrderResponseDto } from './orders.dto.js';
+import { OrdersRepository } from './orders.repository.js';
 
 export class OrdersService {
+  constructor(private repository: OrdersRepository = new OrdersRepository()) {}
   /**
    * 주문번호 생성 (YYYYMMDD-XXXXX 형식)
    * 동시성 문제 방지를 위해 재시도 로직 포함
@@ -28,46 +31,42 @@ export class OrdersService {
    * @returns 주문번호 문자열 (예: "20260116-00001")
    */
   private async generateOrderNumber(createdAt: Date): Promise<string> {
-    const dateStr = createdAt.toISOString().slice(0, 10).replace(/-/g, '');
-    
-    const dayStart = new Date(createdAt);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(createdAt);
-    dayEnd.setHours(23, 59, 59, 999);
-    
-    const maxRetries = 5;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const orderCountResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*)::bigint as count
-        FROM "order"
-        WHERE "created_at" >= ${dayStart}::timestamp
-          AND "created_at" <= ${dayEnd}::timestamp
-          AND "order_number" IS NOT NULL
-      `;
+    try {
+      const dateStr = createdAt.toISOString().slice(0, 10).replace(/-/g, '');
       
-      const orderCount = Number(orderCountResult[0]?.count || 0);
-      const sequence = String(orderCount + 1).padStart(5, '0');
-      const orderNumber = `${dateStr}-${sequence}`;
+      const dayStart = new Date(createdAt);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(createdAt);
+      dayEnd.setHours(23, 59, 59, 999);
       
-      if (attempt > 0) {
-        const existing = await prisma.order.findUnique({
-          where: { order_number: orderNumber },
-          select: { order_id: true }
-        });
+      const maxRetries = 5;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const orderCount = await this.repository.countOrdersByDateRange(dayStart, dayEnd);
+        const sequence = String(orderCount + 1).padStart(5, '0');
+        const orderNumber = `${dateStr}-${sequence}`;
         
-        if (!existing) {
-          return orderNumber;
+        if (attempt > 0) {
+          const existing = await this.repository.findOrderByOrderNumber(orderNumber);
+          
+          if (!existing) {
+            return orderNumber;
+          }
+          
+          await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+          continue;
         }
         
-        await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
-        continue;
+        return orderNumber;
       }
       
-      return orderNumber;
+      const timestamp = Date.now().toString().slice(-4);
+      return `${dateStr}-${timestamp}`;
+    } catch (error) {
+      throw new OrderError(
+        `주문번호 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+        '주문번호 생성 중 데이터베이스 오류가 발생했습니다.'
+      );
     }
-    
-    const timestamp = Date.now().toString().slice(-4);
-    return `${dateStr}-${timestamp}`;
   }
 
   /**
@@ -176,102 +175,47 @@ export class OrdersService {
     orderIdOrNumber: string,
     userId: string
   ) {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      orderIdOrNumber
-    );
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        orderIdOrNumber
+      );
 
-    if (isUuid) {
-      return await prisma.order.findFirst({
-        where: {
-          order_id: orderIdOrNumber,
-          user_id: userId
-        },
-        include: {
-          owner: {
-            select: {
-              nickname: true
-            }
-          },
-          order_option: {
-            include: {
-              option_item: {
-                include: {
-                  option_group: {
-                    include: {
-                      item: {
-                        include: {
-                          item_photo: {
-                            select: {
-                              content: true,
-                              photo_order: true
-                            },
-                            orderBy: {
-                              photo_order: 'asc'
-                            },
-                            take: 1
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          reciept: {
-            orderBy: {
-              created_at: 'desc'
-            },
-            take: 1
-          }
+      if (isUuid) {
+        return await this.repository.findOrderById(orderIdOrNumber, userId);
+      } else {
+        if (!/^\d{8}-\d{5}$/.test(orderIdOrNumber)) {
+          throw new OrderError(
+            '주문 조회 실패',
+            `잘못된 주문 ID 또는 주문번호 형식입니다: ${orderIdOrNumber}`
+          );
         }
-      });
-    } else {
-      return await prisma.order.findFirst({
-        where: {
-          order_number: orderIdOrNumber,
-          user_id: userId
-        },
-        include: {
-          owner: {
-            select: {
-              nickname: true
-            }
-          },
-          order_option: {
-            include: {
-              option_item: {
-                include: {
-                  option_group: {
-                    include: {
-                      item: {
-                        include: {
-                          item_photo: {
-                            select: {
-                              content: true,
-                              photo_order: true
-                            },
-                            orderBy: {
-                              photo_order: 'asc'
-                            },
-                            take: 1
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          reciept: {
-            orderBy: {
-              created_at: 'desc'
-            },
-            take: 1
-          }
+        return await this.repository.findOrderByNumber(orderIdOrNumber, userId);
+      }
+    } catch (error) {
+      if (error instanceof OrderError) {
+        throw error;
+      }
+      
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        if (errorMessage.includes('Invalid') || errorMessage.includes('UUID') || errorMessage.includes('Inconsistent column data')) {
+          throw new OrderError(
+            '주문 조회 실패',
+            `잘못된 주문 ID 또는 주문번호 형식입니다: ${orderIdOrNumber}`
+          );
         }
-      });
+        if (errorMessage.includes('Record to update not found') || errorMessage.includes('Unique constraint')) {
+          throw new OrderError(
+            '주문 조회 실패',
+            `주문을 찾을 수 없습니다: ${orderIdOrNumber}`
+          );
+        }
+      }
+      
+      throw new OrderError(
+        '주문 조회 실패',
+        `주문 ID 또는 번호: ${orderIdOrNumber}`
+      );
     }
   }
 
@@ -290,52 +234,25 @@ export class OrdersService {
       address_detail?: string;
     }
   ): Promise<OrderSheetResponse> {
-    const item = await prisma.item.findUnique({
-      where: { item_id: itemId },
-      include: {
-        owner: {
-          select: {
-            nickname: true
-          }
-        },
-        item_photo: {
-          select: {
-            content: true,
-            photo_order: true
-          },
-          orderBy: {
-            photo_order: 'asc'
-          },
-          take: 1
-        },
-        option_group: {
-          include: {
-            option_item: {
-              where: {
-                option_item_id: { in: optionItemIds }
-              }
-            }
-          }
-        }
-      }
-    });
+    try {
+      const item = await this.repository.findItemWithOptionGroups(itemId, optionItemIds);
 
-    if (!item) {
-      throw new ItemNotFoundError(itemId);
-    }
-
-    const optionItems = await prisma.option_item.findMany({
-      where: {
-        option_item_id: { in: optionItemIds }
-      },
-      include: {
-        option_group: {
-          select: {
-            name: true
-          }
-        }
+      if (!item) {
+        throw new ItemNotFoundError(itemId);
       }
-    });
+
+      const optionItems = await this.repository.findOptionItemsByIds(optionItemIds);
+
+      if (optionItems.length !== optionItemIds.length) {
+        throw new ItemNotFoundError('존재하지 않는 옵션이 포함되어 있습니다.');
+      }
+
+      const invalidOptions = optionItems.filter(
+        (opt: { option_group: { item_id: string } }) => opt.option_group.item_id !== itemId
+      );
+      if (invalidOptions.length > 0) {
+        throw new ItemNotFoundError('요청한 옵션이 해당 상품의 옵션이 아닙니다.');
+      }
 
     for (const optionItem of optionItems) {
       if (optionItem.quantity !== null && optionItem.quantity < quantity) {
@@ -359,64 +276,74 @@ export class OrdersService {
     const deliveryFee = item.delivery ? Number(item.delivery) : 0;
     const totalAmount = productAmount + deliveryFee;
 
-    let deliveryAddress = null;
-    if (deliveryAddressId) {
-      const address = await prisma.delivery_address.findFirst({
-        where: {
-          delivery_address_id: deliveryAddressId,
-          user_id: userId
+      let deliveryAddress = null;
+      if (deliveryAddressId) {
+        const address = await this.repository.findDeliveryAddressById(deliveryAddressId, userId);
+        if (address) {
+          deliveryAddress = {
+            delivery_address_id: address.delivery_address_id,
+            postal_code: address.postal_code,
+            address: address.address,
+            address_detail: address.address_detail
+          };
         }
-      });
-      if (address) {
+      } else if (newAddress) {
         deliveryAddress = {
-          delivery_address_id: address.delivery_address_id,
-          postal_code: address.postal_code,
-          address: address.address,
-          address_detail: address.address_detail
+          postal_code: newAddress.postal_code || null,
+          address: newAddress.address || null,
+          address_detail: newAddress.address_detail || null
         };
+      } else {
+        const defaultAddress = await this.repository.findDefaultDeliveryAddress(userId);
+        if (defaultAddress) {
+          deliveryAddress = {
+            delivery_address_id: defaultAddress.delivery_address_id,
+            postal_code: defaultAddress.postal_code,
+            address: defaultAddress.address,
+            address_detail: defaultAddress.address_detail
+          };
+        }
       }
-    } else if (newAddress) {
-      deliveryAddress = {
-        postal_code: newAddress.postal_code || null,
-        address: newAddress.address || null,
-        address_detail: newAddress.address_detail || null
+
+      const orderNumber = await this.generateOrderNumber(new Date());
+
+      return {
+        order_number: orderNumber,
+        order_item: {
+          reformer_nickname: item.owner.nickname || '',
+          thumbnail: item.item_photo[0]?.content || '',
+          title: item.title || '',
+          selected_options: selectedOptions,
+          quantity,
+          price: productAmount
+        },
+        delivery_address: deliveryAddress,
+        payment: {
+          product_amount: productAmount,
+          delivery_fee: deliveryFee,
+          total_amount: totalAmount
+        }
       };
-    } else {
-      const defaultAddress = await prisma.delivery_address.findFirst({
-        where: {
-          user_id: userId,
-          is_default: true
+    } catch (error) {
+      if (
+        error instanceof ItemNotFoundError ||
+        error instanceof InsufficientStockError ||
+        error instanceof OrderError
+      ) {
+        throw error;
+      }
+      if (error instanceof Error) {
+        const errMsg = error.message;
+        if (errMsg.includes('Invalid') || errMsg.includes('UUID') || errMsg.includes('Inconsistent column data')) {
+          throw new ItemNotFoundError(itemId);
         }
-      });
-      if (defaultAddress) {
-        deliveryAddress = {
-          delivery_address_id: defaultAddress.delivery_address_id,
-          postal_code: defaultAddress.postal_code,
-          address: defaultAddress.address,
-          address_detail: defaultAddress.address_detail
-        };
       }
+      
+      throw new OrderError(
+        '주문서 조회 실패',
+        error instanceof Error ? error.message : '알 수 없는 오류'
+      );
     }
-
-    const orderNumber = await this.generateOrderNumber(new Date());
-
-    return {
-      order_number: orderNumber,
-      order_item: {
-        reformer_nickname: item.owner.nickname || '',
-        thumbnail: item.item_photo[0]?.content || '',
-        title: item.title || '',
-        selected_options: selectedOptions,
-        quantity,
-        price: productAmount
-      },
-      delivery_address: deliveryAddress,
-      payment: {
-        product_amount: productAmount,
-        delivery_fee: deliveryFee,
-        total_amount: totalAmount
-      }
-    };
   }
 
   /**
@@ -436,49 +363,29 @@ export class OrdersService {
     merchantUid?: string,
     impUid?: string
   ): Promise<CreateOrderResponse> {
-    if (!impUid) {
-      throw new OrderError(
-        '결제 정보가 필요합니다.',
-        'imp_uid는 필수입니다.'
-      );
-    }
-
-    if (!merchantUid) {
-      throw new OrderError(
-        '주문 번호가 필요합니다.',
-        'merchant_uid(order_number)는 필수입니다.'
-      );
-    }
-
-    const item = await prisma.item.findUnique({
-      where: { item_id: itemId },
-      include: {
-        owner: {
-          select: {
-            owner_id: true
-          }
-        }
+    try {
+      if (!impUid) {
+        throw new OrderError(
+          '결제 정보가 필요합니다.',
+          'imp_uid는 필수입니다.'
+        );
       }
-    });
 
-    if (!item) {
-      throw new ItemNotFoundError(itemId);
-    }
+      if (!merchantUid) {
+        throw new OrderError(
+          '주문 번호가 필요합니다.',
+          'merchant_uid(order_number)는 필수입니다.'
+        );
+      }
 
-    const result = await runInTransaction(async () => {
-      const optionItems = await prisma.option_item.findMany({
-        where: {
-          option_item_id: { in: optionItemIds }
-        },
-        include: {
-          option_group: {
-            select: {
-              item_id: true,
-              option_group_id: true
-            }
-          }
-        }
-      });
+      const item = await this.repository.findItemById(itemId);
+
+      if (!item) {
+        throw new ItemNotFoundError(itemId);
+      }
+
+      const result = await runInTransaction(async () => {
+        const optionItems = await this.repository.findOptionItemsByIds(optionItemIds);
 
       if (optionItems.length !== optionItemIds.length) {
         throw new ItemNotFoundError('존재하지 않는 옵션이 포함되어 있습니다.');
@@ -508,32 +415,15 @@ export class OrdersService {
         .filter((item) => item.quantity !== null)
         .map((item) => item.option_item_id);
 
-      if (optionItemIdsWithQuantity.length > 0) {
-        // 단일 쿼리로 모든 옵션 아이템 재고 일괄 차감
-        const updateResult = await prisma.$executeRaw(
-          Prisma.sql`
-            UPDATE option_item
-            SET quantity = quantity - ${quantity}
-            WHERE option_item_id = ANY(${optionItemIdsWithQuantity}::uuid[])
-              AND quantity >= ${quantity}
-              AND quantity IS NOT NULL
-          `
-        );
+        if (optionItemIdsWithQuantity.length > 0) {
+          const updateResult = await this.repository.updateOptionItemQuantities(
+            optionItemIdsWithQuantity,
+            quantity
+          );
 
-        // 업데이트된 행 수가 예상과 다르면 재고 부족 검증
-        if (updateResult !== optionItemIdsWithQuantity.length) {
-          const updatedItems = await prisma.option_item.findMany({
-            where: {
-              option_item_id: { in: optionItemIdsWithQuantity }
-            },
-            select: {
-              option_item_id: true,
-              name: true,
-              quantity: true
-            }
-          });
+          if (updateResult !== optionItemIdsWithQuantity.length) {
+            const updatedItems = await this.repository.findUpdatedOptionItems(optionItemIdsWithQuantity);
 
-          // 업데이트 실패한 아이템 식별 및 예외 처리
           for (const optionItem of optionItems) {
             if (optionItem.quantity !== null) {
               const updatedItem = updatedItems.find(
@@ -579,93 +469,71 @@ export class OrdersService {
         0
       );
 
-      let finalDeliveryAddressId: string | undefined = deliveryAddressId;
-      if (!finalDeliveryAddressId && newAddress) {
-        if (!newAddress.postal_code || !newAddress.address) {
-          throw new OrderError(
-            '배송지 정보가 올바르지 않습니다.',
-            '우편번호와 주소는 필수 입력 항목입니다.'
-          );
-        }
+        let finalDeliveryAddressId: string | undefined = deliveryAddressId;
+        if (!finalDeliveryAddressId && newAddress) {
+          if (!newAddress.postal_code || !newAddress.address) {
+            throw new OrderError(
+              '배송지 정보가 올바르지 않습니다.',
+              '우편번호와 주소는 필수 입력 항목입니다.'
+            );
+          }
 
-        const newDeliveryAddress = await prisma.delivery_address.create({
-          data: {
+          const newDeliveryAddress = await this.repository.createDeliveryAddress({
             user_id: userId,
             owner_id: item.owner_id,
             postal_code: newAddress.postal_code,
             address: newAddress.address,
             address_detail: newAddress.address_detail || null,
             is_default: false
+          });
+          finalDeliveryAddressId = newDeliveryAddress.delivery_address_id;
+        } else if (finalDeliveryAddressId) {
+          const address = await this.repository.findDeliveryAddressById(finalDeliveryAddressId, userId);
+          if (!address) {
+            throw new OrderError(
+              '배송지 정보가 올바르지 않습니다.',
+              '접근할 수 없는 배송지입니다.'
+            );
           }
-        });
-        finalDeliveryAddressId = newDeliveryAddress.delivery_address_id;
-      } else if (finalDeliveryAddressId) {
-        const address = await prisma.delivery_address.findFirst({
-          where: {
-            delivery_address_id: finalDeliveryAddressId,
-            user_id: userId
-          }
-        });
-        if (!address) {
-          throw new OrderError(
-            '배송지 정보가 올바르지 않습니다.',
-            '접근할 수 없는 배송지입니다.'
-          );
         }
-      }
 
       const basePrice = item.price ? Number(item.price) : 0;
       const productAmount = (basePrice + extraPriceSum) * quantity;
       const deliveryFee = item.delivery ? Number(item.delivery) : 0;
       const totalAmount = productAmount + deliveryFee;
 
-      const orderNumber = merchantUid;
-      const existingOrder = await prisma.order.findUnique({
-        where: { order_number: orderNumber },
-        select: { order_id: true }
-      });
-      
-      if (existingOrder) {
-        throw new OrderError(
-          '이미 사용된 주문 번호입니다.',
-          `order_number: ${orderNumber}`
-        );
-      }
+        const orderNumber = merchantUid;
+        const existingOrder = await this.repository.findOrderByOrderNumber(orderNumber);
+        
+        if (existingOrder) {
+          throw new OrderError(
+            '이미 사용된 주문 번호입니다.',
+            `order_number: ${orderNumber}`
+          );
+        }
 
-      const order = await prisma.order.create({
-        data: {
+        const order = await this.repository.createOrder({
           user_id: userId,
           owner_id: item.owner_id,
-          target_type: 'ITEM',
+          target_type: target_type_enum.ITEM,
           target_id: itemId,
           user_address: finalDeliveryAddressId,
           price: productAmount,
           delivery_fee: deliveryFee,
           amount: totalAmount,
-          status: 'PAID',
+          status: order_status_enum.PAID,
           order_number: orderNumber
-        }
-      });
-
-
-      if (optionItemIds.length > 0) {
-        await prisma.order_option.createMany({
-          data: optionItemIds.map((optionItemId) => ({
-            order_id: order.order_id,
-            option_item_id: optionItemId
-          }))
         });
-      }
 
-      const receipt = await prisma.reciept.create({
-        data: {
+        await this.repository.createOrderOptions(order.order_id, optionItemIds);
+
+        const receipt = await this.repository.createReceipt({
           order_id: order.order_id,
           payment_status: 'paid',
           payment_method: 'card',
           payment_gateway: 'portone',
           transaction: null
-        }
-      });
+        });
 
       return {
         order_id: order.order_id,
@@ -700,13 +568,19 @@ export class OrdersService {
               await new Promise((resolve) => setTimeout(resolve, delayMs));
               continue;
             } else {
-              throw error;
+              throw new PaymentError(
+                '결제 정보 조회 중 오류가 발생했습니다.',
+                error.message || '포트원 API 호출 실패'
+              );
             }
           }
         }
 
         if (!paymentInfo && lastError) {
-          throw lastError;
+          throw new PaymentError(
+            '결제 정보 조회 중 오류가 발생했습니다.',
+            lastError.message || '포트원 API 호출 실패'
+          );
         }
 
         if (!paymentInfo) {
@@ -749,36 +623,21 @@ export class OrdersService {
             })
           : impUid;
 
-        await prisma.reciept.update({
-          where: { reciept_id: result.receipt_id },
-          data: {
-            payment_status: 'paid',
-            payment_method: paymentInfo.pay_method || 'card',
-            payment_gateway: paymentInfo.pg_provider || 'portone',
-            transaction: cardInfo
-          }
+        await this.repository.updateReceipt(result.receipt_id, {
+          payment_status: 'paid',
+          payment_method: paymentInfo.pay_method || 'card',
+          payment_gateway: paymentInfo.pg_provider || 'portone',
+          transaction: cardInfo
         });
 
-        await prisma.cart.deleteMany({
-          where: {
-            user_id: userId,
-            item_id: itemId
-          }
-        });
+        await this.repository.deleteCartItems(userId, itemId);
       } catch (error: any) {
         try {
           await runInTransaction(async () => {
-            await prisma.order.update({
-              where: { order_id: result.order_id },
-              data: { status: 'CANCELLED' }
-            });
+            await this.repository.updateOrderStatus(result.order_id, order_status_enum.CANCELLED);
 
-            await prisma.reciept.update({
-              where: { reciept_id: result.receipt_id },
-              data: { payment_status: 'cancelled' }
-            });
+            await this.repository.updateReceipt(result.receipt_id, { payment_status: 'cancelled' });
 
-            // 단일 쿼리로 모든 옵션 아이템 재고 일괄 복구
             if (optionItemIds.length > 0) {
               let retryCount = 0;
               const maxRetries = 3;
@@ -786,13 +645,9 @@ export class OrdersService {
 
               while (retryCount < maxRetries && !restoreSuccess) {
                 try {
-                  const updateResult = await prisma.$executeRaw(
-                    Prisma.sql`
-                      UPDATE option_item
-                      SET quantity = quantity + ${quantity}
-                      WHERE option_item_id = ANY(${optionItemIds}::uuid[])
-                        AND quantity IS NOT NULL
-                    `
+                  const updateResult = await this.repository.restoreOptionItemQuantities(
+                    optionItemIds,
+                    quantity
                   );
                   
                   if (updateResult > 0) {
@@ -826,17 +681,45 @@ export class OrdersService {
         }
         
         throw error;
-    }
-
-    return {
-      order_id: result.order_id,
-      payment_required: false,
-      payment_info: {
-        imp_uid: impUid,
-        merchant_uid: merchantUid,
-        amount: result.total_amount
       }
-    };
+
+      return {
+        order_id: result.order_id,
+        payment_required: false,
+        payment_info: {
+          imp_uid: impUid,
+          merchant_uid: merchantUid,
+          amount: result.total_amount
+        }
+      };
+    } catch (error) {
+      if (
+        error instanceof OrderError ||
+        error instanceof ItemNotFoundError ||
+        error instanceof InsufficientStockError ||
+        error instanceof PaymentError ||
+        error instanceof PaymentVerificationError ||
+        error instanceof PaymentAmountMismatchError
+      ) {
+        throw error;
+      }
+      let errorMessage = '알 수 없는 오류';
+      if (error instanceof Error) {
+        const errMsg = error.message;
+        if (errMsg.includes('Invalid') || errMsg.includes('UUID') || errMsg.includes('Inconsistent column data')) {
+          errorMessage = '잘못된 입력 형식입니다';
+        } else if (errMsg.includes('Record to update not found') || errMsg.includes('Unique constraint')) {
+          errorMessage = '데이터를 찾을 수 없습니다';
+        } else {
+          errorMessage = errMsg.split('\n')[0];
+        }
+      }
+      
+      throw new OrderError(
+        '주문 생성 실패',
+        errorMessage
+      );
+    }
   }
 
   /**
@@ -845,33 +728,39 @@ export class OrdersService {
    * @param userId 사용자 ID
    */
   async getOrder(orderIdOrNumber: string, userId: string): Promise<GetOrderResponseDto> {
-    const order = await this.findOrderByIdOrNumber(orderIdOrNumber, userId);
-
-    if (!order) {
-      throw new OrderNotFoundError(orderIdOrNumber);
-    }
-
-    if (order.user_id !== userId) {
-      throw new OrderNotFoundError(orderIdOrNumber);
-    }
-
-    let deliveryAddress = {
-      postal_code: null as string | null,
-      address: null as string | null,
-      address_detail: null as string | null
-    };
-    if (order.user_address) {
-      const address = await prisma.delivery_address.findUnique({
-        where: { delivery_address_id: order.user_address }
-      });
-      if (address) {
-        deliveryAddress = {
-          postal_code: address.postal_code,
-          address: address.address,
-          address_detail: address.address_detail
-        };
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderIdOrNumber);
+      const isOrderNumber = /^\d{8}-\d{5}$/.test(orderIdOrNumber);
+      
+      if (!isUuid && !isOrderNumber) {
+        throw new OrderNotFoundError(orderIdOrNumber);
       }
-    }
+
+      const order = await this.findOrderByIdOrNumber(orderIdOrNumber, userId);
+
+      if (!order) {
+        throw new OrderNotFoundError(orderIdOrNumber);
+      }
+
+      if (order.user_id !== userId) {
+        throw new OrderNotFoundError(orderIdOrNumber);
+      }
+
+      let deliveryAddress = {
+        postal_code: null as string | null,
+        address: null as string | null,
+        address_detail: null as string | null
+      };
+      if (order.user_address) {
+        const address = await this.repository.findDeliveryAddressByIdDetailed(order.user_address);
+        if (address) {
+          deliveryAddress = {
+            postal_code: address.postal_code,
+            address: address.address,
+            address_detail: address.address_detail
+          };
+        }
+      }
 
     const orderItems = order.order_option.map((orderOption: {
       option_item: {
@@ -912,17 +801,58 @@ export class OrdersService {
     const firstItem = orderItems.length > 0 ? orderItems[0] : null;
     const remainingItemsCount = Math.max(0, orderItems.length - 1);
 
-    return {
-      order_id: order.order_id,
-      order_number: order.order_number || order.order_id,
-      status: order.status || null,
-      delivery_address: deliveryAddress,
-      first_item: firstItem,
-      remaining_items_count: remainingItemsCount,
-      order_items: orderItems,
-      payment: paymentInfo,
-      total_amount: order.amount ? Number(order.amount) : 0,
-      delivery_fee: order.delivery_fee ? Number(order.delivery_fee) : 0
-    };
+      return {
+        order_id: order.order_id,
+        order_number: order.order_number || order.order_id,
+        status: order.status || null,
+        delivery_address: deliveryAddress,
+        first_item: firstItem,
+        remaining_items_count: remainingItemsCount,
+        order_items: orderItems,
+        payment: paymentInfo,
+        total_amount: order.amount ? Number(order.amount) : 0,
+        delivery_fee: order.delivery_fee ? Number(order.delivery_fee) : 0
+      };
+    } catch (error) {
+      if (error instanceof OrderNotFoundError || error instanceof OrderError) {
+        throw error;
+      }
+      
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        if (errorMessage.includes('Invalid') || errorMessage.includes('UUID') || errorMessage.includes('Inconsistent column data')) {
+          throw new OrderNotFoundError(orderIdOrNumber);
+        }
+      }
+      
+      throw new OrderError(
+        '주문 조회 실패',
+        `주문 ID 또는 번호: ${orderIdOrNumber}`
+      );
+    }
+  }
+
+  /**
+   * 주문 ID로 영수증 조회
+   */
+  async getReceiptByOrderId(orderId: string) {
+    try {
+      return await this.repository.findReceiptByOrderId(orderId);
+    } catch (error) {
+      let errorMessage = '알 수 없는 오류';
+      if (error instanceof Error) {
+        const errMsg = error.message;
+        if (errMsg.includes('Invalid') || errMsg.includes('UUID') || errMsg.includes('Inconsistent column data')) {
+          errorMessage = '잘못된 주문 ID 형식입니다';
+        } else {
+          errorMessage = errMsg.split('\n')[0];
+        }
+      }
+      
+      throw new OrderError(
+        '영수증 조회 실패',
+        errorMessage
+      );
+    }
   }
 }
