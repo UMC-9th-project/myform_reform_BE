@@ -28,7 +28,7 @@ import RequestHandler from 'express';
 import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
 
 @Tags('Reform Router')
-@Route('/api/v1/reform')
+@Route('reform')
 export class ReformController extends Controller {
   private reformService: ReformService;
   constructor() {
