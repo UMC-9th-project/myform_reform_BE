@@ -7,7 +7,16 @@ const config = {
     '**/src/routes/**/*.spec.ts' // src 추가
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts']
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1'
+  },
+  extensionsToTreatAsEsm: ['.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  }
 };
 
 export default config;
