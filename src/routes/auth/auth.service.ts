@@ -1,4 +1,4 @@
-import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, NicknameDuplicateError, VerificationRequiredError, EmailDuplicateError } from './auth.error.js';
+import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, VerificationRequiredError, EmailDuplicateError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos} from '../../utils/validators.js';
@@ -11,6 +11,7 @@ import prisma from '../../config/prisma.config.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { AuthModel } from './auth.model.js';
 import { S3 } from '../../config/s3.js';
+import { UsersService } from '../users/users.service.js';
 
 dotenv.config();
 
@@ -23,9 +24,12 @@ export class AuthService {
   // 솔트 라운드 10으로 고정
   private readonly SALT_ROUNDS = 10;
   private authModel: AuthModel;
+  private usersService: UsersService;
   
   constructor() {
     this.authModel = new AuthModel();
+    // UsersService 인스턴스 생성 (checkNicknameDuplicate 사용 목적)
+    this.usersService = new UsersService();
   }
 
   async sendSms(phoneNumber: string): Promise<void>{
@@ -171,7 +175,7 @@ export class AuthService {
       ...rest,
       phoneNumber: cleanPhoneNumber,
       hashedPassword: hashedPassword,
-      registration_type: registration_type,
+      registration_type: registration_type
     };
 
     // DB에 회원 정보 저장 및 JWT 토큰 생성 후 반환
@@ -211,7 +215,7 @@ export class AuthService {
       hashedPassword: hashedPassword,
       phoneNumber: cleanPhoneNumber,
       registration_type: registration_type,
-      portfolioPhotos: portfolioUrls,
+      portfolioPhotos: portfolioUrls
     };
 
     return await runInTransaction(async () => {
@@ -288,7 +292,7 @@ export class AuthService {
     await this.ensurePhoneVerified(phoneNumber);
 
     // 닉네임 중복 검증
-    await this.checkNicknameDuplicate(nickname);
+    await this.usersService.checkNicknameDuplicate(nickname);
 
     // 이메일 중복 검증
     await this.checkEmailDuplicate(email, role);
@@ -306,23 +310,6 @@ export class AuthService {
     const verified = await redisClient.get(`verified:${phoneNumber}`);
     if (!verified){
       throw new VerificationRequiredError('휴대폰 인증이 완료되지 않았거나 만료되었습니다.');
-    }
-  }
-
-  // 닉네임 중복 검증
-  private async checkNicknameDuplicate(nickname: string): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: {
-        nickname: nickname
-      }
-    });
-    const reformer = await prisma.owner.findUnique({
-      where: {
-        nickname: nickname
-      }
-    });
-    if (user || reformer){
-      throw new NicknameDuplicateError('이미 존재하는 닉네임입니다.');
     }
   }
 

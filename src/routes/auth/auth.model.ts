@@ -20,19 +20,19 @@ export class AuthModel {
         name: name,
         nickname: nickname,
         phone: phoneNumber,
-        privacy_opt_in_at: privacyPolicy ? new Date() : null,
-      },
+        privacy_opt_in_at: privacyPolicy ? new Date() : null
+      }
     });
     
     // Social 회원가입
     if (registration_type !== 'LOCAL') {
-    await this.prisma.social_account.create({
-      data: {
-        provider: registration_type,
-        provider_id: oauthId as string,
-        role: dbRole,
-        user_id: user.user_id,
-        },
+      await this.prisma.social_account.create({
+        data: {
+          provider: registration_type,
+          provider_id: oauthId as string,
+          role: dbRole,
+          user_id: user.user_id
+        }
       });
     }
 
@@ -40,7 +40,7 @@ export class AuthModel {
       id: user.user_id,
       email: user.email,
       nickname: user.nickname,
-      role: dbRole === 'USER' ? 'user' : 'reformer',
+      role: dbRole === 'USER' ? 'user' : 'reformer'
     } as UserCreateResponseDto;
   }
 
@@ -56,8 +56,8 @@ export class AuthModel {
         name: name,
         nickname: nickname,
         phone: phoneNumber,
-        privacy_opt_in_at: privacyPolicy ? new Date() : null,
-      },
+        privacy_opt_in_at: privacyPolicy ? new Date() : null
+      }
     });
     const ownerId = owner.owner_id;
 
@@ -67,19 +67,19 @@ export class AuthModel {
         owner_id : ownerId,
         portfolio : description,
         photo : portfolioPhotos as string[],
-        business_number : businessNumber as string,
-      },
+        business_number : businessNumber as string
+      }
     });
 
     // 소셜 계정 테이블에 데이터 생성
     if (registration_type !== 'LOCAL') {
-    await this.prisma.social_account.create({
+      await this.prisma.social_account.create({
         data: {
           provider: registration_type,
           provider_id: oauthId as string,
           role: dbRole,
-          owner_id: owner.owner_id,
-        },
+          owner_id: owner.owner_id
+        }
       });
     }
     return {
@@ -87,7 +87,7 @@ export class AuthModel {
       email: owner.email,
       nickname: owner.nickname,
       role: dbRole === 'USER' ? 'user' : 'reformer',
-      auth_status: owner.status,
+      auth_status: owner.status
     } as OwnerCreateResponseDto;
   }
 }

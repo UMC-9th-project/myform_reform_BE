@@ -11,7 +11,8 @@ import {
   Request,
   Query,
   FormField,
-  UploadedFiles
+  UploadedFiles,
+  Path
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
@@ -19,6 +20,7 @@ import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, K
 import express from 'express';
 import passport from './passport.js';
 import { KakaoAuthError, UnauthorizedError } from './auth.error.js';
+import { CheckNicknameResponse } from '../users/users.dto.js';
 
 @Route('auth')
 @Tags('Auth')
@@ -142,6 +144,12 @@ export class AuthController extends Controller {
     });
   }
 
+
+  /**
+   * 
+   * @param req 
+   * @returns 
+   */
   @SuccessResponse(200, '로그아웃 성공')
   @Example<ResponseHandler<LogoutResponse>>({
     resultType: 'SUCCESS',
@@ -172,8 +180,8 @@ export class AuthController extends Controller {
         id: 'userId',
         email: 'userEmail',
         nickname: 'userNickname',
-        role: 'user',
-        },
+        role: 'user'
+      },
       accessToken: 'accessToken',
       refreshToken: 'refreshToken'
     }
@@ -183,9 +191,13 @@ export class AuthController extends Controller {
   public async signupUser(
     @Body() requestBody: UserSignupRequest): Promise<TsoaResponse<UserSignupResponse>> {
     const result = await this.authService.signupUser(requestBody);
-    return new ResponseHandler<UserSignupResponse>(result)
+    return new ResponseHandler<UserSignupResponse>(result);
   }
 
+
+  /**
+   * 리폼러로 회원가입 합니다.
+   */
   @SuccessResponse(201, '리폼러 회원가입 성공')
   @Example<ResponseHandler<ReformerSignupResponse>>({
     resultType: 'SUCCESS',
@@ -205,11 +217,11 @@ export class AuthController extends Controller {
   @Post('signup/reformer')
   public async signupReformer(
   @FormField() data: string,
-  @UploadedFiles("portfolios") portfolioPhotos: Express.Multer.File[]
+  @UploadedFiles('portfolios') portfolioPhotos: Express.Multer.File[]
   ): Promise<TsoaResponse<ReformerSignupResponse>> {
     // JSON 문자열을 DTO 객체로 반환
     const requestBody: ReformerSignupRequest = JSON.parse(data);
     const result = await this.authService.signupReformer(requestBody, portfolioPhotos);
-    return new ResponseHandler<ReformerSignupResponse>(result)
+    return new ResponseHandler<ReformerSignupResponse>(result);
   }
 }

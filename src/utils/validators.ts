@@ -21,24 +21,24 @@ export const validateTermsAgreement = (over14YearsOld: boolean, termsOfService: 
   if (!over14YearsOld || !termsOfService){
     throw new InputValidationError('필수 약관에 모두 동의하지 않았습니다.');
   }
-}
+};
 
 export const validateEmail = (email: string): void => {
   const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)){
     throw new InputValidationError(`유효하지 않은 이메일 형식입니다. 입력받은 이메일 : ${email}`);
   }
-}
+};
 
 export const validateNickname = (
   nickname: string
-): void => {
-  // 닉네임 규칙 : 영문, 한글, 숫자만 허용 띄어쓰기 특수문자 비허용, 2자 이상 10자 이하
-  const nicknameRegex = /^[a-zA-Z0-9가-힣]{2,10}$/;
+): void => {  
+  // 닉네임 규칙 : 영문, 한글, 숫자만 허용 특수문자 비허용, 숫자 단독 비허용, 1자 이상 10자 이하, 공백 허용 (단, 맨 앞뒤 공백 불허)
+  const nicknameRegex = /^(?!\s)(?!.*\s$)(?=.*[a-zA-Z가-힣])[a-zA-Z0-9가-힣\s]{1,10}$/;
   if (!nicknameRegex.test(nickname)){
     throw new InputValidationError(`유효하지 않은 닉네임 형식입니다. 입력받은 닉네임 : ${nickname}`);
   }
-}
+};
 
 export const validatePassword = (password: string): void => {
   // 영문, 숫자, 특수문자가 들어간 8자 이상 32자 이하 조합
@@ -46,7 +46,7 @@ export const validatePassword = (password: string): void => {
   if (!passwordRegex.test(password)){
     throw new InputValidationError(`유효하지 않은 비밀번호 형식입니다. 입력받은 비밀번호 : ${password}`);
   }
-}
+};
 
 export const validateRegistrationType = (
   registration_type: 'LOCAL' | 'KAKAO',
@@ -71,16 +71,16 @@ export const validateBusinessNumber = (businessNumber: string): void => {
   if (!/^[0-9]{3}-[0-9]{2}-[0-9]{5}$/.test(businessNumber)){
     throw new InvalidBusinessNumberError(`${businessNumber} 는 올바른 사업자 번호 형식이 아닙니다.`);
   }
-}
+};
 
 export const validateDescription = (description: string): void => {
   if (!description || description.length < 1 || description.length > 500){
     throw new InvalidDescriptionLengthError('자기 소개의 길이가 적절하지 않습니다. 1자 이상 500자 이하로 입력해주세요.');
   }
-}
+};
 
 export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]): void => {
   if (portfolioPhotos.length === 0 || portfolioPhotos.length > 9){
     throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
   }
-}
+};
