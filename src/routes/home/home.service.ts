@@ -40,6 +40,9 @@ export class HomeService {
     try {
       return await this.repository.findUserById(userId);
     } catch (error) {
+      if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('UUID') || error.message.includes('Inconsistent column data'))) {
+        return null;
+      }
       throw new UserSessionError(`사용자 정보 조회 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     }
   }
@@ -48,6 +51,9 @@ export class HomeService {
     try {
       return await this.repository.findOwnerById(userId);
     } catch (error) {
+      if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('UUID') || error.message.includes('Inconsistent column data'))) {
+        return null;
+      }
       throw new UserSessionError(`오너 정보 조회 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     }
   }

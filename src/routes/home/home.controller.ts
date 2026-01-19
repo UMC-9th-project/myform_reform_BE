@@ -10,7 +10,10 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { HomeService } from './home.service.js';
-import { GetHomeResponseDto, AuthUser, HomeDataResponseDto } from './home.dto.js';
+import { AuthUser, HomeDataResponseDto, GetHomeRequestDto } from './home.dto.js';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { ValidateError } from 'tsoa';
 
 @Route('home')
 @Tags('Main Page')
@@ -194,6 +197,22 @@ export class HomeController extends Controller {
       success: null
     }
   )
+  @Response<ErrorResponse>(
+    400,
+    '입력값 검증 실패',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: '400',
+        reason: '입력값 검증 실패',
+        data: {
+          userId: ['userId는 UUID 형식이어야 합니다'],
+          role: ['role은 USER 또는 OWNER여야 합니다']
+        }
+      },
+      success: null
+    }
+  )
   @Response<ErrorResponse>(500, '서버 오류', commonError.serverError)
   public async getHome(
     @Header('x-user-id') userId?: string,
@@ -205,6 +224,27 @@ export class HomeController extends Controller {
     // TODO: JWT 미들웨어 구현 후 이 부분 제거
     const effectiveUserId = userId || queryUserId;
     const effectiveRole = role || queryRole;
+
+    const requestDto = plainToInstance(GetHomeRequestDto, {
+      userId: effectiveUserId,
+      role: effectiveRole
+    });
+
+    const errors = await validate(requestDto);
+    if (errors.length > 0) {
+      const errorFields: Record<string, { message: string; value?: any }> = {};
+      errors.forEach((error) => {
+        if (error.constraints) {
+          const firstConstraint = Object.values(error.constraints)[0];
+          errorFields[error.property] = {
+            message: firstConstraint || '입력값 검증 실패',
+            value: error.value
+          };
+        }
+      });
+      throw new ValidateError(errorFields, '입력값 검증 실패');
+    }
+
     const authUser = this.extractAuthUser(effectiveUserId, effectiveRole);
 
     const homeData: HomeDataResponseDto = await this.homeService.getHomeData(authUser);
