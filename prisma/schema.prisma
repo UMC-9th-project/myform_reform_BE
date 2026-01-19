@@ -52,6 +52,33 @@ model chat_room {
 }
 
 model chat_message {
+  message_id   String        @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  chat_room_id String        @db.Uuid
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  message_type message_type?
+  payload      Json?
+  sender_id    String?       @db.Uuid
+  sender_type  sender_type?
+  text_content String?
+  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
+
+  @@index([chat_room_id])
+}
+
+model chat_room {
+  chat_room_id           String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  owner_id               String    @db.Uuid
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  updated_at             DateTime? @default(now()) @db.Timestamp(6)
+  is_active              Boolean   @default(true)
+  last_message_id        String?   @db.Uuid
+  owner_last_read_id     String?   @db.Uuid
+  requester_id           String    @db.Uuid
+  requester_last_read_id String?   @db.Uuid
+  target_payload         Json?
+  type                   room_type
+  owner_unread_count     Int       @default(0)
+  requester_unread_count Int       @default(0)
   message_id    String          @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   chat_room_id  String          @db.Uuid
   message_type  message_type
@@ -201,6 +228,7 @@ model order {
   updated_at       DateTime?          @default(now()) @db.Timestamp(6)
   owner_id         String             @db.Uuid
   user_id          String             @db.Uuid
+  order_number     String?            @unique @db.VarChar(20)
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
   order_option     order_option[]
@@ -224,6 +252,7 @@ model order_option {
 
 model owner {
   owner_id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email             String?              @unique(map: "owner_email_unique") @db.VarChar(30)
   email             String?              @db.VarChar(30)
   hashed            String?              @db.VarChar(256)
   name              String?              @db.VarChar(50)
@@ -255,6 +284,7 @@ model owner_wish {
   wish_id           String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   owner_id          String         @db.Uuid
   reform_request_id String         @db.Uuid
+  created_at        DateTime?      @default(now()) @db.Timestamp(6)
   owner             owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_owner_wish_1")
   reform_request    reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_owner_wish_1")
 }
@@ -266,7 +296,7 @@ model reciept {
   payment_status  String?   @db.VarChar(255)
   payment_method  String?   @db.VarChar(20)
   payment_gateway String?   @db.VarChar(20)
-  transaction     String?   @db.VarChar(200)
+  transaction     String?
   order_id        String    @db.Uuid
   order           order     @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_TO_reciept_1")
   review          review[]
@@ -375,6 +405,7 @@ model review_photo {
 
 model user {
   user_id           String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email             String?            @unique(map: "user_email_unique") @db.VarChar(30)
   email             String?            @db.VarChar(30)
   hashed            String?            @db.VarChar(256)
   name              String?            @db.VarChar(50)
@@ -399,6 +430,7 @@ model user_wish {
   target_type target_type_enum?
   target_id   String?           @db.Uuid
   user_id     String            @db.Uuid
+  created_at  DateTime?         @default(now()) @db.Timestamp(6)
   user        user              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_user_wish_1")
 }
 
@@ -409,6 +441,36 @@ model banner {
   is_active  Boolean?  @default(true)
   created_at DateTime? @default(now()) @db.Timestamp(6)
   updated_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model chat_proposal {
+  chat_proposal_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id       String    @db.Uuid
+  is_accepted      Boolean   @default(false)
+  title            String?
+  price            Int?
+  delivery         Int?
+  expected_working Int?
+  image            String[]  @default([])
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  updated_at       DateTime? @default(now()) @db.Timestamp(6)
+  content          String?
+
+  @@index([message_id])
+}
+
+model chat_request {
+  chat_request_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id      String    @db.Uuid
+  title           String?
+  image           String[]  @default([])
+  content         String?
+  min_budget      Int?
+  max_budget      Int?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([message_id])
 }
 
 model social_account {
@@ -422,6 +484,11 @@ model social_account {
   @@unique([owner_id, provider], map: "social_account_owner_provider_key")
   @@unique([provider, provider_id, role], map: "social_account_provider_identity_key")
   @@unique([user_id, provider], map: "social_account_user_provider_key")
+}
+
+enum chat_target_type_enum {
+  REQUEST
+  PROPOSAL
 }
 
 enum order_status_enum {
@@ -447,6 +514,15 @@ enum account_role {
   OWNER
 }
 
+enum message_type {
+  image
+  request
+  proposal
+  text
+  payment
+  result
+}
+
 enum provider_type {
   GOOGLE
   KAKAO
@@ -459,6 +535,10 @@ enum reformer_status_enum {
   REJECTED
 }
 
+enum room_type {
+  FEED
+  REQUEST
+  PROPOSAL
 enum message_type {
   IMAGE
   REQUEST
