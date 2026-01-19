@@ -1,9 +1,9 @@
+import { UUID } from '../../types/common.js';
 import { ChatRoomFilter } from './chat.model.js';
 
 /**
  * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
  */
-export type UUID = string;
 
 /**
  * 페이지네이션 메타데이터

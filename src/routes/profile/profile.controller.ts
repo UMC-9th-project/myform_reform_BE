@@ -29,7 +29,7 @@ import {
 } from './profile.dto.js';
 import { Request as ExRequest } from 'express';
 
-@Route('/api/v1/profile')
+@Route('profile')
 @Tags('Profile Router')
 export class ProfileController extends Controller {
   private profileService: ProfileService;
