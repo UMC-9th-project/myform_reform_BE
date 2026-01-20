@@ -23,9 +23,15 @@ import {
   RequestDetail,
   RequestDetailDto
 } from './reform.dto.js';
-import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
+import {
+  ErrorResponse,
+  ResponseHandler,
+  TsoaResponse
+} from '../../config/tsoaResponse.js';
 import RequestHandler from 'express';
-import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
+import { AddQuoteReq, ReformRequestReq } from './dto/reform.req.dto.js';
+import { ReformHomeResponse } from './dto/reform.res.dto.js';
+import { ReformDBError } from './reform.error.js';
 
 @Tags('Reform Router')
 @Route('reform')
@@ -38,10 +44,69 @@ export class ReformController extends Controller {
 
   /**
    * 모든 리폼 요청 목록을 조회
+   *
+   * 주문제작 메인 페이지 진입시 보여지는 요청서 3개, 제안서 3개를 조회합니다.
    * @summary 주문제작 페이지 목록 조회
+   * @return 최신순 요청서 3개, 최신순 제안서 3개
    */
   @Get('/')
-  public async findAll() {}
+  @Example<ReformHomeResponse>({
+    requests: [
+      {
+        thumbnail: 'testurl',
+        title: 'test 요청서',
+        minBudget: 0,
+        maxBudget: 10
+      },
+      {
+        thumbnail: 'testurl',
+        title: 'test 요청서',
+        minBudget: 0,
+        maxBudget: 10
+      },
+      {
+        thumbnail: 'testurl',
+        title: 'test 요청서',
+        minBudget: 0,
+        maxBudget: 10
+      }
+    ],
+    proposals: [
+      {
+        thumbnail:
+          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/a8d7caeb-776a-475b-af2f-c3a3b08b9dad',
+        title: '맞춤 자켓 제작',
+        price: 150000,
+        avgStar: 0,
+        reviewCount: 0,
+        ownerName: 'test'
+      },
+      {
+        thumbnail:
+          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/79aa3782-69db-4d91-aed0-2a67482e1bb4',
+        title: '맞춤 자켓 제작',
+        price: 150000,
+        avgStar: 0,
+        reviewCount: 0,
+        ownerName: 'test'
+      },
+      {
+        thumbnail:
+          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/f7b43cdf-4512-4720-b5d8-682e0d3a5bd3',
+        title: '맞춤 자켓 제작',
+        price: 150000,
+        avgStar: 0,
+        reviewCount: 0,
+        ownerName: 'test'
+      }
+    ]
+  })
+  @SuccessResponse(200, '조회 성공')
+  @Response<ErrorResponse>(500, '데이터베이스 오류')
+  public async findAll(): Promise<TsoaResponse<ReformHomeResponse>> {
+    const ans = await this.reformService.selectHomeReform();
+    return new ResponseHandler(ans);
+  }
 
   /**
    *

@@ -1,5 +1,10 @@
 import { S3 } from '../../config/s3.js';
 import {
+  ProposalItemDto,
+  ReformHomeResponse,
+  RequestItemDto
+} from './dto/reform.res.dto.js';
+import {
   OrderQuoteDto,
   ProposalDetailDto,
   ReformRequestDto,
@@ -14,6 +19,21 @@ export class ReformService {
   constructor() {
     this.refromModel = new ReformModel();
     this.s3 = new S3();
+  }
+
+  async selectHomeReform(): Promise<ReformHomeResponse> {
+    try {
+      const [requestData, proposalData] = await Promise.all([
+        this.refromModel.selectRequestLatest(),
+        this.refromModel.selectProposalLatest()
+      ]);
+      const requests = requestData.map((req) => new RequestItemDto(req));
+      const proposals = proposalData.map((prop) => new ProposalItemDto(prop));
+
+      return { requests, proposals };
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
   }
 
   async addRequest(dto: ReformRequestDto, images: Express.Multer.File[]) {

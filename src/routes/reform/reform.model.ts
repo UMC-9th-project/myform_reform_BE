@@ -13,6 +13,50 @@ export class ReformModel {
   constructor() {
     this.prisma = prisma;
   }
+
+  async selectRequestLatest() {
+    return this.prisma.reform_request.findMany({
+      select: {
+        title: true,
+        min_budget: true,
+        max_budget: true,
+        reform_request_photo: {
+          select: {
+            content: true
+          }
+        }
+      },
+      take: 3,
+      orderBy: {
+        updated_at: { sort: 'asc' }
+      }
+    });
+  }
+
+  async selectProposalLatest() {
+    return this.prisma.reform_proposal.findMany({
+      select: {
+        title: true,
+        price: true,
+        avg_star: true,
+        review_count: true,
+        reform_proposal_photo: {
+          take: 1,
+          select: {
+            content: true
+          }
+        },
+        owner: {
+          select: { name: true }
+        }
+      },
+      take: 3,
+      orderBy: {
+        updated_at: { sort: 'asc' }
+      }
+    });
+  }
+
   async addRequest(dto: ReformRequestDto): Promise<void> {
     const { userId, images, category, ...data } = dto;
     await this.prisma.$transaction(async (tx) => {
