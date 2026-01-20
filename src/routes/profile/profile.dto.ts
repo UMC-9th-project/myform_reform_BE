@@ -1,3 +1,5 @@
+import { order_status_enum } from '@prisma/client';
+import { UUID } from '../../types/common.js';
 import { Category, Option, OptionGroup } from '../../types/item.js';
 
 interface Item {
@@ -78,4 +80,15 @@ export class ReformDto implements Reform {
     this.delivery = body.delivery;
     this.category = body.category;
   }
+}
+
+export interface SalesManagement {
+  thumnails: string;
+  orderId: UUID;
+  type: 'ITEM' | 'REFORM';
+  title: string;
+  price: number;
+  buyer: string;
+  paymentDay: Date;
+  status: order_status_enum;
 }

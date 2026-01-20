@@ -11,7 +11,8 @@ import {
   UploadedFiles,
   Body,
   FormField,
-  Example
+  Example,
+  Query
 } from 'tsoa';
 import { ProfileService } from './profile.service.js';
 // import { Request as ExRequest } from 'express';
@@ -93,10 +94,12 @@ export class ProfileController extends Controller {
    * @summary 사용자의 전체 판매 상품 목록을 조회합니다
    * @returns 판매관리 목록
    */
-  @Get('order')
+  @Get('sales')
   @SuccessResponse(200, '판매관리 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async getOrder(): Promise<TsoaResponse<string>> {
+  public async getSales(
+    @Query('type') type: 'ITME' | 'REFORM'
+  ): Promise<TsoaResponse<string>> {
     return new ResponseHandler('테스트');
   }
 
@@ -106,10 +109,10 @@ export class ProfileController extends Controller {
    * @param id 판매상품 ID
    * @returns 판매상품 상세 정보
    */
-  @Get('order/:id')
+  @Get('sales/:id')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async getDetailOrder(
+  public async getDetailSales(
     @Path() id: string
   ): Promise<TsoaResponse<string>> {
     console.log(id);

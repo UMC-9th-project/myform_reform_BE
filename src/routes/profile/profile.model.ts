@@ -5,6 +5,8 @@ import { ItemDto, ReformDto } from './profile.dto.js';
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
+import { target_type_enum } from '@prisma/client';
+import { UUID } from '../../types/common.js';
 
 export class ProfileModel {
   private prisma: PrismaClient;
@@ -96,5 +98,60 @@ export class ProfileModel {
         }
       });
     }
+  }
+
+  async getSales(type: target_type_enum, ownerId: UUID) {
+    // 1. order 기본 정보 조회
+    const orders = await prisma.order.findMany({
+      where: {
+        owner_id: ownerId,
+        target_type: type
+      },
+      select: {
+        order_id: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        user: {
+          select: {
+            name: true
+          }
+        },
+        reciept: {
+          select: {
+            created_at: true
+          }
+        }
+      }
+    });
+    // 2. reform_proposal 관련 데이터 별도 조회
+    const targetIds = orders.map((o) => o.target_id) as string[];
+
+    const reforms = await prisma.reform_proposal.findMany({
+      where: { reform_proposal_id: { in: targetIds } },
+      select: {
+        reform_proposal_id: true,
+        title: true,
+        reform_proposal_photo: {
+          select: {
+            content: true
+          }
+        }
+      }
+    });
+
+    // 3. reform_proposal_id를 key로 하는 Map 생성
+    const reformMap = new Map(reforms.map((r) => [r.reform_proposal_id, r]));
+
+    // 4. order와 reform 데이터 매핑
+    return orders.map((order) => {
+      const reform = reformMap.get(order.target_id!);
+      return {
+        ...order,
+        title: reform?.title ?? null,
+        photo: reform?.reform_proposal_photo?.[0]?.content ?? null
+      };
+    });
   }
 }

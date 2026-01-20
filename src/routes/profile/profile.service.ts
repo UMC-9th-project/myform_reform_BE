@@ -36,4 +36,6 @@ export class ProfileService {
       throw new ItemAddError(err);
     }
   }
+
+  async getSales(type: string, ownerId: string) {}
 }
