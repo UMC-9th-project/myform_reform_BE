@@ -42,6 +42,7 @@ export interface VerifySmsResponse {
   message: string;
 }
 
+// 카카오 회원가입 응답 데이터
 export interface KakaoSignupResponse {
   status: 'signup';
   user: {
@@ -51,20 +52,18 @@ export interface KakaoSignupResponse {
   };
 }
 
+// 카카오 로그인 응답 데이터
 export interface KakaoLoginResponse {
   status: 'login';
+  user: AuthDto;
   accessToken: string;
   refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    role: Role;
-    auth_status?: AuthStatus;
-  };
 }
 
+// 카카오 인증 응답 데이터
 export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse
 
+// JWT 페이로드 데이터
 export interface JwtPayload {
   id: string;
   email: string;
@@ -72,11 +71,13 @@ export interface JwtPayload {
   auth_status?: AuthStatus;
 }
 
+// 로그아웃 응답 데이터
 export interface LogoutResponse {
   statusCode: number;
   message: string;
 }
 
+// 카카오 로그인 후 응답 데이터
 export interface PassportUserInfo {
   status: 'signup' | 'login';
   role: Role;
@@ -86,17 +87,13 @@ export interface PassportUserInfo {
   auth_status?: AuthStatus;
 }
 
+// 로그인 응답 데이터 (Service -> Controller)
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
 }
 
-export interface ReformerSignupRequest extends UserSignupRequest {
-  businessNumber: string;
-  description: string;
-}
-
-// Controller -> Service 전달할 유저 데이터
+// 일반 회원가입 요청 데이터 (Controller -> Service)
 export interface UserSignupRequest {
   name: string;
   email: string;
@@ -108,22 +105,24 @@ export interface UserSignupRequest {
   over14YearsOld: boolean;
   termsOfService: boolean;
   privacyPolicy: boolean;
-  role: Role;
 }
 
-// Service -> Controller 반환할 유저 데이터
-export interface UserSignupResponse {
-  user: {
-    id: string;
-    email: string;
-    nickname: string;
-    role: Role;
-  };
+export interface AuthDto {
+  id: string;
+  email: string;
+  nickname: string;
+  role: Role;
+  auth_status?: AuthStatus;
+}
+
+// 로그인 응답 데이터 (Service -> Controller)
+export interface AuthLoginResponse {
+  user: AuthDto;
   accessToken: string;
   refreshToken: string;
 }
 
-// Service -> Model 전달할 유저 데이터
+// 일반 회원가입 요청 데이터 (Controller -> Service)
 export interface UserCreateDto {
   name: string;
   email: string;
@@ -136,7 +135,7 @@ export interface UserCreateDto {
   privacyPolicy: boolean;
 }
 
-// Model -> Service 반환할 유저 데이터
+// 일반 회원가입 후 db 생성 후 응답 데이터 (Model -> Service)
 export interface UserCreateResponseDto {
   id: string;
   email: string;
@@ -144,31 +143,38 @@ export interface UserCreateResponseDto {
   role: Role;
 }
 
-// Controller -> Service 전달할 리폼러 데이터
+// 리폼러 회원가입 요청 데이터 (Controller -> Service)
 export interface ReformerSignupRequest extends UserSignupRequest {
   businessNumber: string;
   description: string;
 }
 
-// Service -> Controller 반환할 리폼러 데이터
-export interface ReformerSignupResponse {
-  user: {
-    id: string;
-    email: string;
-    nickname: string;
-    role: Role;
-    auth_status: AuthStatus;
-  };
-  accessToken: string;
-  refreshToken: string;
-}
-
+// 리폼러 db 생성 요청 데이터 (Service -> Model)
 export interface OwnerCreateDto extends UserCreateDto {
   businessNumber: string;
   description: string;
   portfolioPhotos: string[];
 }
 
+// 리폼러 회원가입입 db 생성 후 응답 데이터 (Model -> Service)
 export interface OwnerCreateResponseDto extends UserCreateResponseDto {
   auth_status: AuthStatus;
+}
+
+// 로그인 요청 데이터 (Controller -> Service)
+export interface LocalLoginRequest {
+  email: string;
+  password: string;
+  role: Role;
+}
+
+// 리프레시 토큰 갱신 요청 데이터 (Controller -> Service)
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// 리프레시 토큰 갱신 응답 데이터 (Service -> Controller)
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
 }

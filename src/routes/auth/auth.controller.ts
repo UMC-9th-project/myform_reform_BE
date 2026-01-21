@@ -16,11 +16,11 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, KakaoAuthResponse, LogoutResponse, PassportUserInfo, UserSignupResponse, UserSignupRequest, ReformerSignupResponse, ReformerSignupRequest } from './auth.dto.js';
+import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, KakaoAuthResponse, LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, AuthLoginResponse, LocalLoginRequest } from './auth.dto.js';
 import express from 'express';
 import passport from './passport.js';
 import { KakaoAuthError, UnauthorizedError } from './auth.error.js';
-import { CheckNicknameResponse } from '../users/users.dto.js';
+import { RefreshTokenRequest, RefreshTokenResponse } from './auth.dto.js';
 
 @Route('auth')
 @Tags('Auth')
@@ -81,7 +81,7 @@ export class AuthController extends Controller {
 
   /**
    * 
-   * @summary 카카오 로그인 시작 (로그인 페이지로 리다이렉트)
+   * @summary 카카오 로그인 시작 (카카오 로그인 페이지로 리다이렉트)
    * @param mode 로그인 모드 (user: 일반, reformer: 리폼러)
    */
   @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')  
@@ -89,7 +89,7 @@ export class AuthController extends Controller {
   public async loginWithKakao(@Request() request: express.Request, @Query() mode: 'user' | 'reformer'): Promise<any> {
     const res = (request as any).res as express.Response;
     const next = (request as any).next as express.NextFunction;
-    // 카카오 로그인 페이지로 리다이렉트
+    // 카카오 로그인 페이지로 리다이렉트, state에 mode 값을 전달하여 로그인 모드 구분
     passport.authenticate('kakao', { session: false, state: mode })(request, res, next);
   }
 
@@ -110,13 +110,14 @@ export class AuthController extends Controller {
       user: {
         id: 'userId',
         email: 'userEmail',
+        nickname: 'userNickname',
         role: 'reformer',
         auth_status: 'PENDING'
       }
     }
   })
   @Response<TsoaResponse<KakaoAuthResponse>>('200', '카카오 로그인 성공')
-  @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습닏..')
+  @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습니다.')
   @Response<ErrorResponse>('401', '카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Get('kakao/callback')
@@ -125,13 +126,14 @@ export class AuthController extends Controller {
     const next = (request as any).next as express.NextFunction;
 
     return new Promise((resolve, reject) => {
-      // 카카오 인증 후 회원 정보 조회
+      // 카카오 인증 후 회원 정보 조회, 에러 발생 시 에러 반환
       passport.authenticate('kakao', { session: false }, async (err: any, user: PassportUserInfo) =>{
         if (err) {
           console.error('Passport Auth Error:', err);
           return reject(err);
         }
-        ;
+        
+        // 카카오 인증 후 회원 정보 조회 결과가 없으면 에러 반환
         if (!user) return reject(new KakaoAuthError('카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.'));
         try {
           const result = await this.authService.handleKakaoLogin(user);
@@ -172,7 +174,7 @@ export class AuthController extends Controller {
   }
 
   @SuccessResponse(201, '일반 회원가입 성공')
-  @Example<ResponseHandler<UserSignupResponse>>({
+  @Example<ResponseHandler<AuthLoginResponse>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -189,9 +191,9 @@ export class AuthController extends Controller {
   
   @Post('signup/user')
   public async signupUser(
-    @Body() requestBody: UserSignupRequest): Promise<TsoaResponse<UserSignupResponse>> {
+    @Body() requestBody: UserSignupRequest): Promise<TsoaResponse<AuthLoginResponse>> {
     const result = await this.authService.signupUser(requestBody);
-    return new ResponseHandler<UserSignupResponse>(result);
+    return new ResponseHandler<AuthLoginResponse>(result);
   }
 
 
@@ -199,7 +201,7 @@ export class AuthController extends Controller {
    * 리폼러로 회원가입 합니다.
    */
   @SuccessResponse(201, '리폼러 회원가입 성공')
-  @Example<ResponseHandler<ReformerSignupResponse>>({
+  @Example<ResponseHandler<AuthLoginResponse>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -218,10 +220,46 @@ export class AuthController extends Controller {
   public async signupReformer(
   @FormField() data: string,
   @UploadedFiles('portfolios') portfolioPhotos: Express.Multer.File[]
-  ): Promise<TsoaResponse<ReformerSignupResponse>> {
+  ): Promise<TsoaResponse<AuthLoginResponse>> {
     // JSON 문자열을 DTO 객체로 반환
     const requestBody: ReformerSignupRequest = JSON.parse(data);
     const result = await this.authService.signupReformer(requestBody, portfolioPhotos);
-    return new ResponseHandler<ReformerSignupResponse>(result);
+    return new ResponseHandler<AuthLoginResponse>(result);
+  }
+
+  /**
+   * LOCAL 로그인 요청
+   * @summary LOCAL 로그인 요청
+   * @param requestBody 로그인 요청 정보
+   * @returns 로그인 성공 여부
+   */
+  @SuccessResponse(200, 'LOCAL 로그인 성공')
+  @Example<ResponseHandler<AuthLoginResponse>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      user: {
+        id: 'userId',
+        email: 'userEmail',
+        nickname: 'userNickname',
+        role: 'reformer',
+        auth_status: 'PENDING'
+      },
+      accessToken: 'accessToken',
+      refreshToken: 'refreshToken'
+    }
+  })
+  @Post('login/local')
+  public async localLogin(
+    @Body() requestBody: LocalLoginRequest): Promise<TsoaResponse<AuthLoginResponse>> {
+    const result = await this.authService.loginLocal(requestBody);
+    return new ResponseHandler<AuthLoginResponse>(result);
+  }
+
+  @Post('reissue/accessToken')
+  public async reissueAccessToken(
+    @Body() requestBody: RefreshTokenRequest): Promise<TsoaResponse<RefreshTokenResponse>> {
+    const result = await this.authService.reissueAccessToken(requestBody);
+    return new ResponseHandler<RefreshTokenResponse>(result);
   }
 }

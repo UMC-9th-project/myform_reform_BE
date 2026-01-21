@@ -72,9 +72,10 @@ export class VerificationRequiredError extends BasicError {
   }
 }
 
-export class NicknameDuplicateError extends BasicError {
+
+export class InvalidDescriptionLengthError extends BasicError {
   constructor(description: string) {
-    super(409, 'Auth_109', '이미 존재하는 닉네임입니다.', description);
+    super(400, 'Auth_109', '자기 소개 설명은 1자 이상 500자 이하로 입력해주세요.', description);
   }
 }
 
@@ -96,8 +97,20 @@ export class InvalidBusinessNumberError extends BasicError {
   }
 }
 
-export class InvalidDescriptionLengthError extends BasicError {
+export class AccountNotFoundError extends BasicError {
   constructor(description: string) {
-    super(400, 'Auth_113', '자기 소개 설명은 1자 이상 500자 이하로 입력해주세요.', description);
+    super(404, 'Auth_113', '존재하지 않는 계정입니다.', description);
+  }
+}
+
+export class passwordInvalidError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Auth_114', '비밀번호가 일치하지 않습니다.', description);
+  }
+}
+
+export class RefreshTokenError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_504', '리프레시 토큰 재발급 실패', description);
   }
 }

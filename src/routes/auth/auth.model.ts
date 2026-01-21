@@ -90,4 +90,5 @@ export class AuthModel {
       auth_status: owner.status
     } as OwnerCreateResponseDto;
   }
+  
 }

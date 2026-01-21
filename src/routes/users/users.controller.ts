@@ -1,6 +1,6 @@
 import { Body, Path, Post, Patch, Controller, Route, Tags, Query, SuccessResponse, Example, Response } from 'tsoa';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
-import { CheckNicknameResponse, UpdateReformerStatusRequest, UpdateReformerStatusResponse } from './users.dto.js';
+import { CheckNicknameResponse, UpdateReformerStatusRequest, UsersInfoResponse } from './users.dto.js';
 import { UsersService } from './users.service.js';
 
 
@@ -38,21 +38,19 @@ export class UsersController extends Controller {
   /**
    * @summary 리폼러 상태 업데이트
    * @param reformerId 리폼러 ID
-   * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED) 중 하나
+   * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED)
    * @returns 리폼러 상태 업데이트 결과
    */
   @SuccessResponse(200, '리폼러 상태 업데이트 성공')
-  @Example<ResponseHandler<UpdateReformerStatusResponse>>({
+  @Example<ResponseHandler<UsersInfoResponse>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
-      user: {
-        id: 'reformerId',
-        email: 'reformerEmail',
-        nickname: 'reformerNickname',
-        role: 'reformer',
-        auth_status: 'PENDING'
-      }
+      id: 'reformerId',
+      email: 'reformerEmail',
+      nickname: 'reformerNickname',
+      role: 'reformer',
+      auth_status: 'PENDING'
     }
   })
   @Response<ErrorResponse>('400', '목표 상태 형식 오류')
@@ -61,8 +59,8 @@ export class UsersController extends Controller {
   public async updateReformerStatus(
     @Path() reformerId: string,
     @Body() requestBody: UpdateReformerStatusRequest
-  ): Promise<TsoaResponse<UpdateReformerStatusResponse>> {
+  ): Promise<TsoaResponse<UsersInfoResponse>> {
     const result = await this.usersService.updateReformerStatus(reformerId, requestBody);
-    return new ResponseHandler<UpdateReformerStatusResponse>(result);
+    return new ResponseHandler<UsersInfoResponse>(result);
   }
 }
