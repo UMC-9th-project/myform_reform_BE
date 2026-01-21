@@ -1,6 +1,9 @@
 import { Client } from '@elastic/elasticsearch';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const certPath = path.join(process.cwd(), 'certs', 'ca', 'ca.crt');
 const ELASTIC_PASSWORD = process.env.ELASTIC_PASSWORD;
@@ -14,6 +17,10 @@ export const esClient = new Client({
   auth: {
     username: 'elastic',
     password: ELASTIC_PASSWORD
+  },
+  headers: {
+    accept: 'application/vnd.elasticsearch+json; compatible-with=8',
+    ['content-type']: 'application/vnd.elasticsearch+x-ndjson; compatible-with=8'
   },
   tls: {
     ca: fs.readFileSync(certPath),

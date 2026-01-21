@@ -10,7 +10,8 @@
     "eslint": "eslint",
     "dev:start": "nodemon --watch '*.ts' --exec tsx ./src/app.ts",
     "dev:prisma": "npx prisma db pull && npx prisma generate",
-    "dev": "npm run eslint && npm run build && npm run dev:start"
+    "dev": "npm run eslint && npm run build && npm run dev:start",
+    "es:sync": "tsx ./scripts/es-sync.ts"
   },
   "keywords": [],
   "author": "",
