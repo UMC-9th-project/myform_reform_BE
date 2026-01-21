@@ -11,9 +11,10 @@ export class UsersController extends Controller {
 
   /**
    * 
-   * @summary 닉네임 중복 검사
+   * @summary 닉네임 중복 여부를 검사합니다.
+   * @description 입력한 닉네임이 중복되는지 검사하여 사용 가능 여부, 닉네임, 메시지를 반환
    * @param nickname 검사할 닉네임
-   * @returns 닉네임 중복 검사 결과
+   * @returns 닉네임 중복 검사 결과 (사용 가능 여부, 닉네임, 메시지)
    */
   @SuccessResponse(200, '닉네임 중복 검사 성공')
   @Example<ResponseHandler<CheckNicknameResponse>>({
@@ -36,7 +37,7 @@ export class UsersController extends Controller {
   }
 
   /**
-   * @summary 리폼러 상태 업데이트
+   * @summary 리폼러 인증 상태를 업데이트합니다.
    * @param reformerId 리폼러 ID
    * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED)
    * @returns 리폼러 상태 업데이트 결과

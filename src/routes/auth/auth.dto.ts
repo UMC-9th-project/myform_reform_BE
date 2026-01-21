@@ -52,16 +52,18 @@ export interface KakaoSignupResponse {
   };
 }
 
-// 카카오 로그인 응답 데이터
-export interface KakaoLoginResponse {
+// 카카오 로그인 데이터
+export interface KakaoLoginResponse extends AuthLoginResponse {
   status: 'login';
-  user: AuthDto;
-  accessToken: string;
-  refreshToken: string;
+}
+
+// 카카오 로그인 응답 데이터 (Refresh Token 없음)
+export interface KakaoLoginPublicResponse extends AuthPublicResponse {
+  status: 'login';
 }
 
 // 카카오 인증 응답 데이터
-export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse
+export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginPublicResponse
 
 // JWT 페이로드 데이터
 export interface JwtPayload {
@@ -107,6 +109,7 @@ export interface UserSignupRequest {
   privacyPolicy: boolean;
 }
 
+// 사용자 정보가 담기는 데이터 타입
 export interface AuthDto {
   id: string;
   email: string;
@@ -177,4 +180,14 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenResponse {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface AuthPublicResponse {
+  user: AuthDto;
+  accessToken: string;
+}
+
+// 리프레시 토큰 없는 엑세스 토큰 응답 데이터
+export interface RefreshTokenPublicResponse {
+  accessToken: string;
 }

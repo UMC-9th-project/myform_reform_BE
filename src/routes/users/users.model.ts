@@ -136,4 +136,15 @@ export class UsersModel {
     }
     return socialAccount;
   }
+
+  async isNicknameDuplicate(nickname: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { nickname: nickname }
+    });
+
+    const reformer = await this.prisma.owner.findUnique({
+      where: { nickname: nickname }
+    });
+    return !!(user || reformer);
+  }
 }

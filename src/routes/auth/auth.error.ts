@@ -48,6 +48,12 @@ export class UnauthorizedError extends BasicError {
   }
 }
 
+export class ForbiddenError extends BasicError {
+  constructor(description: string) {
+    super(403, 'Auth_108', '해당 리소스에 접근 권한이 없습니다.', description);
+  }
+}
+
 export class KakaoAuthError extends BasicError {
   constructor(description: string) {
     super(400, 'Auth_106', '카카오 로그인 후 회원 정보를 찾을 수 없습니다.', description);
