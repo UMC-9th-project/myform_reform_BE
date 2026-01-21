@@ -7,6 +7,7 @@ import {
   Patch,
   Path,
   Post,
+  Query,
   Response,
   Route,
   SuccessResponse,
@@ -29,7 +30,11 @@ import {
   TsoaResponse
 } from '../../config/tsoaResponse.js';
 import RequestHandler from 'express';
-import { AddQuoteReq, ReformRequestReq } from './dto/reform.req.dto.js';
+import {
+  AddQuoteReq,
+  ReformRequestReq,
+  RequestFilterDto
+} from './dto/reform.req.dto.js';
 import { ReformHomeResponse } from './dto/reform.res.dto.js';
 import { ReformDBError } from './reform.error.js';
 
@@ -105,6 +110,33 @@ export class ReformController extends Controller {
   @Response<ErrorResponse>(500, '데이터베이스 오류')
   public async findAll(): Promise<TsoaResponse<ReformHomeResponse>> {
     const ans = await this.reformService.selectHomeReform();
+    return new ResponseHandler(ans);
+  }
+
+  /**
+   * @summary 요청서 목록을 보여줍니다.
+   * @param sortBy 정렬 기준
+   * @param page 현재 페이지, 기본값 1
+   * @param limit 보여줄 최대 아이템 갯수 기본값 15
+   * @param category 카테고리 대분류
+   * @param subcategory 카테고리 소분류
+   */
+  @Get('/request')
+  async getRequest(
+    @Query() sortBy: 'RECENT' | 'POPULAR',
+    @Query() page: number = 1,
+    @Query() limit: number = 15,
+    @Query() category?: string,
+    @Query() subcategory?: string
+  ) {
+    const dto = new RequestFilterDto(
+      sortBy,
+      page,
+      limit,
+      category,
+      subcategory
+    );
+    const ans = await this.reformService.getRequest(dto);
     return new ResponseHandler(ans);
   }
 

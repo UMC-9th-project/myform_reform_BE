@@ -7,6 +7,8 @@ import {
 import prisma from '../../config/prisma.config.js';
 import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
 import { ReformDBError } from './reform.error.js';
+import { RequestFilterDto } from './dto/reform.req.dto.js';
+import { Category } from '../../types/item.js';
 
 export class ReformModel {
   private prisma;
@@ -57,6 +59,71 @@ export class ReformModel {
     });
   }
 
+  async getCategoryIds(category: Category): Promise<string[]> {
+    // 소분류가 있으면 해당 소분류 ID만 반환
+    if (category.sub) {
+      const subCategory = await this.prisma.category.findFirst({
+        where: {
+          name: category.sub
+        },
+        select: { category_id: true }
+      });
+      return subCategory ? [subCategory.category_id] : [];
+    }
+
+    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
+    const majorCategory = await this.prisma.category.findFirst({
+      where: {
+        name: category.major,
+        parent_id: null
+      },
+      select: { category_id: true }
+    });
+
+    if (!majorCategory) return [];
+
+    const subCategories = await this.prisma.category.findMany({
+      where: {
+        parent_id: majorCategory.category_id
+      },
+      select: { category_id: true }
+    });
+
+    return [
+      majorCategory.category_id,
+      ...subCategories.map((c) => c.category_id)
+    ];
+  }
+
+  async getRequestByRecent(filter: RequestFilterDto, categoryId: string[]) {
+    const { page, limit } = filter;
+
+    return await this.prisma.reform_request.findMany({
+      take: limit,
+      skip: (page - 1) * limit,
+      select: {
+        min_budget: true,
+        max_budget: true,
+        title: true,
+        reform_request_photo: {
+          take: 1,
+          select: {
+            content: true
+          }
+        }
+      },
+      where:
+        categoryId.length > 0
+          ? {
+              category_id: {
+                in: categoryId
+              }
+            }
+          : undefined,
+      orderBy: { created_at: 'asc' }
+    });
+  }
+
   async addRequest(dto: ReformRequestDto): Promise<void> {
     const { userId, images, category, ...data } = dto;
     await this.prisma.$transaction(async (tx) => {
@@ -99,6 +166,7 @@ export class ReformModel {
       })
     ]);
 
+    //FIXME: 에러로 던지지 말고 빈 배열로 던지도록 바꿔야 할듯
     if (!body) {
       throw new ReformDBError('해당 상품이 존재하지 않습니다');
     }

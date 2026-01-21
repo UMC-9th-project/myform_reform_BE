@@ -21,3 +21,26 @@ export interface ReformRequestReq {
   dueDate: Date;
   category: Category;
 }
+
+export class RequestFilterDto {
+  sortBy: 'RECENT' | 'POPULAR' = 'RECENT';
+  page: number = 1;
+  limit: number = 15;
+  category: Category;
+
+  constructor(
+    sortBy: 'RECENT' | 'POPULAR',
+    page: number,
+    limit: number,
+    category?: string,
+    subcategory?: string
+  ) {
+    this.sortBy = sortBy;
+    this.page = page;
+    this.limit = limit;
+    this.category = {
+      major: category ?? '',
+      sub: subcategory ?? ''
+    };
+  }
+}

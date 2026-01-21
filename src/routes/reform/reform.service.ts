@@ -1,4 +1,5 @@
 import { S3 } from '../../config/s3.js';
+import { RequestFilterDto } from './dto/reform.req.dto.js';
 import {
   ProposalItemDto,
   ReformHomeResponse,
@@ -33,6 +34,15 @@ export class ReformService {
       return { requests, proposals };
     } catch (err: any) {
       throw new ReformError(err);
+    }
+  }
+
+  async getRequest(filter: RequestFilterDto) {
+    const categoryId = await this.refromModel.getCategoryIds(filter.category);
+    if (filter.sortBy === 'RECENT') {
+      const ans = await this.refromModel.getRequestByRecent(filter, categoryId);
+      const dto = ans.map((props) => new RequestItemDto(props));
+      return dto;
     }
   }
 

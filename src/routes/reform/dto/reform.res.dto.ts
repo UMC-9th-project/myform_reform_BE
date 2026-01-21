@@ -17,12 +17,26 @@ type ProposalItem = Prisma.reform_proposalGetPayload<{
   };
 }>;
 
-type RequestItem = Prisma.reform_requestGetPayload<{
+type ReformRequest = Prisma.reform_requestGetPayload<{
   select: {
     title: true;
     min_budget: true;
     max_budget: true;
     reform_request_photo: {
+      select: {
+        content: true;
+      };
+    };
+  };
+}>;
+
+type ReformRequestListResDto = Prisma.reform_requestGetPayload<{
+  select: {
+    min_budget: true;
+    max_budget: true;
+    title: true;
+    reform_request_photo: {
+      take: 1;
       select: {
         content: true;
       };
@@ -59,7 +73,7 @@ export class RequestItemDto {
   minBudget: number;
   maxBudget: number;
 
-  constructor(body: RequestItem) {
+  constructor(body: ReformRequest) {
     this.thumbnail = body.reform_request_photo[0]?.content ?? '';
     this.title = body.title ?? '';
     this.minBudget = body.min_budget?.toNumber() ?? 0;
