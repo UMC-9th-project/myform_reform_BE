@@ -227,9 +227,10 @@ model order {
   owner_id         String             @db.Uuid
   user_id          String             @db.Uuid
   receipt_id       String             @db.Uuid
+  quantity         Int?               @default(1)
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
-  reciept          reciept            @relation(fields: [receipt_id], references: [reciept_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_receipt_to_order_1")
+  reciept          receipt            @relation(fields: [receipt_id], references: [receipt_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_receipt_to_order_1")
   order_option     order_option[]
   review           review[]
 
@@ -286,19 +287,6 @@ model owner_wish {
   created_at        DateTime?      @default(now()) @db.Timestamp(6)
   owner             owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_owner_wish_1")
   reform_request    reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_owner_wish_1")
-}
-
-model reciept {
-  reciept_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  created_at      DateTime? @default(now()) @db.Timestamp(6)
-  updated_at      DateTime? @default(now()) @db.Timestamp(6)
-  payment_status  String?   @db.VarChar(255)
-  payment_method  String?   @db.VarChar(20)
-  payment_gateway String?   @db.VarChar(20)
-  transaction     String?
-  receipt_number  String?   @db.VarChar(20)
-  total_amount    Decimal?  @db.Decimal
-  order           order[]
 }
 
 model reform_proposal {
@@ -443,6 +431,19 @@ model user_wish {
   user_id     String            @db.Uuid
   created_at  DateTime?         @default(now()) @db.Timestamp(6)
   user        user              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_user_wish_1")
+}
+
+model receipt {
+  receipt_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  payment_status  String?   @db.VarChar(255)
+  payment_method  String?   @db.VarChar(20)
+  payment_gateway String?   @db.VarChar(20)
+  transaction     String?
+  receipt_number  String?   @unique(map: "receipt_receipt_number_unique") @db.VarChar(20)
+  total_amount    Decimal?  @db.Decimal
+  order           order[]
 }
 
 enum account_role {
