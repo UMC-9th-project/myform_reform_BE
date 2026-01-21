@@ -1,0 +1,38 @@
+name: PR Docker Build & Push
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  build-on-a-server:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH to A server and build docker image
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.A_SERVER_HOST }}
+          username: ${{ secrets.A_SERVER_USER }}
+          key: ${{ secrets.A_SERVER_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "📦 Move to project directory"
+            cd /Users/develop_user/workspace/dev/myform_reform
+
+            echo "🔄 Fetch latest code"
+            git fetch origin
+            git checkout ${{ github.base_ref }}
+            git pull origin ${{ github.base_ref }}
+
+            echo "🐳 Docker login"
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            echo "🏗 Docker build"
+            docker build -t myform/myapp:${{ github.base_ref }} .
+
+            echo "🚀 Docker push"
+            docker push myform/myapp:${{ github.base_ref }}
