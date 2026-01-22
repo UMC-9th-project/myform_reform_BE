@@ -162,7 +162,7 @@ export class OrderQuoteDto {
   status: $Enums.order_status_enum;
   type: $Enums.target_type_enum;
   targetId: string;
-  amount: number;
+  quantity: number;
 
   ownerId: string;
   userId: string;
@@ -176,7 +176,7 @@ export class OrderQuoteDto {
     this.expected_working = body.expected_working;
 
     this.images = [];
-    this.amount = 1;
+    this.quantity = 1;
     this.status = order_status_enum.PENDING;
     this.type = target_type_enum.REQUEST;
   }

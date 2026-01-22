@@ -193,19 +193,19 @@ export class ReformModel {
     return { images, body };
   }
 
-  async addQuoteOrder(dto: OrderQuoteDto) {
-    await this.prisma.order.create({
-      data: {
-        status: dto.status,
-        target_type: dto.type,
-        target_id: dto.targetId,
-        price: dto.price,
-        delivery_fee: dto.delivery,
-        amount: dto.amount,
-        content: dto.content,
-        owner_id: dto.ownerId,
-        user_id: dto.userId
-      }
-    });
-  }
+  // async addQuoteOrder(dto: OrderQuoteDto) {
+  //   await this.prisma.order.create({
+  //     data: {
+  //       status: dto.status,
+  //       target_type: dto.type,
+  //       target_id: dto.targetId,
+  //       price: dto.price,
+  //       delivery_fee: dto.delivery,
+  //       quantity: dto.quantity,
+  //       content: dto.content,
+  //       owner_id: dto.ownerId,
+  //       user_id: dto.userId
+  //     }
+  //   });
+  // }
 }
