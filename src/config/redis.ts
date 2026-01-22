@@ -1,4 +1,4 @@
-import {createClient} from 'redis';
+import { createClient } from 'redis';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -9,12 +9,17 @@ const redisClient = createClient({
 });
 
 // 연결 에러 및 성공 로깅
-redisClient.on('error', (err) => console.error('🔴 [Infrastructure] Redis Connection Error:', err, err));
-redisClient.on('connect', () => console.log('🟢 [Infrastructure] Redis Connection Success'));
+redisClient.on('error', (err) =>
+  console.error('🔴 [Infrastructure] Redis Connection Error:', err, err)
+);
+redisClient.on('connect', () =>
+  console.log('🟢 [Infrastructure] Redis Connection Success')
+);
 
 // 실제 연결 시도
 await redisClient.connect();
 
+<<<<<<< HEAD
 export const REDIS_KEYS = {
   AUTH_CODE : (phone:string) => `auth:${phone}`,
   VERIFIED: (phone:string) => `verified:${phone}`,
@@ -23,3 +28,6 @@ export const REDIS_KEYS = {
 }
 
 export { redisClient };
+=======
+export { redisClient };
+>>>>>>> e0079753b1bd0f2042cd777867f98f2879e3c2ea
