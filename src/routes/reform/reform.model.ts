@@ -89,7 +89,7 @@ export class ReformModel {
   //       target_id: dto.targetId,
   //       price: dto.price,
   //       delivery_fee: dto.delivery,
-  //       quantity: dto.quantity,
+  //       amount: dto.amount,
   //       content: dto.content,
   //       owner_id: dto.ownerId,
   //       user_id: dto.userId

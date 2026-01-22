@@ -150,7 +150,7 @@ export interface Order {
   // reformerAddress: string;
   targetId: string | null;
   type: target_type_enum;
-  amount: number;
+  quantity: number;
 }
 
 export class OrderQuoteDto {
