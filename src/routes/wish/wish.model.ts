@@ -80,7 +80,7 @@ export const getUserWishList = async (
 
   if (type === 'ITEM') {
     const items = await prisma.item.findMany({
-      where: { item_id: { in: ids } },
+      where: { item_id: { in: ids as string[] } },
       select: {
         item_id: true,
         title: true,
@@ -105,7 +105,7 @@ export const getUserWishList = async (
 
   if (type === 'PROPOSAL') {
     const proposals = await prisma.reform_proposal.findMany({
-      where: { reform_proposal_id: { in: ids } },
+      where: { reform_proposal_id: { in: ids as string[] } },
       select: {
         reform_proposal_id: true,
         title: true,

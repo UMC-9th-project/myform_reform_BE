@@ -57,25 +57,25 @@ export class ReformService {
     }
   }
 
-  async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
-    try {
-      const image: {
-        content: string;
-        photo_order: number;
-      }[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const ans = await this.s3.uploadToS3(images[i]);
-        const obj = {
-          content: ans,
-          photo_order: i + 1
-        };
-        image.push(obj);
-      }
+  // async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
+  //   try {
+  //     const image: {
+  //       content: string;
+  //       photo_order: number;
+  //     }[] = [];
+  //     for (let i = 0; i < images.length; i++) {
+  //       const ans = await this.s3.uploadToS3(images[i]);
+  //       const obj = {
+  //         content: ans,
+  //         photo_order: i + 1
+  //       };
+  //       image.push(obj);
+  //     }
 
-      dto.images = image;
-      await this.refromModel.addQuoteOrder(dto);
-    } catch (err: any) {
-      throw new ReformError(err);
-    }
-  }
+  //     dto.images = image;
+  //     await this.refromModel.addQuoteOrder(dto);
+  //   } catch (err: any) {
+  //     throw new ReformError(err);
+  //   }
+  // }
 }
