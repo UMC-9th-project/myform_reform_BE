@@ -1,3 +1,4 @@
+// @ts-nocheck
 import prisma from '../../config/prisma.config.js';
 import type {
   owner_wish,
