@@ -24,33 +24,9 @@ export class TooManyCodeAttemptsError<T = any> extends BasicError<T> {
   }
 }
 
-export class SmsProviderError extends BasicError {
-  constructor(description: string) {
-    super(500, 'Auth_501', 'SMS 전송 중 오류가 발생했습니다.', description);
-  }
-}
-  
-export class RedisStorageError extends BasicError {
-  constructor(description: string) {
-    super(500, 'Auth_502', 'Redis에 인증 정보 저장 중 오류가 발생했습니다.', description);
-  }
-}
-
-export class UnknownAuthError extends BasicError {
-  constructor(description: string) {
-    super(500, 'Auth_999', '인증 중 알 수 없는 오류가 발생했습니다.', description);
-  }
-}
-
 export class UnauthorizedError extends BasicError {
   constructor(description: string) {
     super(401, 'Auth_105', '로그인 되어있지 않습니다.', description);
-  }
-}
-
-export class ForbiddenError extends BasicError {
-  constructor(description: string) {
-    super(403, 'Auth_108', '해당 리소스에 접근 권한이 없습니다.', description);
   }
 }
 
@@ -63,12 +39,6 @@ export class KakaoAuthError extends BasicError {
 export class InvalidStateError extends BasicError {
   constructor(description: string) {
     super(400, 'Auth_107', 'state 값이 유효하지 않습니다. \'user\' 또는 \'reformer\' 중 하나여야 합니다.', description);
-  }
-}
-
-export class MissingAuthInfoError extends BasicError {
-  constructor(description: string) {
-    super(500, 'Auth_503', '로그인에 필요한 유저 정보가 누락되었습니다.', description);
   }
 }
 
@@ -115,8 +85,45 @@ export class passwordInvalidError extends BasicError {
   }
 }
 
+export class SocialAccountDuplicateError extends BasicError {
+  constructor(description: string) {
+    super(409, 'Auth_115', '이미 존재하는 소셜 계정입니다.', description);
+  }
+}
+
+export class ForbiddenError extends BasicError {
+  constructor(description: string) {
+    super(403, 'Auth_116', '해당 리소스에 접근 권한이 없습니다.', description);
+  }
+}
+
+export class SmsProviderError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_501', 'SMS 전송 중 오류가 발생했습니다.', description);
+  }
+}
+  
+export class RedisStorageError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_502', 'Redis에 인증 정보 저장 중 오류가 발생했습니다.', description);
+  }
+}
+
+export class MissingAuthInfoError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_503', '로그인에 필요한 유저 정보가 누락되었습니다.', description);
+  }
+}
+
 export class RefreshTokenError extends BasicError {
   constructor(description: string) {
     super(500, 'Auth_504', '리프레시 토큰 재발급 실패', description);
+  }
+}
+
+
+export class UnknownAuthError extends BasicError {
+  constructor(description: string) {
+    super(500, 'Auth_999', '인증 중 알 수 없는 오류가 발생했습니다.', description);
   }
 }

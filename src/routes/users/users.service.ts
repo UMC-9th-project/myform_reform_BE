@@ -1,9 +1,7 @@
 import { CheckNicknameResponse, UsersInfoResponse, UpdateReformerStatusRequest } from './users.dto.js';
 import { validateNickname } from '../../utils/validators.js';
 import { UsersModel } from './users.model.js';
-import { EmailDuplicateError, UnknownAuthError } from '../auth/auth.error.js';
-import { NicknameDuplicateError, PhoneNumberDuplicateError } from './users.error.js';
-import prisma from '../../config/prisma.config.js';
+import { UnknownAuthError } from '../auth/auth.error.js';
 
 export class UsersService {
 

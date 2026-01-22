@@ -1,20 +1,20 @@
-import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, VerificationRequiredError, AccountNotFoundError, passwordInvalidError, RefreshTokenError, EmailDuplicateError } from './auth.error.js';
+import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidCodeError, CodeMismatchError, MissingAuthInfoError, VerificationRequiredError, AccountNotFoundError, passwordInvalidError, RefreshTokenError, EmailDuplicateError, InputValidationError, SocialAccountDuplicateError } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
-import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos} from '../../utils/validators.js';
+import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos, validateName} from '../../utils/validators.js';
 import pkg from 'jsonwebtoken';
 const { verify, sign } = pkg;
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, AuthDto, UserCreateResponseDto, OwnerCreateResponseDto, Role, RegistrationType } from './auth.dto.js';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, AuthDto, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { AuthModel } from './auth.model.js';
 import { S3 } from '../../config/s3.js';
-import { UsersService } from '../users/users.service.js';
 import { UsersModel } from '../users/users.model.js';
 import { UsersInfoResponse } from '../users/users.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
 import { NicknameDuplicateError, PhoneNumberDuplicateError } from '../users/users.error.js';
+import { provider_type } from '@prisma/client';
 
 dotenv.config();
 
@@ -186,9 +186,10 @@ export class AuthService {
     const s3 = new S3();
     const portfolioUrls = await s3.uploadManyToS3(portfolioPhotos);
     return await this.processSignup(requestBody,  async (hashedPassword, cleanPhoneNumber) => {
-      const { password, phoneNumber, ...rest } = requestBody;
+      const { password, phoneNumber, oauthId, ...rest } = requestBody;
       const ownerDto: OwnerCreateDto = {
         ...rest,
+        oauthId: oauthId,
         hashedPassword: hashedPassword,
         phoneNumber: cleanPhoneNumber,
         role: 'reformer' as Role,
@@ -236,6 +237,11 @@ export class AuthService {
     //비밀번호 검증
     validatePassword(password);
     //DB에서 유저 정보 조회
+    const socialAccount = await this.usersModel.findSocialAccountByEmailAndRole(email, role === 'user' ? 'USER' : 'OWNER');
+    if (socialAccount){
+      const provider = socialAccount.provider as provider_type;
+      throw new InputValidationError(`${provider}의 소셜 로그인으로 가입된 이메일입니다. 소셜 로그인으로 로그인해주세요.`);
+    }
 
     const account = (role === 'user'
       ? await this.usersModel.findUserByEmail(email)
@@ -342,11 +348,25 @@ export class AuthService {
 
   // 회원가입 정보 검증
   private async validateSignupRequest(requestBody: UserSignupRequest | ReformerSignupRequest, role: 'user' | 'reformer'): Promise<void> {
-    const { email, nickname, phoneNumber, registration_type, oauthId, password, over14YearsOld, termsOfService } = requestBody;
+    const { email, nickname, phoneNumber, registration_type, oauthId, password, over14YearsOld, termsOfService, name } = requestBody;
     // 단순 형식 검증 (이메일, 닉네임, 전화번호, 비밀번호)
     validateEmail(email);
     validateNickname(nickname);
     validatePhoneNumber(phoneNumber);
+    validateName(name);
+    if (registration_type === 'LOCAL' && oauthId) {
+      throw new InputValidationError('로컬 로그인에 OAuth 아이디를 입력할 수 없습니다.');
+    }
+    if (registration_type !== 'LOCAL' && password) {
+      throw new InputValidationError('OAuth 로그인에 비밀번호를 입력할 수 없습니다.');
+    }
+    if (registration_type === 'LOCAL' && !password) {
+      throw new InputValidationError('로컬 로그인에 비밀번호를 입력하지 않았습니다.');
+    }
+    if (registration_type !== 'LOCAL' && !oauthId) {
+      throw new InputValidationError('OAuth 로그인에 OAuth 아이디를 입력하지 않았습니다.');
+    }
+
     if (password){
       validatePassword(password);
     }
@@ -371,6 +391,14 @@ export class AuthService {
       : await this.usersModel.findReformerByPhoneNumber(phoneNumber);
     if (phoneNumberExists){
       throw new PhoneNumberDuplicateError('이미 존재하는 사용자 전화번호입니다.');
+    }
+
+    if (registration_type !== 'LOCAL' && oauthId) {
+      const dbRole = role === 'user' ? 'USER' : 'OWNER';
+      const socialAccount = await this.usersModel.findSocialAccountByProviderIdAndProviderTypeAndRole(oauthId, registration_type, dbRole);
+      if (socialAccount){
+        throw new SocialAccountDuplicateError('이미 존재하는 소셜 계정입니다.');
+      }
     }
   }
 

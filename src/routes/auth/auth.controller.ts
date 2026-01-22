@@ -19,8 +19,8 @@ import { AuthService } from './auth.service.js';
 import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, KakaoAuthResponse, LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, AuthLoginResponse, LocalLoginRequest, AuthPublicResponse, RefreshTokenPublicResponse, KakaoLoginPublicResponse } from './auth.dto.js';
 import express from 'express';
 import passport from './passport.js';
-import { KakaoAuthError, UnauthorizedError } from './auth.error.js';
-import { RefreshTokenRequest, KakaoLoginResponse } from './auth.dto.js';
+import { KakaoAuthError } from './auth.error.js';
+import { KakaoLoginResponse } from './auth.dto.js';
 
 @Route('auth')
 @Tags('Auth')
@@ -84,6 +84,8 @@ export class AuthController extends Controller {
    * @summary 카카오 로그인 시작 (카카오 로그인 페이지로 리다이렉트)
    * @param mode 로그인 모드 (user: 일반, reformer: 리폼러)
    */
+  @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습니다.')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
   @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')  
   @Get('kakao')
   public async loginWithKakao(@Request() request: express.Request, @Query() mode: 'user' | 'reformer'): Promise<any> {
@@ -208,7 +210,8 @@ export class AuthController extends Controller {
       accessToken: 'accessToken',
     }
   })
-  
+  @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('signup/user')
   public async signupUser(
     @Body() requestBody: UserSignupRequest): Promise<TsoaResponse<AuthPublicResponse>> {
@@ -240,12 +243,13 @@ export class AuthController extends Controller {
       accessToken: 'accessToken'
     }
   })
+  @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('signup/reformer')
   public async signupReformer(
   @FormField() data: string,
   @UploadedFiles('portfolios') portfolioPhotos: Express.Multer.File[]
   ): Promise<TsoaResponse<AuthPublicResponse>> {
-    // JSON 문자열을 DTO 객체로 반환
     const requestBody: ReformerSignupRequest = JSON.parse(data);
     const result = await this.authService.signupReformer(requestBody, portfolioPhotos);
     const { refreshToken, ...publicResponse } = result;
@@ -262,6 +266,8 @@ export class AuthController extends Controller {
    * @returns 로그인 성공 여부
    */
   @SuccessResponse(200, '로컬 로그인 성공')
+  @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
   @Example<ResponseHandler<AuthLoginResponse>>({
     resultType: 'SUCCESS',
     error: null,
@@ -277,6 +283,8 @@ export class AuthController extends Controller {
       refreshToken: 'refreshToken'
     }
   })
+  @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('login/local')
   public async localLogin(
     @Body() requestBody: LocalLoginRequest): Promise<TsoaResponse<AuthPublicResponse>> {

@@ -9,6 +9,13 @@ export const validatePhoneNumber = (phoneNumber: string): void => {
   }
 };
 
+export const validateName = (name: string): void => {
+  const nameRegex = /^[a-zA-Z가-힣]+$/;
+  if(!nameRegex.test(name)){
+    throw new InputValidationError(`유효하지 않은 이름 형식입니다. 입력받은 이름 : ${name}`);
+  }
+};
+
 export const validateCode = (code: string): void => {
   const codeRegex = /^[0-9]{6}$/;
   if(!codeRegex.test(code)){

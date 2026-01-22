@@ -1,5 +1,6 @@
+import { account_role, owner, social_account, user } from '@prisma/client';
 import prisma from '../../config/prisma.config.js';
-import { UserCreateDto, UserCreateResponseDto, OwnerCreateDto, OwnerCreateResponseDto } from './auth.dto.js';
+import { UserCreateDto, UserCreateResponseDto, OwnerCreateDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
 
 export class AuthModel {
   private prisma;
@@ -90,5 +91,4 @@ export class AuthModel {
       auth_status: owner.status
     } as OwnerCreateResponseDto;
   }
-  
 }

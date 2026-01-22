@@ -4,7 +4,7 @@ import {
   DeleteObjectCommand
 } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
-import { v5 } from 'uuid';
+import { v4 } from 'uuid';
 import { S3UploadError } from '../middleware/error.js';
 
 dotenv.config();
@@ -24,7 +24,7 @@ export class S3 {
     if (!file.mimetype.startsWith('image/')) {
       throw new Error('지원되지 않는 파일 형식입니다.');
     }
-    const uniqueName = `${v5}${file.originalname}`;
+    const uniqueName = `${v4()}-${file.originalname}`;
     const command = new PutObjectCommand({
       Bucket: process.env.S3_NAME || '',
       Key: uniqueName,
