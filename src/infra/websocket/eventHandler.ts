@@ -52,33 +52,41 @@ export class ChatEventHandler {
     console.log(`[수신] ${userId} -> 방 ${roomId}`);
 
     try {
-      const { receiverInfo, message } = await this.chatService.sendMessageEvent(
-        roomId,
-        authType,
-        userId,
-        contentType,
-        content
-      );
-      
-      const userRoom = this.io.sockets.adapter.rooms.get(receiverInfo.receiverId);
-      if (userRoom && userRoom.size > 0){
-        console.log(`[전송] ${userId} -> 수신자 ${receiverInfo.receiverId} (닉네임: ${receiverInfo.nickname})`);
-        const messageResponse = {
-          chatroomId: message['props'].chat_room_id,
-          senderId: message['props'].sender_id,
-          messageType: message['props'].message_type,
-          textContent: message['props'].text_content,
-          payload: message['props'].payload,
-          createdAt: message['props'].created_at
-        };
-
-        this.io.to(receiverInfo.receiverId).emit('newMessage', messageResponse);
-      }
+      const { receiverInfo, message } = await this.chatService.processSendMessage({
+        chatRoomId: roomId,
+        senderId: userId,
+        senderType: authType,
+        messageType: contentType as any,
+        content: content
+      });
+      console.log(`[처리 완료] ${userId} -> ${receiverInfo.receiverId}`);
+      this.notifyNewMessage(receiverInfo.receiverId, message);
     } catch (error) {
       socket.emit('error', { message: '메시지 전송 실패' });
       console.error('메시지 전송 에러:', error);
     }
   }
+
+  // 메세지 전송 메서드
+  public notifyNewMessage(receiverId: string, message: any) {
+    const userRoom = this.io.sockets.adapter.rooms.get(receiverId);
+    
+    // 상대방이 접속해 있는 경우에만 발송
+    if (userRoom && userRoom.size > 0) {
+      const messageResponse = {
+        chatroomId: message['props'].chat_room_id,
+        senderId: message['props'].sender_id,
+        messageType: message['props'].message_type,
+        textContent: message['props'].text_content,
+        payload: message['props'].payload,
+        createdAt: message['props'].created_at
+      };
+
+      this.io.to(receiverId).emit('newMessage', messageResponse);
+      console.log(`[실시간 알림] 수신자 ${receiverId}에게 메시지 전달 완료`);
+    }
+  }
+
 
   // 읽음 처리
   private async handleReadChatRoom(socket: Socket, chatroomId: string): Promise<void> {
