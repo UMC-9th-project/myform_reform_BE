@@ -31,8 +31,5 @@ jobs:
             echo "🐳 Docker login"
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-            echo "🏗 Docker build"
-            docker build -t myform/myapp:${{ github.base_ref }} .
-
-            echo "🚀 Docker push"
-            docker push myform/myapp:${{ github.base_ref }}
+            echo "🏗 Docker build & push"
+            docker buildx build --platform linux/amd64 -t seoki/myform_reform:${{ github.base_ref }} --push .
