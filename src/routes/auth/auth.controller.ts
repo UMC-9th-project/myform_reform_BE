@@ -211,7 +211,9 @@ export class AuthController extends Controller {
    * @summary 로컬에서 리폼러로 회원가입 합니다.
    * @description 로컬에서 리폼러로 회원가입 요청 정보를 받아 회원가입 처리 후 access Token 발급, refresh Token 쿠키 설정
    * @returns accessToken 발급 (refreshToken 쿠키 설정)
-   */
+   * @param data 리폼러 가입 정보 (JSON 문자열)
+   * 
+ */
   @SuccessResponse(201, '리폼러 회원가입 성공')
   @Example<ResponseHandler<AuthPublicResponse>>({
     resultType: 'SUCCESS',
