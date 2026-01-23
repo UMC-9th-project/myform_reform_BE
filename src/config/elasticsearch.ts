@@ -20,10 +20,23 @@ export const esClient = new Client({
   },
   headers: {
     accept: 'application/vnd.elasticsearch+json; compatible-with=8',
-    ['content-type']: 'application/vnd.elasticsearch+x-ndjson; compatible-with=8'
+    ['content-type']: 'application/vnd.elasticsearch+json; compatible-with=8'
   },
   tls: {
     ca: fs.readFileSync(certPath),
     rejectUnauthorized: true
   }
 });
+
+/*
+async function checkConnection() {
+  try {
+    await esClient.ping();
+    console.log('🚀 [Elasticsearch] Connecton Success');
+  } catch (error) {
+    console.error('❌ [Elasticsearch] Connection Failed');
+  }
+}
+
+checkConnection();
+*/

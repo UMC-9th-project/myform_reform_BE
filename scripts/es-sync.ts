@@ -1,5 +1,6 @@
 import { migrationService } from '../src/routes/search/migration.service';
 
+// 기존 데이터 ES 색인용
 async function syncAllDataToES() {
   try {
     await migrationService.syncAllToES();

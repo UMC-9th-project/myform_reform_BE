@@ -32,7 +32,9 @@
     "socket.io": "^4.8.3",
     "solapi": "^5.5.3",
     "tsoa": "^7.0.0-alpha.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "bullmq": "^5.66.7",
+    "ioredis": "^5.9.2"
   },
   "devDependencies": {
     "@types/eslint": "^9.6.1",

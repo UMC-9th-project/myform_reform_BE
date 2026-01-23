@@ -90,7 +90,6 @@ export const migrationService = {
     if (type === 'REQUEST') {
       return {
         ...base,
-        price: Number(doc.min_budget) || 0,
         minPrice: Number(doc.min_budget) || 0,
         maxPrice: Number(doc.max_budget) || 0
       };
@@ -98,9 +97,7 @@ export const migrationService = {
       const p = Number(doc.price) || 0;
       return {
         ...base,
-        price: p,
-        minPrice: p,
-        maxPrice: p
+        price: p
       };
     }
   },

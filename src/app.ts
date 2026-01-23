@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import 'reflect-metadata';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 import { WebSocketServer } from './infra/websocket/websocket.js';
+import './worker/search.worker.js';
 
 dotenv.config();
 const app = express();
