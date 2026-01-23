@@ -6,6 +6,8 @@ import { UnknownAuthError } from './auth.error.js';
 import { Role } from './auth.dto.js';
 import { UsersModel } from '../users/users.model.js';
 
+const usersModel = new UsersModel();
+
 passport.use(new KakaoStrategy({
   clientID: process.env.KAKAO_CLIENT_ID || '',
   clientSecret: process.env.KAKAO_CLIENT_SECRET || '',
@@ -13,11 +15,9 @@ passport.use(new KakaoStrategy({
   passReqToCallback: true
 }, async (req: express.Request, accessToken: string, refreshToken: string, profile: any, done: any) => {
   // usersModel 인스턴스 생성 (DB 조회 시 사용)
-  const usersModel = new UsersModel();
   
   try {
     const state = req.query.state as string;
-    // 가독성을 위해 mode라는 변수명을 선언하고 타입 안전성을 위해 Role 타입으로 타입 캐스팅.
     const mode: Role = state as Role;
     const role: account_role = mode === 'reformer' ? 'OWNER' : 'USER';
     const id = String(profile.id);
@@ -45,10 +45,9 @@ passport.use(new KakaoStrategy({
       return done(new UnknownAuthError('DB의 social_account 테이블에서 사용자의 owner_id 또는 user_id를 찾을 수 없습니다.'));
     }
 
-    //db에서 사용자 정보 조회 후 accountInfo 변수에 저장
     const accountInfo = role === 'OWNER' 
-    ? await usersModel.findReformerById(targetId) 
-    : await usersModel.findUserById(targetId);
+      ? await usersModel.findReformerById(targetId) 
+      : await usersModel.findUserById(targetId);
 
     if (!accountInfo) {
       return done(new UnknownAuthError(`DB의 ${tableName} 테이블에서 ${targetId}와 일치하는 사용자를 찾을 수 없습니다.`));

@@ -4,7 +4,7 @@ import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos, validateName} from '../../utils/validators.js';
 import pkg from 'jsonwebtoken';
 const { verify, sign } = pkg;
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, AuthDto, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { runInTransaction } from '../../config/prisma.config.js';
@@ -118,6 +118,9 @@ export class AuthService {
   async handleKakaoLogin(user: any): Promise<KakaoAuthResponse> {
     // 신규 유저 - 회원가입 정보 반환
     if (user.status === 'signup') {
+      if (!user.kakaoId || !user.email || !user.role) {
+        throw new MissingAuthInfoError('카카오 로그인 회원가입에 필요한 정보가 일부 누락되었습니다.');
+      }
       return {
         status: 'signup',
         user: {
@@ -131,10 +134,9 @@ export class AuthService {
     if (!user.id || !user.email || !user.role) {
       throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
     }
-    // 기존 유저 - 로그인 토큰 
+    
     const payload: JwtPayload = {
       id: user.id,
-      email: user.email,
       role: user.role as 'user' | 'reformer',
       auth_status: user.auth_status
     };
@@ -142,15 +144,8 @@ export class AuthService {
 
     return {
       status: 'login',
-      user: {
-        id: user.id,
-        email: user.email,
-        nickname: user.nickname as string,
-        role: user.role as Role,
-        auth_status: user.auth_status as AuthStatus
-      } as AuthDto,
-      accessToken,
-      refreshToken,
+      accessToken: accessToken,
+      refreshToken: refreshToken
     } as KakaoLoginResponse;
   }
 
@@ -159,7 +154,6 @@ export class AuthService {
     try {
       await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));      
     } catch (error) {
-      // refreshToken 삭제 실패 시 에러 로깅만 하고 계속 진행
       console.error(`[Logout] Redis refreshToken 삭제 실패 - userId: ${userId}`, error);
     }
   };
@@ -174,9 +168,9 @@ export class AuthService {
         hashedPassword: hashedPassword,
         phoneNumber: cleanPhoneNumber,
         role: 'user' as Role
-      }
+      };
       return await this.authModel.createUser(userDto as UserCreateDto);
-    })
+    });
   }
 
   // 리폼러 회원가입 처리
@@ -196,45 +190,39 @@ export class AuthService {
         businessNumber: this.getCleanBusinessNumber(rest.businessNumber),
         description: requestBody.description,
         portfolioPhotos: portfolioUrls
-      }
+      };
       return await this.authModel.createOwner(ownerDto);
-    })
+    });
   }
 
   // 회원가입 공통 로직 : 회원가입 정보 검증 후 DB에 저장 및 JWT 토큰 생성 후 반환
   private async processSignup( requestBody: UserSignupRequest | ReformerSignupRequest, createAccountFn: (hashedPassword: string | undefined, phoneNumber: string ) => Promise<UserCreateResponseDto | OwnerCreateResponseDto>
-): Promise<AuthLoginResponse> {
-  const { password, registration_type, phoneNumber } = requestBody;
-  const cleanPhoneNumber = this.getCleanPhoneNumber(phoneNumber);
-  const hashedPassword = password && registration_type === 'LOCAL' 
-    ? await bcrypt.hash(password, this.SALT_ROUNDS) 
-    : undefined;
+  ): Promise<AuthLoginResponse> {
+    const { password, registration_type, phoneNumber } = requestBody;
+    const cleanPhoneNumber = this.getCleanPhoneNumber(phoneNumber);
+    const hashedPassword = password && registration_type === 'LOCAL' 
+      ? await bcrypt.hash(password, this.SALT_ROUNDS) 
+      : undefined;
 
     return await runInTransaction(async () => {
       const newAccount = await createAccountFn(hashedPassword, cleanPhoneNumber);
-      const { accessToken, refreshToken } = await this.generateAndSaveTokens(newAccount);
-      const authInfo = {
+      const payload: JwtPayload = {
         id: newAccount.id,
-        email: newAccount.email as string,
-        nickname: newAccount.nickname as string,
-        role: newAccount.role as Role,
-        auth_status: (newAccount as OwnerCreateResponseDto).auth_status as AuthStatus,
-      } as AuthDto;
+        role: newAccount.role as 'user' | 'reformer',
+        ...(newAccount.role === 'reformer' && { auth_status: (newAccount as OwnerCreateResponseDto).auth_status as AuthStatus })
+      } as JwtPayload;
+      const { accessToken, refreshToken } = await this.generateAndSaveTokens(payload);
       return {
-        user: authInfo,
         accessToken,
         refreshToken
       } as AuthLoginResponse;
     });
-}
+  }
 
-  //
+  // 로컬 로그인 처리 : 이메일과 비밀번호 검증 후 JWT 토큰 생성 후 반환
   async loginLocal(requestBody: LocalLoginRequest): Promise<AuthLoginResponse> {
-    // 로컬 로그인 처리 : 이메일과 비밀번호 검증 후 JWT 토큰 생성 후 반환
     const { email, password, role } = requestBody;
-    //이메일 검증
     validateEmail(email);
-    //비밀번호 검증
     validatePassword(password);
     //DB에서 유저 정보 조회
     const socialAccount = await this.usersModel.findSocialAccountByEmailAndRole(email, role === 'user' ? 'USER' : 'OWNER');
@@ -254,28 +242,51 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new passwordInvalidError('비밀번호가 일치하지 않습니다.');
     }
-    // payload에 담길 정보는 id, email, role, auth_status(리폼러 한정)
+    // payload에 담길 정보는 id, role, auth_status(리폼러 한정)
     const payload: JwtPayload = {
       id: account.id,
-      email: account.email as string,
       role: account.role as 'user' | 'reformer',
-      ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus }),
+      ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
     } as JwtPayload;
 
     const { accessToken, refreshToken } = await this.generateAndSaveTokens(payload);
 
-    const authInfo: AuthDto = {
-      id: account.id,
-      email: account.email as string,
-      nickname: account.nickname as string,
-      role: account.role as 'user' | 'reformer',
-      ...(account.role === 'reformer' && { auth_status: account.auth_status as AuthStatus }),
-    }
     return {
-      user: authInfo,
       accessToken,
       refreshToken
     } as AuthLoginResponse;
+  }
+
+  // 리프레시 토큰을 입력받아 엑세스 토큰과 리프레시 토큰을 재발급
+  async reissueAccessToken(requestBody: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+    const { refreshToken } = requestBody;
+    try {
+      // refreshToken 검증
+      const decoded = verify(refreshToken, process.env.JWT_SECRET!);
+      // refreshToken 검증 성공 시 userId 추출
+      const userId = (decoded as JwtPayload).id;
+      const role = (decoded as JwtPayload).role;
+      // userId로 리프레시 토큰 조회
+      const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
+      if (!savedRefreshToken || savedRefreshToken !== refreshToken){
+        throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
+      }
+      const account = (role === 'user'
+        ? await this.usersModel.findUserById(userId)
+        : await this.usersModel.findReformerById(userId)) as UsersInfoResponse;
+      if (!account){
+        throw new AccountNotFoundError('존재하지 않는 유저입니다.');
+      }
+      const payload: JwtPayload = {
+        id: account.id,
+        role: account.role as 'user' | 'reformer',
+        ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
+      } as JwtPayload;
+      const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
+      return { accessToken, refreshToken: newRefreshToken } as RefreshTokenResponse;
+    } catch (error) {
+      throw new RefreshTokenError('리프레시 토큰 재발급에 실패하였습니다.');
+    }
   }
 
   // 인증 코드 제한 처리 : Redis에서 인증 코드 제한 처리
@@ -296,40 +307,7 @@ export class AuthService {
         }
       );
     }
-  }
-
-  // 리프레시 토큰을 입력받아 엑세스 토큰과 리프레시 토큰을 재발급
-  async reissueAccessToken(requestBody: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-    const { refreshToken } = requestBody;
-    try {
-      // refreshToken 검증
-      const decoded = verify(refreshToken, process.env.JWT_SECRET!);
-      // refreshToken 검증 성공 시 userId 추출
-      const userId = (decoded as JwtPayload).id;
-      const role = (decoded as JwtPayload).role;
-      // userId로 리프레시 토큰 조회
-      const savedRefreshToken = await redisClient.get(`refreshToken:${userId}`);
-      if (!savedRefreshToken || savedRefreshToken !== refreshToken){
-        throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
-      }
-      const account = (role === 'user'
-        ? await this.usersModel.findUserById(userId)
-        : await this.usersModel.findReformerById(userId)) as UsersInfoResponse;
-      if (!account){
-        throw new AccountNotFoundError('존재하지 않는 유저입니다.');
-      }
-      const payload: JwtPayload = {
-        id: account.id,
-        email: account.email as string,
-        role: account.role as 'user' | 'reformer',
-        ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus }),
-      } as JwtPayload;
-      const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
-      return { accessToken, refreshToken: newRefreshToken } as RefreshTokenResponse;
-    } catch (error) {
-      throw new RefreshTokenError('리프레시 토큰 재발급에 실패하였습니다.');
-    }
-  }
+  }  
 
   // JWT 토큰 생성 및 Redis에 저장
   private async generateAndSaveTokens(payload: JwtPayload): Promise<LoginResponse> {
@@ -346,7 +324,7 @@ export class AuthService {
     return { accessToken, refreshToken } as LoginResponse;
   }
 
-  // 회원가입 정보 검증
+  // 회원가입시 입력한 정보 유효성 검증
   private async validateSignupRequest(requestBody: UserSignupRequest | ReformerSignupRequest, role: 'user' | 'reformer'): Promise<void> {
     const { email, nickname, phoneNumber, registration_type, oauthId, password, over14YearsOld, termsOfService, name } = requestBody;
     // 단순 형식 검증 (이메일, 닉네임, 전화번호, 비밀번호)
@@ -371,7 +349,6 @@ export class AuthService {
       validatePassword(password);
     }
 
-    // 회원가입 정보 검증
     validateTermsAgreement(over14YearsOld, termsOfService);
     validateRegistrationType(registration_type, oauthId, password);
     await this.ensurePhoneVerified(phoneNumber);
@@ -402,6 +379,7 @@ export class AuthService {
     }
   }
 
+  // 리폼러 회원가입시 입력한 정보 유효성 검증
   private async validateReformerSignupRequest(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[]): Promise<void> {
     await this.validateSignupRequest(requestBody, 'reformer');
     validateBusinessNumber(requestBody.businessNumber);
@@ -409,10 +387,12 @@ export class AuthService {
     validatePortfolioPhotos(portfolioPhotos);
   }
 
+  // 전화번호 숫자만 추출
   private getCleanPhoneNumber(phoneNumber: string): string {
     return phoneNumber.replace(/[^0-9]/g, '');
   }
 
+  // 사업자번호 숫자만 추출
   private getCleanBusinessNumber(businessNumber: string): string {
     return businessNumber.replace(/[^0-9]/g, '');
   }

@@ -1,4 +1,4 @@
-import { BasicError } from "../../middleware/error.js";
+import { BasicError } from '../../middleware/error.js';
 
 export class PhoneNumberDuplicateError extends BasicError {
   constructor(description: string) {

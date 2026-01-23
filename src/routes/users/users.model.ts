@@ -20,7 +20,7 @@ export class UsersModel {
       email: reformer.email as string,
       nickname: reformer.nickname as string,
       role: 'reformer',
-      auth_status: reformer.status,
+      auth_status: reformer.status
     } as UsersInfoResponse;
   }
 
@@ -36,7 +36,7 @@ export class UsersModel {
       email: user?.email as string,
       nickname: user?.nickname as string,
       role: 'user',
-      hashed: user?.hashed as string,
+      hashed: user?.hashed as string
     } as UsersInfoResponse;
   }
 
@@ -69,7 +69,7 @@ export class UsersModel {
       email: user?.email as string,
       nickname: user?.nickname as string,
       role: 'user',
-      hashed: user?.hashed as string,
+      hashed: user?.hashed as string
     } as UsersInfoResponse;
   }
 
@@ -162,17 +162,19 @@ export class UsersModel {
     return socialAccount;
   }
 
-    // Email과 Role을 기반으로 소셜 계정 조회
+  // Email과 Role을 기반으로 소셜 계정 조회
   async findSocialAccountByEmailAndRole(email: string, role: account_role ): Promise<social_account | null> {
-    const account = role === 'USER' ? await this.prisma.user.findUnique({
-      where: {
-        email: email
-      }
-    }) : await this.prisma.owner.findUnique({
-      where: {
-        email: email
-      }
-    });
+    const account = role === 'USER'
+      ? await this.prisma.user.findUnique({
+        where: {
+          email: email
+        }
+      })
+      : await this.prisma.owner.findUnique({
+        where: {
+          email: email
+        }
+      });
     
     // 계정이 존재하면 소셜 계정 조회
     if (account) {

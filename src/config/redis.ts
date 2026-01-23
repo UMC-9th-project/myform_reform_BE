@@ -19,15 +19,11 @@ redisClient.on('connect', () =>
 // 실제 연결 시도
 await redisClient.connect();
 
-<<<<<<< HEAD
 export const REDIS_KEYS = {
   AUTH_CODE : (phone:string) => `auth:${phone}`,
   VERIFIED: (phone:string) => `verified:${phone}`,
   BLOCK: (phone:string) => `block:${phone}`,
-  REFRESH_TOKEN: (userId:string) => `refreshToken:${userId}`,
-}
+  REFRESH_TOKEN: (userId:string) => `refreshToken:${userId}`
+};
 
 export { redisClient };
-=======
-export { redisClient };
->>>>>>> e0079753b1bd0f2042cd777867f98f2879e3c2ea
