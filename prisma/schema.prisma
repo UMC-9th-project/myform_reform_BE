@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -269,6 +270,7 @@ model owner {
   avg_star          Decimal?             @db.Decimal
   review_count      Int?
   trade_count       Int?
+  search_vector     Unsupported("tsvector")?
   chat_room         chat_room[]
   delivery_address  delivery_address[]
   feed              feed[]
@@ -277,6 +279,8 @@ model owner {
   owner_wish        owner_wish[]
   reform_proposal   reform_proposal[]
   reformer_auth     reformer_auth[]
+
+  @@index([search_vector], map: "owner_search_idx", type: Gin)
 }
 
 model owner_wish {
