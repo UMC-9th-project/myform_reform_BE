@@ -18,7 +18,7 @@ import { ChatService } from './chat.service.js';
 import { CreateChatRoomDTO, SimplePostResponseDTO,  ChatRoomListDTO } from './chat.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 // import { DatabaseForeignKeyError, DatabaseRecordNotFoundError, DbConnectionError, DatabaseUniqueConstraintError } from '../../utils/dbErrorHandler.js';
-// import { TargetNotFoundError, InvalidChatTypeError, InvalidChatRoomFilterError } from './chat.error.js';
+// import { CreateTargetNotFoundError, InvalidChatRoomTypeError, InvalidChatRoomFilterError } from './chat.error.js';
 
 @Route('api/v1/chat')
 @Tags('채팅 기능')
@@ -43,8 +43,8 @@ export class ChatController extends Controller {
    */
   @Post('/rooms')
   @SuccessResponse('201', 'Created')
-  // @Response<TargetNotFoundError>(404, '채팅방 생성 대상 리소스를 찾을 수 없습니다.')
-  // @Response<InvalidChatTypeError>(400, '유효하지 않은 채팅방 타입입니다.')
+  // @Response<CreateTargetNotFoundError>(404, '채팅방 생성 대상 리소스를 찾을 수 없습니다.')
+  // @Response<InvalidChatRoomTypeError>(400, '유효하지 않은 채팅방 타입입니다.')
   public async createChatRoom(
     @Body() body: {request: CreateChatRoomDTO}
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
