@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // 포트원 테스트 모드 설정
-const PORTONE_REST_API_KEY = process.env.PORTONE_REST_API_KEY || 'test_ck_lpP2YxJ4K877JAdv7KX8RGZwXLOb';
-const PORTONE_REST_API_SECRET = process.env.PORTONE_REST_API_SECRET || 'test_sk_d26DlbXAaV0xQbpa7y1VqY50Q9RB';
+const PORTONE_REST_API_KEY = process.env.PORTONE_REST_API_KEY;
+const PORTONE_REST_API_SECRET = process.env.PORTONE_REST_API_SECRET;
 const PORTONE_API_BASE_URL = 'https://api.iamport.kr';
 
 // 액세스 토큰 캐시 (토큰 만료 전까지 재사용)
