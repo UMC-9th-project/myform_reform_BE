@@ -3,32 +3,74 @@ import { Prisma, order_status_enum, target_type_enum } from '@prisma/client';
 
 export class OrdersRepository {
   /**
-   * 날짜 범위 내 주문 개수 조회
+   * receipt_number로 receipt 존재 여부 확인
    */
-  async countOrdersByDateRange(dayStart: Date, dayEnd: Date): Promise<number> {
-    const orderCountResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*)::bigint as count
-      FROM "order"
-      WHERE "created_at" >= ${dayStart}::timestamp
-        AND "created_at" <= ${dayEnd}::timestamp
-        AND "order_number" IS NOT NULL
-    `;
-    
-    return Number(orderCountResult[0]?.count || 0);
-  }
-
-  /**
-   * 주문번호로 주문 존재 여부 확인
-   */
-  async findOrderByOrderNumber(orderNumber: string) {
-    return await prisma.order.findUnique({
-      where: { order_number: orderNumber },
-      select: { order_id: true }
+  async findReceiptByReceiptNumber(receiptNumber: string) {
+    return await prisma.receipt.findUnique({
+      where: { receipt_number: receiptNumber },
+      select: { 
+        receipt_id: true,
+        payment_status: true
+      }
     });
   }
 
   /**
-   * UUID로 주문 조회
+   * 주문 조회 (결제 검증용, 사용자 검증 없음)
+   */
+  async findOrderByIdForVerification(orderId: string) {
+    return await prisma.order.findUnique({
+      where: { order_id: orderId },
+      select: {
+        order_id: true,
+        receipt_id: true,
+        price: true,
+        status: true,
+        order_option: {
+          select: {
+            option_item_id: true
+          }
+        },
+        receipt: {
+          select: {
+            receipt_id: true,
+            receipt_number: true,
+            total_amount: true
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * receipt_number로 receipt 조회 (결제 검증용)
+   */
+  async findReceiptByReceiptNumberForVerification(receiptNumber: string) {
+    return await prisma.receipt.findUnique({
+      where: { receipt_number: receiptNumber },
+      select: {
+        receipt_id: true,
+        receipt_number: true,
+        total_amount: true,
+        order: {
+          select: {
+            order_id: true,
+            price: true,
+            status: true,
+            quantity: true,
+            order_option: {
+              select: {
+                option_item_id: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * UUID로 주문 조회 (receipt 포함)
    */
   async findOrderById(orderId: string, userId: string) {
     return await prisma.order.findFirst({
@@ -68,48 +110,92 @@ export class OrdersRepository {
             }
           }
         },
-        reciept: {
-          orderBy: {
-            created_at: 'desc'
-          },
-          take: 1
+        receipt: {
+          include: {
+            order: {
+              include: {
+                order_option: {
+                  include: {
+                    option_item: {
+                      include: {
+                        option_group: {
+                          include: {
+                            item: {
+                              include: {
+                                item_photo: {
+                                  select: {
+                                    content: true,
+                                    photo_order: true
+                                  },
+                                  orderBy: {
+                                    photo_order: 'asc'
+                                  },
+                                  take: 1
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                owner: {
+                  select: {
+                    nickname: true
+                  }
+                }
+              }
+            }
+          }
         }
       }
     });
   }
 
   /**
-   * 주문번호로 주문 조회
+   * receipt_number로 receipt와 모든 order 조회
    */
-  async findOrderByNumber(orderNumber: string, userId: string) {
-    return await prisma.order.findFirst({
+  async findReceiptByReceiptNumberWithOrders(receiptNumber: string, userId: string) {
+    return await prisma.receipt.findFirst({
       where: {
-        order_number: orderNumber,
-        user_id: userId
+        receipt_number: receiptNumber,
+        order: {
+          some: {
+            user_id: userId
+          }
+        }
       },
       include: {
-        owner: {
-          select: {
-            nickname: true
-          }
-        },
-        order_option: {
+        order: {
+          where: {
+            user_id: userId
+          },
           include: {
-            option_item: {
+            owner: {
+              select: {
+                nickname: true
+              }
+            },
+            order_option: {
               include: {
-                option_group: {
+                option_item: {
                   include: {
-                    item: {
+                    option_group: {
                       include: {
-                        item_photo: {
-                          select: {
-                            content: true,
-                            photo_order: true
-                          },
-                          orderBy: {
-                            photo_order: 'asc'
-                          },
-                          take: 1
+                        item: {
+                          include: {
+                            item_photo: {
+                              select: {
+                                content: true,
+                                photo_order: true
+                              },
+                              orderBy: {
+                                photo_order: 'asc'
+                              },
+                              take: 1
+                            }
+                          }
                         }
                       }
                     }
@@ -118,12 +204,6 @@ export class OrdersRepository {
               }
             }
           }
-        },
-        reciept: {
-          orderBy: {
-            created_at: 'desc'
-          },
-          take: 1
         }
       }
     });
@@ -174,6 +254,40 @@ export class OrdersRepository {
         owner: {
           select: {
             owner_id: true
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * 상품 ID 목록으로 상품 조회 (옵션 그룹, 사진, 판매자 포함)
+   */
+  async findItemsByIds(itemIds: string[]) {
+    if (!itemIds || itemIds.length === 0) {
+      return [];
+    }
+    return await prisma.item.findMany({
+      where: { item_id: { in: itemIds } },
+      include: {
+        owner: {
+          select: {
+            owner_id: true,
+            nickname: true
+          }
+        },
+        item_photo: {
+          select: {
+            content: true,
+            photo_order: true
+          },
+          orderBy: {
+            photo_order: 'asc'
+          }
+        },
+        option_group: {
+          include: {
+            option_item: true
           }
         }
       }
@@ -295,6 +409,7 @@ export class OrdersRepository {
    * 주문 생성
    */
   async createOrder(data: {
+    receipt_id: string;
     user_id: string;
     owner_id: string;
     target_type: target_type_enum;
@@ -302,9 +417,8 @@ export class OrdersRepository {
     user_address: string | undefined;
     price: number;
     delivery_fee: number;
-    amount: number;
+    quantity: number;
     status: order_status_enum;
-    order_number: string;
   }) {
     return await prisma.order.create({
       data
@@ -331,14 +445,91 @@ export class OrdersRepository {
    * 영수증 생성
    */
   async createReceipt(data: {
-    order_id: string;
+    receipt_number: string;
+    total_amount: number;
     payment_status: string;
-    payment_method: string;
+    payment_method: string | null;
     payment_gateway: string;
     transaction: string | null;
   }) {
-    return await prisma.reciept.create({
+    return await prisma.receipt.create({
       data
+    });
+  }
+
+  /**
+   * receipt_id로 receipt와 모든 order 조회
+   */
+  async findReceiptByIdWithOrders(receiptId: string) {
+    return await prisma.receipt.findUnique({
+      where: { receipt_id: receiptId },
+      include: {
+        order: {
+          select: {
+            order_id: true,
+            status: true,
+            quantity: true,
+            order_option: {
+              select: {
+                option_item_id: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * receipt_id로 모든 order 조회
+   */
+  async findOrdersByReceiptId(receiptId: string) {
+    return await prisma.order.findMany({
+      where: { receipt_id: receiptId },
+      include: {
+        order_option: {
+          select: {
+            option_item_id: true
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * receipt 총액 업데이트
+   */
+  async updateReceiptTotalAmount(receiptId: string, totalAmount: number) {
+    return await prisma.receipt.update({
+      where: { receipt_id: receiptId },
+      data: { total_amount: totalAmount }
+    });
+  }
+
+  /**
+   * cart_ids로 cart 조회 (옵션 포함)
+   */
+  async findCartsByIds(cartIds: string[], userId: string) {
+    return await prisma.cart.findMany({
+      where: {
+        cart_id: { in: cartIds },
+        user_id: userId
+      },
+      include: {
+        cart_option: {
+          include: {
+            option_item: {
+              include: {
+                option_group: {
+                  include: {
+                    item: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
   }
 
@@ -353,6 +544,19 @@ export class OrdersRepository {
   }
 
   /**
+   * 여러 주문 상태를 배치로 업데이트
+   */
+  async updateOrdersStatus(orderIds: string[], status: order_status_enum) {
+    if (orderIds.length === 0) {
+      return { count: 0 };
+    }
+    return await prisma.order.updateMany({
+      where: { order_id: { in: orderIds } },
+      data: { status }
+    });
+  }
+
+  /**
    * 영수증 업데이트
    */
   async updateReceipt(receiptId: string, data: {
@@ -361,14 +565,14 @@ export class OrdersRepository {
     payment_gateway?: string;
     transaction?: string | null;
   }) {
-    return await prisma.reciept.update({
-      where: { reciept_id: receiptId },
+    return await prisma.receipt.update({
+      where: { receipt_id: receiptId },
       data
     });
   }
 
   /**
-   * 장바구니 아이템 삭제
+   * 장바구니 아이템 삭제 (item_id 기준)
    */
   async deleteCartItems(userId: string, itemId: string) {
     return await prisma.cart.deleteMany({
@@ -380,12 +584,32 @@ export class OrdersRepository {
   }
 
   /**
-   * 주문 ID로 영수증 조회
+   * 장바구니 아이템 삭제 (cart_id 배열 기준)
+   */
+  async deleteCartsByIds(cartIds: string[]) {
+    if (!cartIds || cartIds.length === 0) {
+      return { count: 0 };
+    }
+    return await prisma.cart.deleteMany({
+      where: { cart_id: { in: cartIds } }
+    });
+  }
+
+  /**
+   * order_id로 receipt 조회 (order.receipt_id 사용)
    */
   async findReceiptByOrderId(orderId: string) {
-    return await prisma.reciept.findFirst({
+    const order = await prisma.order.findUnique({
       where: { order_id: orderId },
-      orderBy: { created_at: 'desc' }
+      select: { receipt_id: true }
+    });
+    
+    if (!order) {
+      return null;
+    }
+    
+    return await prisma.receipt.findUnique({
+      where: { receipt_id: order.receipt_id }
     });
   }
 

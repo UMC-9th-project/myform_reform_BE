@@ -85,18 +85,29 @@ export class CreateOrderRequestDto {
 
   @IsString()
   @IsNotEmpty()
-  imp_uid!: string;
-
-  @IsString()
-  @IsNotEmpty()
   merchant_uid!: string;
 }
 
 export interface CreateOrderResponseDto {
   order_id: string;
-  payment_status: string;
-  payment_method: string | null;
-  payment_gateway: string | null;
+  payment_required: boolean;
+  payment_info?: {
+    merchant_uid: string;
+    amount: number;
+  };
+}
+
+export class VerifyPaymentRequestDto {
+  @IsUUID()
+  order_id!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  imp_uid!: string;
+}
+
+export interface VerifyPaymentResponseDto {
+  success: boolean;
 }
 
 export interface GetOrderResponseDto {
@@ -131,4 +142,40 @@ export interface GetOrderResponseDto {
   remaining_items_count: number;
   total_amount: number;
   delivery_fee: number;
+}
+
+export class GetOrderSheetFromCartRequestDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID(undefined, { each: true })
+  cart_ids!: string[];
+
+  @IsOptional()
+  @IsUUID()
+  delivery_address_id?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NewAddressDto)
+  new_address?: NewAddressDto;
+}
+
+export class CreateOrderFromCartRequestDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsUUID(undefined, { each: true })
+  cart_ids!: string[];
+
+  @IsOptional()
+  @IsUUID()
+  delivery_address_id?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => NewAddressDto)
+  new_address?: NewAddressDto;
+
+  @IsString()
+  @IsNotEmpty()
+  merchant_uid!: string;
 }
