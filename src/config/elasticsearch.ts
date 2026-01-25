@@ -7,13 +7,16 @@ dotenv.config();
 
 const certPath = path.join(process.cwd(), 'certs', 'ca', 'ca.crt');
 const ELASTIC_PASSWORD = process.env.ELASTIC_PASSWORD;
+const ELASTIC_NODE = process.env.ELASTIC_NODE;
 
-if (!ELASTIC_PASSWORD) {
-  throw new Error('❌ .env파일에 ELASTIC_PASSWORD가 없습니다.');
+if (!ELASTIC_PASSWORD || !ELASTIC_NODE) {
+  throw new Error(
+    '❌ .env파일에 ELASTIC_PASSWORD 또는 ELASTIC_NODE가 없습니다.'
+  );
 }
 
 export const esClient = new Client({
-  node: 'https://localhost:9200',
+  node: ELASTIC_NODE,
   auth: {
     username: 'elastic',
     password: ELASTIC_PASSWORD
