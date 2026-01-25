@@ -27,6 +27,11 @@ export const prisma: PrismaClient = new Proxy(prismaClient, {
 export const runInTransaction = async <T>(
   callback: () => Promise<T>
 ): Promise<T> => {
+
+  if (transactionStorage.getStore()) {
+    // 이미 트랜잭션 컨텍스트가 존재하면 중첩 트랜잭션을 방지하기 위해 바로 콜백 실행
+    return callback();
+  }
   return await prismaClient.$transaction(
     async (tx: Prisma.TransactionClient) => {
       return transactionStorage.run(tx, callback);
