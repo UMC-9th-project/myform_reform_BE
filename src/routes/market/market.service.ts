@@ -4,6 +4,7 @@ import {
   MarketError
 } from './market.error.js';
 import type { Prisma } from '@prisma/client';
+import { Prisma as PrismaClient } from '@prisma/client';
 import type {
   GetItemListResponseDto,
   GetItemDetailResponseDto,
@@ -13,6 +14,7 @@ import type {
 } from './market.dto.js';
 import type { ItemWithRelations, ReviewWithPhotos } from './market.model.js';
 import { MarketRepository } from './market.repository.js';
+import { DatabaseForeignKeyError } from '../../utils/dbErrorHandler.js';
 
 export class MarketService {
   constructor(private repository: MarketRepository = new MarketRepository()) {}
@@ -31,24 +33,6 @@ export class MarketService {
     userId: string | undefined
   ): Promise<GetItemListResponseDto> {
     try {
-
-      if (categoryId) {
-        try {
-          const category = await this.repository.findCategoryById(categoryId);
-          if (!category) {
-            throw new MarketError(
-              '존재하지 않는 카테고리입니다.',
-              `categoryId: ${categoryId}`
-            );
-          }
-        } catch (error) {
-          if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('UUID') || error.message.includes('Inconsistent column data'))) {
-          } else {
-            throw error;
-          }
-        }
-      }
-
       const skip = (page - 1) * limit;
 
       const categoryFilter = categoryId ? { category_id: categoryId } : {};
@@ -82,6 +66,20 @@ export class MarketService {
     } catch (error) {
       if (error instanceof MarketError) {
         throw error;
+      }
+      if (error instanceof DatabaseForeignKeyError) {
+        throw new MarketError(
+          '존재하지 않는 카테고리입니다.',
+          error.description || `categoryId: ${categoryId}`
+        );
+      }
+      if (error instanceof PrismaClient.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          throw new MarketError(
+            '존재하지 않는 카테고리입니다.',
+            `categoryId: ${categoryId}`
+          );
+        }
       }
       if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('UUID') || error.message.includes('Inconsistent column data'))) {
         throw new MarketError(
@@ -162,8 +160,6 @@ export class MarketService {
     sort: 'latest' | 'star_high' | 'star_low' = 'latest'
   ): Promise<GetItemReviewsResponseDto> {
     try {
-      await this.validateItemExists(itemId);
-
       const skip = (page - 1) * limit;
       const orderBy = this.getReviewOrderBy(sort);
 
@@ -174,7 +170,7 @@ export class MarketService {
         this.getItemThumbnail(itemId)
       ]);
 
-    const avgStar = avgStarResult._avg.star ? Number(avgStarResult._avg.star) : 0;
+    const avgStar = avgStarResult._avg?.star ? Number(avgStarResult._avg.star) : 0;
     const userMap = await this.getUserMapForReviews(reviews);
     const reviewList = this.transformReviewList(reviews, userMap, itemThumbnail);
 
@@ -204,8 +200,7 @@ export class MarketService {
   }
 
   /**
-   * 사진 후기 조회 (무한 스크롤) - 사진 단위로 평탄화
-   * 최신순(created_at DESC)으로 정렬된 리뷰의 사진을 평탄화하여 반환
+   * 사진 후기 조회 (무한 스크롤)
    */
   async getItemReviewPhotos(
     itemId: string,
@@ -213,20 +208,18 @@ export class MarketService {
     limit: number
   ): Promise<GetItemReviewPhotosResponseDto> {
     try {
-      await this.validateItemExists(itemId);
-
-      const [totalPhotoCount, allReviews] = await Promise.all([
+      const [totalPhotoCount, photos] = await Promise.all([
         this.getTotalPhotoCountForItem(itemId),
-        this.getReviewsWithPhotosForItem(itemId)
+        this.repository.findReviewPhotosForItem(itemId, offset, limit)
       ]);
 
-    const flattenedPhotos = this.flattenReviewPhotos(allReviews);
-    const paginatedPhotos = this.paginatePhotos(flattenedPhotos, offset, limit);
-    const photos = this.addPhotoIndices(paginatedPhotos, offset);
+      const hasMore = photos.length > limit;
+      const paginatedPhotos = hasMore ? photos.slice(0, limit) : photos;
+      const photosWithIndices = this.addPhotoIndices(paginatedPhotos, offset);
 
       return {
-        photos,
-        has_more: paginatedPhotos.length > limit,
+        photos: photosWithIndices,
+        has_more: hasMore,
         offset,
         limit,
         total_count: totalPhotoCount
@@ -251,8 +244,6 @@ export class MarketService {
     photoIndex?: number
   ): Promise<GetReviewDetailResponseDto> {
     try {
-      await this.validateItemExists(itemId);
-
       const review = await this.getReviewWithPhotos(itemId, reviewId);
       if (!review) {
         throw new ReviewNotFoundError(reviewId);
@@ -439,14 +430,14 @@ export class MarketService {
         option_item_id: item.option_item_id,
         name: item.name || '',
         extra_price: item.extra_price || 0,
-        quantity: item.quantity
+        quantity: item.quantity,
+        is_sold_out: item.quantity !== null && item.quantity <= 0
       }))
     }));
   }
 
   /**
    * 상품의 리뷰 데이터 조회 (통계, 미리보기 등)
-   * 쿼리 최적화: 필요한 데이터를 최소한의 쿼리로 조회
    */
   private async getReviewDataForItem(itemId: string): Promise<{
     totalReviewCount: number;
@@ -471,7 +462,7 @@ export class MarketService {
         this.repository.countPhotosForItem(itemId)
       ]);
 
-      const avgStar = avgStarResult._avg.star ? Number(avgStarResult._avg.star) : 0;
+      const avgStar = avgStarResult._avg?.star ? Number(avgStarResult._avg.star) : 0;
       
       const reviewsWithPhotos = allReviews.filter(
         (review: ReviewWithPhotos) => review.review_photo.length > 0
@@ -593,30 +584,6 @@ export class MarketService {
     } catch (error) {
       throw new MarketError(
         `리뷰 변환 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`
-      );
-    }
-  }
-
-  /**
-   * 상품 존재 여부 확인
-   */
-  private async validateItemExists(itemId: string): Promise<void> {
-    try {
-      const item = await this.repository.findItemById(itemId);
-
-      if (!item) {
-        throw new ItemNotFoundError(itemId);
-      }
-    } catch (error) {
-      if (error instanceof ItemNotFoundError) {
-        throw error;
-      }
-      if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('UUID') || error.message.includes('Inconsistent column data'))) {
-        throw new ItemNotFoundError(itemId);
-      }
-      throw new MarketError(
-        `상품 존재 여부 확인 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
-        `itemId: ${itemId}`
       );
     }
   }
@@ -764,60 +731,6 @@ export class MarketService {
         `itemId: ${itemId}`
       );
     }
-  }
-
-  /**
-   * 사진이 있는 리뷰 목록 조회 (최신순)
-   */
-  private async getReviewsWithPhotosForItem(itemId: string): Promise<ReviewWithPhotos[]> {
-    try {
-      return await this.repository.findReviewsWithPhotosForItem(itemId);
-    } catch (error) {
-      throw new MarketError(
-        `사진 리뷰 조회 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
-        `itemId: ${itemId}`
-      );
-    }
-  }
-
-  /**
-   * 리뷰 사진 평탄화
-   */
-  private flattenReviewPhotos(
-    reviews: ReviewWithPhotos[]
-  ): Array<{ review_id: string; photo_url: string; photo_order: number }> {
-    const flattened: Array<{ review_id: string; photo_url: string; photo_order: number }> = [];
-
-    for (const review of reviews) {
-      const sortedPhotos = review.review_photo.sort(
-        (a: { photo_order: number | null }, b: { photo_order: number | null }) =>
-          (a.photo_order ?? 0) - (b.photo_order ?? 0)
-      );
-
-      for (const photo of sortedPhotos) {
-        if (photo.content) {
-          flattened.push({
-            review_id: review.review_id,
-            photo_url: photo.content,
-            photo_order: photo.photo_order ?? 0
-          });
-        }
-      }
-    }
-
-    return flattened;
-  }
-
-  /**
-   * 사진 목록 페이지네이션
-   */
-  private paginatePhotos(
-    photos: Array<{ review_id: string; photo_url: string; photo_order: number }>,
-    offset: number,
-    limit: number
-  ): Array<{ review_id: string; photo_url: string; photo_order: number }> {
-    const paginated = photos.slice(offset, offset + limit + 1);
-    return paginated.length > limit ? paginated.slice(0, limit) : paginated;
   }
 
   /**

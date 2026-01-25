@@ -23,9 +23,7 @@ import {
   type GetItemReviewPhotosResponseDto,
   type GetReviewDetailResponseDto
 } from './market.dto.js';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
-import { ValidateError } from 'tsoa';
+import { validateDto } from '../../middleware/validator.js';
 
 @Route('market')
 @Tags('Market')
@@ -36,6 +34,7 @@ export class MarketController extends Controller {
     super();
     this.marketService = new MarketService();
   }
+
 
   /**
    * 상품 목록 조회
@@ -55,14 +54,14 @@ export class MarketController extends Controller {
     {
       resultType: 'FAIL',
       error: {
-        errorCode: '400',
+        errorCode: 'ERR-VALIDATION',
         reason: '입력값 검증 실패',
-        data: {
-          categoryId: ['categoryId는 UUID 형식이어야 합니다'],
-          sort: ['sort는 popular 또는 latest여야 합니다'],
-          page: ['page는 1 이상의 정수여야 합니다'],
-          limit: ['limit는 1 이상 100 이하의 정수여야 합니다']
-        }
+        data: [
+          { field: 'categoryId', value: 'invalid', messages: 'categoryId는 UUID 형식이어야 합니다' },
+          { field: 'sort', value: 'invalid', messages: 'sort는 popular 또는 latest여야 합니다' },
+          { field: 'page', value: 0, messages: 'page는 1 이상의 정수여야 합니다' },
+          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' }
+        ]
       },
       success: null
     }
@@ -109,26 +108,12 @@ export class MarketController extends Controller {
     @Query() limit: number = 15,
     @Header('x-user-id') userId?: string
   ): Promise<TsoaResponse<GetItemListResponseDto>> {
-    const dto = plainToInstance(GetItemListRequestDto, {
+    const dto = await validateDto(GetItemListRequestDto, {
       category_id: categoryId,
       sort,
       page,
       limit
     });
-    const errors = await validate(dto);
-    if (errors.length > 0) {
-      const formattedErrors: Record<string, { message: string; value?: any }> = {};
-      errors.forEach((error) => {
-        if (error.constraints) {
-          const constraintMessages = Object.values(error.constraints);
-          formattedErrors[error.property] = {
-            message: constraintMessages[0] || '입력값 검증 실패',
-            value: error.value
-          };
-        }
-      });
-      throw new ValidateError(formattedErrors, '입력값 검증 실패');
-    }
 
     const result = await this.marketService.getItemList(
       categoryId,
@@ -200,7 +185,8 @@ export class MarketController extends Controller {
               option_item_id: '770e8400-e29b-41d4-a716-446655440002',
               name: '옵션1',
               extra_price: 5000,
-              quantity: 10
+              quantity: 10,
+              is_sold_out: false
             }
           ]
         }
@@ -270,13 +256,13 @@ export class MarketController extends Controller {
     {
       resultType: 'FAIL',
       error: {
-        errorCode: '400',
+        errorCode: 'ERR-VALIDATION',
         reason: '입력값 검증 실패',
-        data: {
-          page: ['page는 1 이상의 정수여야 합니다'],
-          limit: ['limit는 1 이상 100 이하의 정수여야 합니다'],
-          sort: ['sort는 latest, star_high, star_low 중 하나여야 합니다']
-        }
+        data: [
+          { field: 'page', value: 0, messages: 'page는 1 이상의 정수여야 합니다' },
+          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' },
+          { field: 'sort', value: 'invalid', messages: 'sort는 latest, star_high, star_low 중 하나여야 합니다' }
+        ]
       },
       success: null
     }
@@ -339,21 +325,7 @@ export class MarketController extends Controller {
     @Query() limit: number = 4,
     @Query() sort: 'latest' | 'star_high' | 'star_low' = 'latest'
   ): Promise<TsoaResponse<GetItemReviewsResponseDto>> {
-    const dto = plainToInstance(GetItemReviewsRequestDto, { page, limit, sort });
-    const errors = await validate(dto);
-    if (errors.length > 0) {
-      const formattedErrors: Record<string, { message: string; value?: any }> = {};
-      errors.forEach((error) => {
-        if (error.constraints) {
-          const constraintMessages = Object.values(error.constraints);
-          formattedErrors[error.property] = {
-            message: constraintMessages[0] || '입력값 검증 실패',
-            value: error.value
-          };
-        }
-      });
-      throw new ValidateError(formattedErrors, '입력값 검증 실패');
-    }
+    const dto = await validateDto(GetItemReviewsRequestDto, { page, limit, sort });
 
     const result = await this.marketService.getItemReviews(itemId, page, limit, sort);
 
@@ -369,7 +341,7 @@ export class MarketController extends Controller {
    * @summary 상품의 사진 후기를 조회합니다 (더보기 페이지에서 사용, 최신순 정렬)
    * @param itemId 상품 ID
    * @param offset 시작 위치 (기본: 0, 스크롤 시 증가)
-   * @param limit 페이지당 개수 (기본: 15, 초기 로드 시 사용. 이후 스크롤 시 30개 권장)
+   * @param limit 페이지당 개수 (기본: 15)
    * @returns 사진 후기 조회 결과 (has_more로 다음 데이터 존재 여부 확인, 최신순 정렬)
    */
   @Get('/{itemId}/reviews/photos')
@@ -380,12 +352,12 @@ export class MarketController extends Controller {
     {
       resultType: 'FAIL',
       error: {
-        errorCode: '400',
+        errorCode: 'ERR-VALIDATION',
         reason: '입력값 검증 실패',
-        data: {
-          offset: ['offset는 0 이상의 정수여야 합니다'],
-          limit: ['limit는 1 이상 100 이하의 정수여야 합니다']
-        }
+        data: [
+          { field: 'offset', value: -1, messages: 'offset는 0 이상의 정수여야 합니다' },
+          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' }
+        ]
       },
       success: null
     }
@@ -440,27 +412,12 @@ export class MarketController extends Controller {
     @Query() offset: number = 0,
     @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemReviewPhotosResponseDto>> {
-    const dto = plainToInstance(GetItemReviewPhotosRequestDto, { offset, limit });
-    const errors = await validate(dto);
-    if (errors.length > 0) {
-      const formattedErrors: Record<string, { message: string; value?: any }> = {};
-      errors.forEach((error) => {
-        if (error.constraints) {
-          const constraintMessages = Object.values(error.constraints);
-          formattedErrors[error.property] = {
-            message: constraintMessages[0] || '입력값 검증 실패',
-            value: error.value
-          };
-        }
-      });
-      throw new ValidateError(formattedErrors, '입력값 검증 실패');
-    }
+    const dto = await validateDto(GetItemReviewPhotosRequestDto, { offset, limit });
 
-    const actualLimit = offset === 0 ? (limit ?? 15) : (limit ?? 30);
     const result = await this.marketService.getItemReviewPhotos(
       itemId,
       offset,
-      actualLimit
+      limit
     );
 
     return {
@@ -488,11 +445,11 @@ export class MarketController extends Controller {
     {
       resultType: 'FAIL',
       error: {
-        errorCode: '400',
+        errorCode: 'ERR-VALIDATION',
         reason: '입력값 검증 실패',
-        data: {
-          photoIndex: ['photoIndex는 0 이상의 정수여야 합니다']
-        }
+        data: [
+          { field: 'photoIndex', value: -1, messages: 'photoIndex는 0 이상의 정수여야 합니다' }
+        ]
       },
       success: null
     }
@@ -563,21 +520,7 @@ export class MarketController extends Controller {
     @Query() photoIndex?: number
   ): Promise<TsoaResponse<GetReviewDetailResponseDto>> {
     if (photoIndex !== undefined) {
-      const dto = plainToInstance(GetReviewDetailRequestDto, { photoIndex });
-      const errors = await validate(dto);
-      if (errors.length > 0) {
-        const formattedErrors: Record<string, { message: string; value?: any }> = {};
-        errors.forEach((error) => {
-          if (error.constraints) {
-            const constraintMessages = Object.values(error.constraints);
-            formattedErrors[error.property] = {
-              message: constraintMessages[0] || '입력값 검증 실패',
-              value: error.value
-            };
-          }
-        });
-        throw new ValidateError(formattedErrors, '입력값 검증 실패');
-      }
+      await validateDto(GetReviewDetailRequestDto, { photoIndex });
     }
 
     const result = await this.marketService.getReviewDetail(

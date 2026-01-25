@@ -52,6 +52,7 @@ export interface GetItemDetailResponseDto {
       name: string;
       extra_price: number;
       quantity: number | null;
+      is_sold_out: boolean;
     }>;
   }>;
   reformer: {

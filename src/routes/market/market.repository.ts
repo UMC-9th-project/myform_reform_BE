@@ -165,11 +165,9 @@ export class MarketRepository {
   async countReviewsForItem(itemId: string): Promise<number> {
     return await prisma.review.count({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         }
       }
     });
@@ -181,11 +179,9 @@ export class MarketRepository {
   async countPhotoReviewsForItem(itemId: string): Promise<number> {
     return await prisma.review.count({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         },
         review_photo: { some: {} }
       }
@@ -198,11 +194,9 @@ export class MarketRepository {
   async findAverageStarForItem(itemId: string) {
     return await prisma.review.aggregate({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         }
       },
       _avg: { star: true }
@@ -215,11 +209,9 @@ export class MarketRepository {
   async findReviewsForItemPreview(itemId: string, limit: number): Promise<ReviewWithPhotos[]> {
     return await prisma.review.findMany({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         }
       },
       include: {
@@ -247,11 +239,9 @@ export class MarketRepository {
     return await prisma.review_photo.count({
       where: {
         review: {
-          reciept: {
-            order: {
-              target_type: 'ITEM',
-              target_id: itemId
-            }
+          order: {
+            target_type: 'ITEM',
+            target_id: itemId
           }
         }
       }
@@ -269,11 +259,9 @@ export class MarketRepository {
   ): Promise<ReviewWithPhotos[]> {
     return await prisma.review.findMany({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         }
       },
       include: {
@@ -299,11 +287,9 @@ export class MarketRepository {
   async findReviewsWithPhotosForItem(itemId: string): Promise<ReviewWithPhotos[]> {
     return await prisma.review.findMany({
       where: {
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         },
         review_photo: {
           some: {}
@@ -333,11 +319,9 @@ export class MarketRepository {
     return await prisma.review.findFirst({
       where: {
         review_id: reviewId,
-        reciept: {
-          order: {
-            target_type: 'ITEM',
-            target_id: itemId
-          }
+        order: {
+          target_type: 'ITEM',
+          target_id: itemId
         }
       },
       include: {
@@ -385,14 +369,52 @@ export class MarketRepository {
     return await prisma.review_photo.count({
       where: {
         review: {
-          reciept: {
-            order: {
-              target_type: 'ITEM',
-              target_id: itemId
-            }
+          order: {
+            target_type: 'ITEM',
+            target_id: itemId
           }
         }
       }
     });
+  }
+
+  /**
+   * 상품의 리뷰 사진 조회 (페이지네이션 적용)
+   */
+  async findReviewPhotosForItem(
+    itemId: string,
+    offset: number,
+    limit: number
+  ): Promise<Array<{
+    review_id: string;
+    photo_url: string;
+    photo_order: number;
+  }>> {
+    const photos = await prisma.$queryRaw<Array<{
+      review_id: string;
+      content: string;
+      photo_order: number | null;
+    }>>`
+      SELECT 
+        rp.review_id,
+        rp.content,
+        rp.photo_order
+      FROM review_photo rp
+      INNER JOIN review r ON rp.review_id = r.review_id
+      INNER JOIN "order" o ON r.order_id = o.order_id
+      INNER JOIN receipt rec ON o.receipt_id = rec.receipt_id
+      WHERE o.target_type = 'ITEM'
+        AND o.target_id = ${itemId}::uuid
+        AND rp.content IS NOT NULL
+      ORDER BY r.created_at DESC, rp.photo_order ASC NULLS LAST
+      LIMIT ${limit + 1}
+      OFFSET ${offset}
+    `;
+
+    return photos.map(photo => ({
+      review_id: photo.review_id,
+      photo_url: photo.content,
+      photo_order: photo.photo_order ?? 0
+    }));
   }
 }
