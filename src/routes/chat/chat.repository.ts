@@ -129,7 +129,7 @@ export class ChatRepository {
               }
             }
           }),
-          last_message: true
+          chat_message_chat_room_last_message_idTochat_message: true
         },
         orderBy: [
           { last_message_id: { sort: 'desc', nulls: 'last' } },
@@ -176,7 +176,7 @@ export class ChatRepository {
       : row.target_payload;
 
     const opponent = isFeed ? (isOwner ? row.requester : row.owner) : null;
-    const lastMessage = row.last_message;
+    const lastMessage = row.chat_message_chat_room_last_message_idTochat_message;
 
     return {
       chatRoomId: row.chat_room_id,
