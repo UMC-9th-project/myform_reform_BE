@@ -11,9 +11,7 @@ import {
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { HomeService } from './home.service.js';
 import { AuthUser, HomeDataResponseDto, GetHomeRequestDto } from './home.dto.js';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
-import { ValidateError } from 'tsoa';
+import { validateDto } from '../../middleware/validator.js';
 
 @Route('home')
 @Tags('Main Page')
@@ -203,12 +201,12 @@ export class HomeController extends Controller {
     {
       resultType: 'FAIL',
       error: {
-        errorCode: '400',
+        errorCode: 'ERR-VALIDATION',
         reason: '입력값 검증 실패',
-        data: {
-          userId: ['userId는 UUID 형식이어야 합니다'],
-          role: ['role은 USER 또는 OWNER여야 합니다']
-        }
+        data: [
+          { field: 'userId', value: 'invalid', messages: 'userId는 UUID 형식이어야 합니다' },
+          { field: 'role', value: 'invalid', messages: 'role은 USER 또는 OWNER여야 합니다' }
+        ]
       },
       success: null
     }
@@ -225,25 +223,10 @@ export class HomeController extends Controller {
     const effectiveUserId = userId || queryUserId;
     const effectiveRole = role || queryRole;
 
-    const requestDto = plainToInstance(GetHomeRequestDto, {
+    await validateDto(GetHomeRequestDto, {
       userId: effectiveUserId,
       role: effectiveRole
     });
-
-    const errors = await validate(requestDto);
-    if (errors.length > 0) {
-      const errorFields: Record<string, { message: string; value?: any }> = {};
-      errors.forEach((error) => {
-        if (error.constraints) {
-          const firstConstraint = Object.values(error.constraints)[0];
-          errorFields[error.property] = {
-            message: firstConstraint || '입력값 검증 실패',
-            value: error.value
-          };
-        }
-      });
-      throw new ValidateError(errorFields, '입력값 검증 실패');
-    }
 
     const authUser = this.extractAuthUser(effectiveUserId, effectiveRole);
 
