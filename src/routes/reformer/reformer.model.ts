@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.config.js';
-import { owner } from '@prisma/client';
+import { owner, Prisma } from '@prisma/client';
+import { ReformerSummaryDTO, FeedPhotoDTO } from './reformer.dto.js';
 
 export type ReformerSearchResult = Omit<owner, 'search_vector'> & {
   rank: number;
@@ -21,6 +22,60 @@ export class ReformerModel {
 
     if (tokens.length === 0) return '';
     return tokens.join(' & ');
+  }
+
+  public async findTopByReviewCount(
+    limit: number = 3
+  ): Promise<ReformerSummaryDTO[]> {
+    const rows = await prisma.owner.findMany({
+      take: limit,
+      orderBy: [
+        { review_count: 'desc' },
+        { avg_star: 'desc' },
+        { owner_id: 'desc' }
+      ],
+      select: {
+        owner_id: true,
+        nickname: true,
+        keywords: true,
+        bio: true,
+        profile_photo: true,
+        avg_star: true,
+        review_count: true,
+        trade_count: true
+      }
+    });
+
+    return rows.map((r) => ({
+      owner_id: r.owner_id,
+      nickname: r.nickname ?? '',
+      keywords: r.keywords ?? [],
+      bio: r.bio ?? '',
+      profile_photo: r.profile_photo ?? '',
+      avg_star: r.avg_star ? Number(r.avg_star) : 0,
+      review_count: r.review_count ?? 0,
+      trade_count: r.trade_count ?? 0
+    }));
+  }
+
+  public async findRecentDistinctFeedPhotos(
+    limit: number = 4
+  ): Promise<FeedPhotoDTO[]> {
+    const photos = await prisma.feed_photo.findMany({
+      where: { photo_order: 1 },
+      distinct: ['feed_id'],
+      orderBy: [{ created_at: 'desc' }, { feed_id: 'desc' }],
+      take: limit,
+      select: {
+        feed_id: true,
+        content: true
+      }
+    });
+
+    return photos.map((p) => ({
+      feed_id: p.feed_id,
+      content: p.content ?? null
+    }));
   }
 
   public async findByKeywordWithWeight(

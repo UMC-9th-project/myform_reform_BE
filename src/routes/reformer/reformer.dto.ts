@@ -20,3 +20,13 @@ export interface ReformerSearchResDTO {
   hasNextPage: boolean;
   totalCount: number;
 }
+
+export interface FeedPhotoDTO {
+  feed_id: string;
+  content: string | null;
+}
+
+export interface ReformerHomeResDTO {
+  topReformers: ReformerSummaryDTO[];
+  recentFeedPhotos: FeedPhotoDTO[];
+}

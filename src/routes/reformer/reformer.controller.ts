@@ -10,7 +10,7 @@ import {
   Tags
 } from 'tsoa';
 import { ReformerService } from './reformer.service.js';
-import { ReformerSearchResDTO } from './reformer.dto.js';
+import { ReformerSearchResDTO, ReformerHomeResDTO } from './reformer.dto.js';
 
 @Route('/reformer')
 @Tags('Reformer')
@@ -38,5 +38,15 @@ export class ReformerController extends Controller {
       keyword,
       cursor
     });
+  }
+
+  /**
+   * @summary 리폼러 찾기 메인
+   * @returns 리폼러 홈 데이터 ( 상위 리폼러 및 최근 피드 )
+   */
+  @Get('/home')
+  @SuccessResponse(200, '리폼러 홈 데이터 조회 성공')
+  public async getHome(): Promise<ReformerHomeResDTO> {
+    return await this.reformerService.getHome();
   }
 }

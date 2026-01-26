@@ -1,7 +1,9 @@
 import {
   ReformerSearchReqDTO,
   ReformerSearchResDTO,
-  ReformerSummaryDTO
+  ReformerSummaryDTO,
+  ReformerHomeResDTO,
+  FeedPhotoDTO
 } from './reformer.dto.js';
 import { ReformerModel } from './reformer.model.js';
 import { ReformerSearchResult } from './reformer.model.js';
@@ -61,6 +63,31 @@ export class ReformerService {
       nextCursor,
       hasNextPage,
       totalCount
+    };
+  }
+
+  public async getHome(): Promise<ReformerHomeResDTO> {
+    const rawTop = await this.reformerModel.findTopByReviewCount(3);
+    const topReformers: ReformerSummaryDTO[] = rawTop.map((item) => ({
+      owner_id: item.owner_id,
+      nickname: item.nickname ?? '',
+      keywords: item.keywords,
+      bio: item.bio ?? '',
+      profile_photo: item.profile_photo ?? '',
+      avg_star: item.avg_star ? Number(item.avg_star) : 0,
+      review_count: item.review_count ?? 0,
+      trade_count: item.trade_count ?? 0
+    }));
+
+    const rawPhotos = await this.reformerModel.findRecentDistinctFeedPhotos(4);
+    const recentFeedPhotos: FeedPhotoDTO[] = rawPhotos.map((p) => ({
+      feed_id: p.feed_id,
+      content: p.content ?? null
+    }));
+
+    return {
+      topReformers,
+      recentFeedPhotos
     };
   }
 }
