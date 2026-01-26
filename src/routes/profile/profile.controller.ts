@@ -28,7 +28,10 @@ import {
   ReformRequest
 } from './dto/profile.dto.js';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
-import { SaleResponseDto } from './dto/profile.res.dto.js';
+import {
+  SaleDetailRespsonseDto,
+  SaleResponseDto
+} from './dto/profile.res.dto.js';
 
 @Route('profile')
 @Tags('Profile Router')
@@ -127,8 +130,11 @@ export class ProfileController extends Controller {
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
     @Path() id: string
-  ): Promise<TsoaResponse<string>> {
-    console.log(id);
-    return new ResponseHandler('테스트');
+  ): Promise<TsoaResponse<SaleDetailRespsonseDto>> {
+    const owenrId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
+
+    const data = await this.profileService.getSaleDetail(owenrId, id);
+
+    return new ResponseHandler(data.toResponse());
   }
 }

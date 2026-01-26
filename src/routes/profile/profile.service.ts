@@ -4,7 +4,7 @@ import { S3 } from '../../config/s3.js';
 import { ItemAddError, OrderItemError } from './profile.error.js';
 import { target_type_enum } from '@prisma/client';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
-import { Sale } from './profile.model.js';
+import { Sale, SaleDetail } from './profile.model.js';
 import { SaleResponseDto } from './dto/profile.res.dto.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
@@ -73,11 +73,30 @@ export class ProfileService {
       // 5. Sale 도메인 객체 생성
       return orders.map((order) => {
         const title = titleMap.get(order.target_id ?? '') ?? '';
-        const thumbnail = order.quote_photo[0]?.content ?? '';
-        return Sale.create(order, title, thumbnail);
+        return Sale.create(order, title);
       });
     } catch (err: any) {
       throw new OrderItemError(err);
     }
+  }
+
+  async getSaleDetail(ownerId: string, orderId: string): Promise<SaleDetail> {
+    const order = await this.profileRepository.getOrderDetail(ownerId, orderId);
+    const option = await this.profileRepository.getOption(orderId);
+
+    let title: string = '';
+    switch (order.target_type) {
+      case 'PROPOSAL':
+        title =
+          (await this.profileRepository.getProposalTitle(order.target_id!))
+            ?.title ?? '';
+
+      case 'REQUEST':
+        title =
+          (await this.profileRepository.getRequestTitle(order.target_id!))
+            ?.title ?? '';
+    }
+
+    return SaleDetail.create(order, option, title);
   }
 }

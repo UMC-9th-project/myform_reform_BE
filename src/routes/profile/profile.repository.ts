@@ -6,7 +6,7 @@ import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
-import { RawSaleData } from './profile.model.js';
+import { RawOption, RawSaleData, RawSaleDetailData } from './profile.model.js';
 
 export class ProfileRepository {
   private prisma: PrismaClient;
@@ -150,10 +150,79 @@ export class ProfileRepository {
     });
   }
 
+  async getRequestTitle(requestId: string) {
+    return await prisma.reform_request.findFirst({
+      where: { reform_request_id: requestId },
+      select: { title: true }
+    });
+  }
+
   async getProposalTitles(proposalIds: string[]) {
     return await prisma.reform_proposal.findMany({
       where: { reform_proposal_id: { in: proposalIds } },
       select: { reform_proposal_id: true, title: true }
+    });
+  }
+
+  async getProposalTitle(proposalId: string) {
+    return await prisma.reform_proposal.findFirst({
+      where: { reform_proposal_id: proposalId },
+      select: { title: true }
+    });
+  }
+
+  async getOrderDetail(
+    ownerId: string,
+    orderId: string
+  ): Promise<RawSaleDetailData> {
+    return await prisma.order.findFirstOrThrow({
+      where: {
+        owner_id: ownerId,
+        order_id: orderId
+      },
+      select: {
+        order_id: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        target_type: true,
+        user_address: true,
+        user: {
+          select: {
+            name: true,
+            phone: true
+          }
+        },
+        reciept: {
+          select: {
+            created_at: true
+          }
+        },
+        quote_photo: {
+          select: {
+            content: true
+          },
+          orderBy: {
+            photo_order: 'asc'
+          },
+          take: 1
+        }
+      }
+    });
+  }
+
+  async getOption(orderId: string): Promise<RawOption | null> {
+    return await prisma.order_option.findFirst({
+      where: { order_id: orderId },
+      select: {
+        option_item: {
+          select: {
+            name: true,
+            extra_price: true
+          }
+        }
+      }
     });
   }
 }

@@ -1,23 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { UUID } from '../../types/common.js';
-import { SaleResponseDto } from './dto/profile.res.dto.js';
-
-// Repository에서 반환하는 raw 데이터 타입
-// export interface RawSaleData {
-//   order_id: string;
-//   target_id: string | null;
-//   status: order_status_enum;
-//   price: number;
-//   delivery_fee: number;
-//   user: {
-//     name: string;
-//   };
-//   reciept: {
-//     created_at: Date;
-//   } | null;
-//   title: string | null;
-//   photo: string | null;
-// }
+import {
+  SaleDetailRespsonseDto,
+  SaleResponseDto
+} from './dto/profile.res.dto.js';
 
 export type RawSaleData = Prisma.orderGetPayload<{
   select: {
@@ -49,6 +35,49 @@ export type RawSaleData = Prisma.orderGetPayload<{
   };
 }>;
 
+export type RawSaleDetailData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    user_address: true;
+    user: {
+      select: {
+        name: true;
+        phone: true;
+      };
+    };
+    reciept: {
+      select: {
+        created_at: true;
+      };
+    };
+    quote_photo: {
+      select: {
+        content: true;
+      };
+      orderBy: {
+        photo_order: 'asc';
+      };
+      take: 1;
+    };
+  };
+}>;
+
+export type RawOption = Prisma.order_optionGetPayload<{
+  select: {
+    option_item: {
+      select: {
+        name: true;
+        extra_price: true;
+      };
+    };
+  };
+}>;
+
 export class Sale {
   private props: SaleResponseDto;
 
@@ -56,7 +85,7 @@ export class Sale {
     this.props = props;
   }
 
-  static create(raw: RawSaleData, title: string, thumbnail: string): Sale {
+  static create(raw: RawSaleData, title: string): Sale {
     return new Sale({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
@@ -66,7 +95,7 @@ export class Sale {
       userName: raw.user.name ?? '',
       createdAt: raw.reciept.created_at ?? new Date(),
       title: title ?? '',
-      thumbnail: thumbnail ?? ''
+      thumbnail: raw.quote_photo[0]?.content ?? ''
     });
   }
 
@@ -77,4 +106,38 @@ export class Sale {
   // 나중에 비즈니스 메서드 추가 가능
   // canCancel(): boolean { ... }
   // calculateTotalPrice(): number { ... }
+}
+
+export class SaleDetail {
+  private props: SaleDetailRespsonseDto;
+
+  private constructor(props: SaleDetailRespsonseDto) {
+    this.props = props;
+  }
+
+  static create(
+    raw: RawSaleDetailData,
+    option: RawOption | null,
+    title: string
+  ) {
+    return new SaleDetail({
+      orderId: raw.order_id as UUID,
+      targetId: raw.target_id as UUID,
+      status: raw.status!,
+      price: raw.price!.toNumber(),
+      deliveryFee: raw.delivery_fee!.toNumber(),
+      userName: raw.user.name ?? '',
+      createdAt: raw.reciept.created_at ?? new Date(),
+      title: title,
+      thumbnail: raw.quote_photo[0]?.content ?? '',
+      phone: raw.user.phone ?? '',
+      address: raw.user_address ?? '',
+      //FIXME: option, 운송장번호 어떻게 구현할지 논의 해야함
+      option: option?.option_item?.name ?? '',
+      billNumber: 0
+    });
+  }
+  toResponse(): SaleDetailRespsonseDto {
+    return { ...this.props };
+  }
 }

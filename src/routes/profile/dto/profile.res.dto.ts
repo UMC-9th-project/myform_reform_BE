@@ -12,3 +12,10 @@ export interface SaleResponseDto {
   title: string;
   thumbnail: string;
 }
+
+export interface SaleDetailRespsonseDto extends SaleResponseDto {
+  phone: string;
+  address: string;
+  billNumber: number;
+  option: string;
+}
