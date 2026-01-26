@@ -15,7 +15,6 @@ import {
   Query
 } from 'tsoa';
 import { ProfileService } from './profile.service.js';
-// import { Request as ExRequest } from 'express';
 import {
   ErrorResponse,
   ResponseHandler,
@@ -27,8 +26,9 @@ import {
   ItemRequest,
   ReformDto,
   ReformRequest
-} from './profile.dto.js';
-import { Request as ExRequest } from 'express';
+} from './dto/profile.dto.js';
+import { SaleRequestDto } from './dto/profile.req.dto.js';
+import { SaleResponseDto } from './dto/profile.res.dto.js';
 
 @Route('profile')
 @Tags('Profile Router')
@@ -93,14 +93,27 @@ export class ProfileController extends Controller {
    * 판매관리 목록 조회
    * @summary 사용자의 전체 판매 상품 목록을 조회합니다
    * @returns 판매관리 목록
+   * @param type 주문제작 or 판매상품 선택
+   * @param page 현재 페이지
+   * @param limit 한 페이지 보여줄 목록 수
    */
   @Get('sales')
   @SuccessResponse(200, '판매관리 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getSales(
-    @Query('type') type: 'ITME' | 'REFORM'
-  ): Promise<TsoaResponse<string>> {
-    return new ResponseHandler('테스트');
+    @Query() type: 'ITEM' | 'REFORM',
+    @Query() page: number = 1,
+    @Query() limit: number = 15
+  ): Promise<TsoaResponse<SaleResponseDto[]>> {
+    const ownerId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
+    const dto = new SaleRequestDto(type, page, limit, ownerId);
+    const data = await this.profileService.getSales(dto);
+
+    const res = data.map((sale) => {
+      return sale.toResponse();
+    });
+
+    return new ResponseHandler(res);
   }
 
   /**

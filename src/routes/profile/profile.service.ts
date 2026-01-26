@@ -1,13 +1,17 @@
-import { ItemDto, ReformDto } from './profile.dto.js';
-import { ProfileModel } from './profile.model.js';
+import { ItemDto, ReformDto } from './dto/profile.dto.js';
+import { ProfileRepository } from './profile.repository.js';
 import { S3 } from '../../config/s3.js';
-import { ItemAddError } from './profile.error.js';
+import { ItemAddError, OrderItemError } from './profile.error.js';
+import { target_type_enum } from '@prisma/client';
+import { SaleRequestDto } from './dto/profile.req.dto.js';
+import { Sale } from './profile.model.js';
+import { SaleResponseDto } from './dto/profile.res.dto.js';
 export class ProfileService {
-  private profileModel: ProfileModel;
+  private profileRepository: ProfileRepository;
   private s3: S3;
 
   constructor() {
-    this.profileModel = new ProfileModel();
+    this.profileRepository = new ProfileRepository();
     this.s3 = new S3();
   }
 
@@ -30,12 +34,50 @@ export class ProfileService {
         image.push(obj);
       }
       dto.images = image;
-      await this.profileModel.addProduct(mode, dto);
+      await this.profileRepository.addProduct(mode, dto);
     } catch (err: any) {
       console.log(err);
       throw new ItemAddError(err);
     }
   }
 
-  async getSales(type: string, ownerId: string) {}
+  async getSales(dto: SaleRequestDto): Promise<Sale[]> {
+    try {
+      // 1. order 기본 정보 조회
+      const orders = await this.profileRepository.getOrder(dto);
+
+      // 2. target_type별로 ID 분리
+      const requestIds = orders
+        .filter((o) => o.target_type === 'REQUEST' && o.target_id !== null)
+        .map((o) => o.target_id!);
+
+      const proposalIds = orders
+        .filter((o) => o.target_type === 'PROPOSAL' && o.target_id !== null)
+        .map((o) => o.target_id!);
+
+      // 3. batch로 title 조회 (병렬)
+      const [requests, proposals] = await Promise.all([
+        this.profileRepository.getRequestTitles(requestIds),
+        this.profileRepository.getProposalTitles(proposalIds)
+      ]);
+
+      // 4. title Map 생성
+      const titleMap = new Map<string, string | null>();
+      for (const r of requests) {
+        titleMap.set(r.reform_request_id, r.title);
+      }
+      for (const p of proposals) {
+        titleMap.set(p.reform_proposal_id, p.title);
+      }
+
+      // 5. Sale 도메인 객체 생성
+      return orders.map((order) => {
+        const title = titleMap.get(order.target_id ?? '') ?? '';
+        const thumbnail = order.quote_photo[0]?.content ?? '';
+        return Sale.create(order, title, thumbnail);
+      });
+    } catch (err: any) {
+      throw new OrderItemError(err);
+    }
+  }
 }

@@ -1,6 +1,8 @@
 import { order_status_enum } from '@prisma/client';
-import { UUID } from '../../types/common.js';
-import { Category, Option, OptionGroup } from '../../types/item.js';
+import { Category, OptionGroup } from '../../../types/item.js';
+import { UUID } from 'aws-sdk/clients/cloudtrail.js';
+// import { UUID } from '../.../../types/common.js';
+// import { Category, Option, OptionGroup } from '../../types/item.js';
 
 interface Item {
   images: {
