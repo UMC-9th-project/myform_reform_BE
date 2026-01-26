@@ -13,9 +13,9 @@ export interface SaleResponseDto {
   thumbnail: string;
 }
 
-export interface SaleDetailRespsonseDto extends SaleResponseDto {
+export interface SaleDetailResponseDto extends SaleResponseDto {
   phone: string;
   address: string;
-  billNumber: number;
+  billNumber: string;
   option: string;
 }

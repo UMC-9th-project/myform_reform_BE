@@ -29,7 +29,7 @@ import {
 } from './dto/profile.dto.js';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
 import {
-  SaleDetailRespsonseDto,
+  SaleDetailResponseDto,
   SaleResponseDto
 } from './dto/profile.res.dto.js';
 
@@ -130,10 +130,10 @@ export class ProfileController extends Controller {
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
     @Path() id: string
-  ): Promise<TsoaResponse<SaleDetailRespsonseDto>> {
-    const owenrId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
+  ): Promise<TsoaResponse<SaleDetailResponseDto>> {
+    const ownerId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
 
-    const data = await this.profileService.getSaleDetail(owenrId, id);
+    const data = await this.profileService.getSaleDetail(ownerId, id);
 
     return new ResponseHandler(data.toResponse());
   }

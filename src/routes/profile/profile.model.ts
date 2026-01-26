@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { UUID } from '../../types/common.js';
 import {
-  SaleDetailRespsonseDto,
+  SaleDetailResponseDto,
   SaleResponseDto
 } from './dto/profile.res.dto.js';
 
@@ -109,9 +109,9 @@ export class Sale {
 }
 
 export class SaleDetail {
-  private props: SaleDetailRespsonseDto;
+  private props: SaleDetailResponseDto;
 
-  private constructor(props: SaleDetailRespsonseDto) {
+  private constructor(props: SaleDetailResponseDto) {
     this.props = props;
   }
 
@@ -134,10 +134,10 @@ export class SaleDetail {
       address: raw.user_address ?? '',
       //FIXME: option, 운송장번호 어떻게 구현할지 논의 해야함
       option: option?.option_item?.name ?? '',
-      billNumber: 0
+      billNumber: ''
     });
   }
-  toResponse(): SaleDetailRespsonseDto {
+  toResponse(): SaleDetailResponseDto {
     return { ...this.props };
   }
 }

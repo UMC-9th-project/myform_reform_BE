@@ -90,11 +90,13 @@ export class ProfileService {
         title =
           (await this.profileRepository.getProposalTitle(order.target_id!))
             ?.title ?? '';
+        break;
 
       case 'REQUEST':
         title =
           (await this.profileRepository.getRequestTitle(order.target_id!))
             ?.title ?? '';
+        break;
     }
 
     return SaleDetail.create(order, option, title);
