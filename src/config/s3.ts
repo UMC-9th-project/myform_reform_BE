@@ -6,7 +6,7 @@ import {
   DeleteObjectCommand
 } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
-import { v5 } from 'uuid';
+import { v4 } from 'uuid';
 import { S3UploadError } from '../middleware/error.js';
 
 dotenv.config();
@@ -26,7 +26,7 @@ export class S3 {
     if (!file.mimetype.startsWith('image/')) {
       throw new S3UploadError('지원되지 않는 파일 형식입니다.');
     }
-    const uniqueName = `${v5}${file.originalname}`;
+    const uniqueName = `${v4()}-${file.originalname}`;
     const command = new PutObjectCommand({
       Bucket: process.env.S3_NAME || '',
       Key: uniqueName,
@@ -41,6 +41,19 @@ export class S3 {
     }
     // S3 URL 반환 (필요에 따라 public URL로 수정)
     return `https://${process.env.S3_NAME}.s3.ap-northeast-2.amazonaws.com/${uniqueName}`;
+  }
+
+  // 여러 파일을 한번에 S3에 업로드
+  async uploadManyToS3(files: Express.Multer.File[]): Promise<string[]> {
+    const urls: string[] = [];
+    if(!files || files. length === 0) return [];
+    try {
+      const uploadPromises = files.map(async (file: Express.Multer.File) => this.uploadToS3(file));
+      const uploadedUrls = await Promise.all(uploadPromises);
+      return uploadedUrls;
+    } catch (err) {
+      throw new S3UploadError('사진을 올리는 중 오류가 발생했습니다');
+    }
   }
 
   async deleteFromS3(fileUrl: string): Promise<boolean> {

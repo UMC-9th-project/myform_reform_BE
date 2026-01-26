@@ -28,6 +28,10 @@ export interface VerifySmsRequest {
   code: string;
 }
 
+export type AuthStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type Role = 'user' | 'reformer';
+export type RegistrationType = 'LOCAL' | 'KAKAO';
+
 export interface SendSmsResponse {
   statusCode: number;
   message: string;
@@ -36,4 +40,137 @@ export interface SendSmsResponse {
 export interface VerifySmsResponse {
   statusCode: number;
   message: string;
+}
+
+// 카카오 회원가입 응답 데이터
+export interface KakaoSignupResponse {
+  status: 'signup';
+  user: {
+    kakaoId: string;
+    email: string;
+    role: string;
+  };
+}
+
+// 카카오 로그인 데이터
+export interface KakaoLoginResponse extends AuthLoginResponse {
+  status: 'login';
+}
+
+// 카카오 인증 응답 데이터
+export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse
+
+// JWT 페이로드 데이터
+export interface JwtPayload {
+  id: string;
+  role: Role;
+  auth_status?: AuthStatus;
+}
+
+// 로그아웃 응답 데이터
+export interface LogoutResponse {
+  statusCode: number;
+  message: string;
+}
+
+// 카카오 로그인 후 응답 데이터
+export interface PassportUserInfo {
+  status: 'signup' | 'login';
+  role: Role;
+  kakaoId?: string;
+  email?: string;
+  id?: string;
+  auth_status?: AuthStatus;
+}
+
+// 로그인 응답 데이터 (Service -> Controller)
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// 일반 회원가입 요청 데이터 (Controller -> Service)
+export interface UserSignupRequest {
+  name: string;
+  email: string;
+  nickname: string;
+  phoneNumber: string;
+  registration_type: RegistrationType;
+  oauthId?: string;
+  password?: string;
+  over14YearsOld: boolean;
+  termsOfService: boolean;
+  privacyPolicy: boolean;
+}
+
+// 로그인 응답 데이터 (Service -> Controller)
+export interface AuthLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// 일반 회원가입 요청 데이터 (Controller -> Service)
+export interface UserCreateDto {
+  name: string;
+  email: string;
+  registration_type: RegistrationType;
+  oauthId?: string;
+  hashedPassword?: string;
+  nickname: string;
+  phoneNumber: string;
+  role: Role;
+  privacyPolicy: boolean;
+}
+
+// 일반 회원가입 후 db 생성 후 응답 데이터 (Model -> Service)
+export interface UserCreateResponseDto {
+  id: string;
+  email: string;
+  nickname: string;
+  role: Role;
+}
+
+// 리폼러 회원가입 요청 데이터 (Controller -> Service)
+export interface ReformerSignupRequest extends UserSignupRequest {
+  businessNumber: string;
+  description: string;
+}
+
+// 리폼러 db 생성 요청 데이터 (Service -> Model)
+export interface OwnerCreateDto extends UserCreateDto {
+  businessNumber: string;
+  description: string;
+  portfolioPhotos: string[];
+}
+
+// 리폼러 회원가입입 db 생성 후 응답 데이터 (Model -> Service)
+export interface OwnerCreateResponseDto extends UserCreateResponseDto {
+  auth_status: AuthStatus;
+}
+
+// 로그인 요청 데이터 (Controller -> Service)
+export interface LocalLoginRequest {
+  email: string;
+  password: string;
+  role: Role;
+}
+
+// 리프레시 토큰 갱신 요청 데이터 (Controller -> Service)
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// 리프레시 토큰 갱신 응답 데이터 (Service -> Controller)
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface AuthPublicResponse {
+  accessToken: string;
+}
+
+// 리프레시 토큰 없는 엑세스 토큰 응답 데이터
+export interface RefreshTokenPublicResponse {
+  accessToken: string;
 }
