@@ -52,7 +52,6 @@ passport.use(new KakaoStrategy({
     if (!accountInfo) {
       return done(new UnknownAuthError(`DB의 ${tableName} 테이블에서 ${targetId}와 일치하는 사용자를 찾을 수 없습니다.`));
     }
-
     return done(null, {...accountInfo, status: 'login'});
 
   } catch (error) {

@@ -2,8 +2,7 @@ import { SmsProviderError, RedisStorageError, TooManyCodeAttemptsError, InvalidC
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos, validateName} from '../../utils/validators.js';
-import pkg from 'jsonwebtoken';
-const { verify, sign } = pkg;
+import jwt from 'jsonwebtoken';
 import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
@@ -131,13 +130,13 @@ export class AuthService {
       } as KakaoSignupResponse;
     }
 
-    if (!user.id || !user.email || !user.role) {
+    if (!user.id || !user.role) {
       throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
     }
     
     const payload: JwtPayload = {
       id: user.id,
-      role: user.role as 'user' | 'reformer',
+      role: user.role,
       auth_status: user.auth_status
     };
     const { accessToken, refreshToken } = await this.generateAndSaveTokens(payload);
@@ -261,31 +260,34 @@ export class AuthService {
   async reissueAccessToken(requestBody: RefreshTokenRequest): Promise<RefreshTokenResponse> {
     const { refreshToken } = requestBody;
     try {
-      // refreshToken 검증
-      const decoded = verify(refreshToken, process.env.JWT_SECRET!);
-      // refreshToken 검증 성공 시 userId 추출
+      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
       const userId = (decoded as JwtPayload).id;
       const role = (decoded as JwtPayload).role;
-      // userId로 리프레시 토큰 조회
       const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
+      
       if (!savedRefreshToken || savedRefreshToken !== refreshToken){
+        await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));
         throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
       }
+      
       const account = (role === 'user'
         ? await this.usersModel.findUserById(userId)
         : await this.usersModel.findReformerById(userId)) as UsersInfoResponse;
+      
       if (!account){
         throw new AccountNotFoundError('존재하지 않는 유저입니다.');
       }
+
       const payload: JwtPayload = {
         id: account.id,
         role: account.role as 'user' | 'reformer',
         ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
       } as JwtPayload;
+
       const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
       return { accessToken, refreshToken: newRefreshToken } as RefreshTokenResponse;
     } catch (error) {
-      throw new RefreshTokenError('리프레시 토큰 재발급에 실패하였습니다.');
+      throw new RefreshTokenError('액세스 토큰 및 리프레시 토큰 재발급에 실패하였습니다.');
     }
   }
 
@@ -311,11 +313,11 @@ export class AuthService {
 
   // JWT 토큰 생성 및 Redis에 저장
   private async generateAndSaveTokens(payload: JwtPayload): Promise<LoginResponse> {
-    const accessToken = sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
-    const refreshToken = sign({ id: payload.id, role : payload.role as 'user' | 'reformer' }, process.env.JWT_SECRET!, { expiresIn: '14d' });
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({id: payload.id, role: payload.role}, process.env.JWT_SECRET!, { expiresIn: '14d' });
     // Refresh Token Redis에 저장
     try {
-      await redisClient.set(`refreshToken:${payload.id}`, refreshToken, { EX: 60 * 60 * 24 * 14 });
+      await redisClient.set(REDIS_KEYS.REFRESH_TOKEN(payload.id), refreshToken, { EX: 60 * 60 * 24 * 14 });
     } catch (error) {
       console.error(`[Refresh Token Storage] Redis 저장 실패 - userId: ${payload.id}`, error);
       throw new RedisStorageError(`Redis refreshToken 저장 실패 - userId: ${payload.id}의 리프레시 토큰을 저장하지 못했습니다.`);

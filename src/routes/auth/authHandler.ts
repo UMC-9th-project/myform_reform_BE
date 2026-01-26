@@ -1,5 +1,5 @@
 import * as express from 'express';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { ForbiddenError, UnauthorizedError } from './auth.error.js';
 
 /**
@@ -15,7 +15,6 @@ export function expressAuthentication(
   scopes?: string[]
 ): Promise<any> {
   const jwtSecret = process.env.JWT_SECRET || '';
-
   if (securityName === 'jwt') {
     const authHeader = request.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -49,7 +48,6 @@ export function expressAuthentication(
     const token = request.cookies.refreshToken;
     return new Promise((resolve, reject) => {
       if (!token) reject(new UnauthorizedError('리프레시 토큰을 쿠키에서 찾을 수 없습니다.'));
-
       jwt.verify(token, jwtSecret, (err: any, decoded: any) => {
         if (err) {
           reject(new UnauthorizedError('리프레시 토큰이 유효하지 않은 Refresh Token입니다. 재로그인이 필요합니다.'));

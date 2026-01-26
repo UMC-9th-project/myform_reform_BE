@@ -89,7 +89,7 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')  
   @Get('kakao')
-  public async loginWithKakao(@Request() request: express.Request, @Query() mode: Role): Promise<any> {
+  public async loginWithKakao(@Request() request: express.Request, @Query() mode: Role): Promise<void> {
     const res = (request as any).res as express.Response;
     const next = (request as any).next as express.NextFunction;
     // 카카오 로그인 페이지로 리다이렉트, state에 mode 값을 전달하여 로그인 모드 구분
@@ -109,29 +109,38 @@ export class AuthController extends Controller {
   @Get('kakao/callback')
   public async kakaoCallback(@Request() request: express.Request): Promise<void> {
     const res = request.res as express.Response;
-    console.log(`kakaoId: ${request.user}`);
     try {
       const user = await this.authenticateKakao(request, res);
       const result = await this.authService.handleKakaoLogin(user);
-
       if (result.status == 'login'){
         res.cookie('refreshToken', result.refreshToken, {
           httpOnly: true, 
-          secure: true, 
-          maxAge: 1209600000, 
+          secure: process.env.NODE_ENV === 'production', 
+          maxAge: 60 * 60 * 24 * 14 * 1000, 
           path: '/', 
           sameSite: 'lax' as const
         });
-        // 로그인 페이지로 리다이렉트, accessToken 정보를 전달 
-        const loginUrl = `${process.env.FRONTEND_URL}/login?accessToken=${result.accessToken}`;
-        return res.redirect(loginUrl);
+        res.cookie('accessToken', result.accessToken, {
+          httpOnly: false, 
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 5 * 60 * 1000, 
+          path: '/', 
+          sameSite: 'lax' as const
+        });
+        return res.redirect(process.env.FRONTEND_URL_LOGIN!);
       }
 
       if (result.status == 'signup'){
         const { role, kakaoId, email } = result.user;
         // 회원가입 페이지로 리다이렉트, role, kakaoId, email 정보를 전달
-        const signupUrl = `${process.env.FRONTEND_URL}/signup?role=${role}&kakaoId=${kakaoId}&email=${email}`;
-        return res.redirect(signupUrl);
+        res.cookie('signupInfo', JSON.stringify({ role, kakaoId, email }), {
+          httpOnly: false, 
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 5 * 60 * 1000, 
+          path: '/', 
+          sameSite: 'lax' as const
+        });
+        return res.redirect(process.env.FRONTEND_URL_SIGNUP!);
       }
     } catch (error) {
       throw new KakaoAuthError('카카오 로그인 처리 중 오류가 발생했습니다.');
@@ -291,9 +300,8 @@ export class AuthController extends Controller {
   public async reissueAccessToken(
     @Request() req: express.Request): Promise<TsoaResponse<RefreshTokenPublicResponse>> {
     const refreshTokenFromCookie = req.cookies.refreshToken;
-    const result = await this.authService.reissueAccessToken(refreshTokenFromCookie);
+    const result = await this.authService.reissueAccessToken({refreshToken: refreshTokenFromCookie});
     const { accessToken, refreshToken } = result; 
-    
     this.setStatus(200);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=Lax`);
     
