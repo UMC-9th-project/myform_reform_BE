@@ -62,4 +62,11 @@ export class WebSocketServer {
     return this.io;
   }
 
+  // 채팅 이벤트 핸들러 반환 메서드
+  public getHandler(): ChatEventHandler {
+  if (!this.chatEventHandler) {
+    throw new Error('웹소켓 핸들러가 초기화되지 않았습니다.');
+  }
+  return this.chatEventHandler;
+}
 }

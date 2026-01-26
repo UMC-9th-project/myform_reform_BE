@@ -1,9 +1,10 @@
-import { InvalidChatRoomTypeError } from './chat.error.js';
+import { text } from 'express';
+import { InvalidChatRoomTypeError, InvalidChatMessageTypeError } from './chat.error.js';
 import { chat_message } from '@prisma/client';
 
 export type ChatRoomType = 'REQUEST' | 'PROPOSAL' | 'FEED'
 export type ChatRoomFilter = 'INQUIRY' | 'ORDER' | 'UNREAD';
-export type MessageType =   'IMAGE' | 'REQUEST' | 'PROPOSAL' | 'TEXT' | 'PAYMENT' | 'RESULT';
+export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' | 'result';
 
 // 채팅방 payload에 담길 타입 정의
 export type ChatRoomPayload = 
@@ -13,9 +14,9 @@ export type ChatRoomPayload =
 
 // 채팅메시지 payload에 담길 타입 정의
 export type ChatMessagePayload = 
-    | {id: string, price: number, delivery: number, expected_working: Date }
-    | {id: string, title: string, budget: number, image: string}
-    | undefined;
+    | {id: string, price: number, delivery: number, expected_working: Date }  //제안서
+    | {id: string, title: string, minBudget: number, maxBudget: number}              //요청서
+    | undefined;                                                              //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
 export interface CreateMessageParams {
@@ -23,8 +24,7 @@ export interface CreateMessageParams {
   senderId: string;
   senderType: 'OWNER' | 'USER' | null;
   messageType?: MessageType | null;
-  textContent?: string;
-  payload?: ChatMessagePayload;
+  content: any;
 }
 
 
@@ -54,7 +54,7 @@ export class ChatRoomFactory {
       return {
         id: target.reform_proposal_id,
         title: target.title,
-        price: target.price?.toNumber(),
+        price: target.price.toNumber(),
         image: target.reform_proposal_photo?.[0]?.content
       };
     case 'FEED':
@@ -119,10 +119,16 @@ export class ChatRoom {
 
 export class ChatMessageFactory {
 
-  // 기본 채팅 메세지 생성 메서드
-  static createNewMessage(params: CreateMessageParams): ChatMessage {
-    const { chatRoomId, senderId, senderType, messageType, textContent, payload } = params;
-    
+  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result'];
+
+  private static assemble(
+    chatRoomId : string, 
+    senderId: string | null, 
+    senderType: 'OWNER' | 'USER' | null, 
+    messageType?: MessageType | null, 
+    textContent?: string | null, 
+    payload?: ChatMessagePayload | null
+  ): ChatMessage {
     return new ChatMessage({
       chat_room_id: chatRoomId,
       sender_id: senderId,
@@ -133,14 +139,50 @@ export class ChatMessageFactory {
     });
   }
 
-  // 텍스트 메세지 생성 메서드
-  static createTextMessage(params: Pick<CreateMessageParams, 'chatRoomId' | 'senderId' | 'senderType' | 'textContent'>) {
-    return this.createNewMessage({
-      ...params,
-      messageType: 'TEXT'
-    });
+  static create(params: CreateMessageParams): ChatMessage {
+    const { messageType, content } = params;
+    let textContent: string | null | undefined;
+    let payload: ChatMessagePayload | null | undefined;
+
+    // 타입에 따른 데이터 정제
+    if (messageType === 'text') {
+      textContent = content as string;
+      payload = undefined; // 텍스트 메시지는 페이로드가 없어야 함
+    } else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+      payload = content as ChatMessagePayload;
+      textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
+    } else {
+      throw new InvalidChatMessageTypeError(`유효하지 않은 메시지 타입입니다: ${messageType}`);
+    }
+
+    // 최종 도메인 객체 생성
+    return this.assemble( 
+      params.chatRoomId,
+      params.senderId,
+      params.senderType,
+      messageType,
+      textContent,
+      payload
+    );
   }
 
+  static mapToRequestPayload(target: any): ChatMessagePayload {
+    return {
+      id : target.chatRequestId,
+      title : target.title,
+      minBudget : target.minBudget,
+      maxBudget : target.maxBudget
+    };
+  }
+
+  static mapToProposalPayload(target: any): ChatMessagePayload {
+    return {
+      id : target.chatProposalId,
+      price : target.price,
+      delivery : target.delivery,
+      expected_working : target.expected_working
+    };
+  }
 
 
 
@@ -149,6 +191,10 @@ export class ChatMessageFactory {
   //   return {};
   // }
 }
+
+
+
+
 
 
 export class ChatMessage{
@@ -177,7 +223,7 @@ export class ChatMessage{
       sender_type: this.props.sender_type,
       text_content: this.props.text_content,
       payload: this.props.payload,
-      message_type: this.props.message_type
+      message_type: this.props.message_type 
     };
   }
 
@@ -188,4 +234,4 @@ export class ChatMessage{
       message_type: data.message_type as MessageType
     });
   }
-} 
+}
