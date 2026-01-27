@@ -230,15 +230,15 @@ model order {
   quantity         Int?               @default(1)
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
-  reciept          receipt            @relation(fields: [receipt_id], references: [receipt_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_receipt_to_order_1")
+  receipt          receipt            @relation(fields: [receipt_id], references: [receipt_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_receipt_TO_order_1")
   order_option     order_option[]
   quote_photo      quote_photo[]
   review           review[]
 
   @@index([owner_id], map: "idx_order_owner")
-  @@index([receipt_id], map: "idx_order_receipt")
   @@index([status], map: "idx_order_status")
   @@index([user_id], map: "idx_order_user")
+  @@index([receipt_id], map: "idx_order_receipt")
 }
 
 model order_option {
@@ -291,6 +291,19 @@ model owner_wish {
   created_at        DateTime?      @default(now()) @db.Timestamp(6)
   owner             owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_owner_wish_1")
   reform_request    reform_request @relation(fields: [reform_request_id], references: [reform_request_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_reform_request_TO_owner_wish_1")
+}
+
+model receipt {
+  receipt_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+  payment_status  String?   @db.VarChar(255)
+  payment_method  String?   @db.VarChar(20)
+  payment_gateway String?   @db.VarChar(20)
+  transaction     String?
+  receipt_number  String?   @unique(map: "receipt_receipt_number_unique") @db.VarChar(20)
+  total_amount    Decimal?  @db.Decimal
+  order           order[]
 }
 
 model reform_proposal {
@@ -437,37 +450,22 @@ model user_wish {
   user        user              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_user_wish_1")
 }
 
-model quote_photo {
-  quote_photo_id String    @id(map: "quote_photo_pk") @db.Uuid
-  content        String?   @db.VarChar(100)
-  created_at     DateTime? @db.Date
-  photo_order    Int?
-  updated_at     DateTime? @db.Date
-  order_id       String?   @db.Uuid
-  order          order?    @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "quote_photo_order_order_id_fk")
-}
-
-model receipt {
-  receipt_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  created_at      DateTime? @default(now()) @db.Timestamp(6)
-  updated_at      DateTime? @default(now()) @db.Timestamp(6)
-  payment_status  String?   @db.VarChar(255)
-  payment_method  String?   @db.VarChar(20)
-  payment_gateway String?   @db.VarChar(20)
-  transaction     String?
-  receipt_number  String?   @unique(map: "receipt_receipt_number_unique") @db.VarChar(20)
-  total_amount    Decimal?  @db.Decimal
-  order           order[]
-}
+// model receipt {
+//   receipt_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+//   created_at      DateTime? @default(now()) @db.Timestamp(6)
+//   updated_at      DateTime? @default(now()) @db.Timestamp(6)
+//   payment_status  String?   @db.VarChar(255)
+//   payment_method  String?   @db.VarChar(20)
+//   payment_gateway String?   @db.VarChar(20)
+//   transaction     String?
+//   receipt_number  String?   @unique(map: "receipt_receipt_number_unique") @db.VarChar(20)
+//   total_amount    Decimal?  @db.Decimal
+//   order           order[]
+// }
 
 enum account_role {
   USER
   OWNER
-}
-
-enum chat_target_type_enum {
-  REQUEST
-  PROPOSAL
 }
 
 enum message_type {
@@ -478,6 +476,15 @@ enum message_type {
   payment
   result
 }
+
+// enum message_type {
+//   image
+//   request
+//   proposal
+//   text
+//   payment
+//   result
+// }
 
 enum order_status_enum {
   PENDING
@@ -515,6 +522,12 @@ enum sender_type {
 }
 
 enum target_type_enum {
+  REQUEST
+  PROPOSAL
+  ITEM
+}
+
+enum chat_target_type_enum {
   REQUEST
   PROPOSAL
   ITEM

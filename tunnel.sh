@@ -5,6 +5,8 @@ DB_TUNNEL_PORT=${DB_TUNNEL_PORT:-54312}
 REMOTE_DB_PORT=${REMOTE_DB_PORT:-54312}  
 REDIS_DB_PORT=${REDIS_DB_PORT:-63790}
 REMOTE_REDIS_PORT=${REMOTE_REDIS_PORT:-63790}
+ELASTIC_DB_PORT=${ELASTIC_DB_PORT:-9200}
+REMOTE_ELASTIC_PORT=${REMOTE_ELASTIC_PORT:-9200}
 
 
 # 환경변수 로드
@@ -24,6 +26,9 @@ ssh -fN -L ${DB_TUNNEL_PORT}:localhost:${REMOTE_DB_PORT} ${SSH_HOST}
 # 터널 열기
 echo "🔌 Opening SSH tunnel: localhost:${REDIS_DB_PORT} -> ${SSH_HOST}:${REMOTE_REDIS_PORT}"
 ssh -fN -L ${REDIS_DB_PORT}:localhost:${REMOTE_REDIS_PORT} ${SSH_HOST}
+# 터널 열기
+echo "🔌 Opening SSH tunnel: localhost:${ELASTIC_DB_PORT} -> ${SSH_HOST}:${REMOTE_ELASTIC_PORT}"
+ssh -fN -L ${ELASTIC_DB_PORT}:localhost:${REMOTE_ELASTIC_PORT} ${SSH_HOST}
 
 # 확인
 sleep 1

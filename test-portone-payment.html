@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포트원 테스트 결제</title>
+    <script src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>포트원 테스트 결제</h1>
+        
+        <label for="pg">PG사:</label>
+        <select id="pg" style="width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box;" required>
+            <option value="html5_inicis">KG이니시스</option>
+            <option value="kcp">NHN KCP</option>
+        </select>
+        
+        <label for="merchantUid">merchant_uid:</label>
+        <input type="text" id="merchantUid" placeholder="20260118-00003" value="">
+        
+        <label for="amount">결제 금액:</label>
+        <input type="number" id="amount" placeholder="1200" value="1200">
+        
+        <button onclick="requestPayment()">결제하기</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        IMP.init('imp09293890');
+
+        function requestPayment() {
+            const merchantUid = document.getElementById('merchantUid').value;
+            const amount = parseInt(document.getElementById('amount').value);
+            const pg = document.getElementById('pg').value;
+            const resultDiv = document.getElementById('result');
+            
+            if (!merchantUid) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'merchant_uid를 입력해주세요.';
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '결제 금액을 입력해주세요.';
+                return;
+            }
+
+            resultDiv.className = 'result';
+            resultDiv.textContent = '결제 요청 중...';
+
+            const requestParams = {
+                pg: pg,
+                pay_method: 'card',
+                merchant_uid: merchantUid,
+                name: '테스트 결제',
+                amount: amount,
+                buyer_email: 'test@example.com',
+                buyer_name: '홍길동',
+                buyer_tel: '010-1234-5678',
+                m_redirect_url: window.location.href
+            };
+
+            IMP.request_pay(requestParams, function(rsp) {
+                if (rsp.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+결제 완료
+
+imp_uid: ${rsp.imp_uid}
+merchant_uid: ${rsp.merchant_uid}
+금액: ${rsp.paid_amount.toLocaleString()}원
+PG사: ${rsp.pg_provider}
+
+위 imp_uid를 주문 생성 API에 사용하세요.
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+결제 실패
+
+에러: ${rsp.error_msg}
+코드: ${rsp.error_code}
+                    `;
+                }
+            });
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderNumber = urlParams.get('order_number');
+            if (orderNumber) {
+                document.getElementById('merchantUid').value = orderNumber;
+            }
+        };
+    </script>
+</body>
+</html>
