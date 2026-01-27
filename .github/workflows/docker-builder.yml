@@ -21,6 +21,9 @@ jobs:
           script: |
             set -e
 
+            mkdir -p /tmp/.docker
+            export DOCKER_CONFIG=/tmp/.docker
+
             echo "📦 Move to project directory"
             cd /Users/develop_user/workspace/dev/myform_reform
 
