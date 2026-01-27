@@ -1,4 +1,4 @@
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO } from './chat.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError } from './chat.error.js';
@@ -285,6 +285,60 @@ export class ChatService {
         },
         createdAt: chatProposal.created_at as Date,
       };
+  }
+
+  // 채팅 요청서 수정
+  async updateChatRequest(
+    requestId: string,
+    request: any
+  ): Promise<SimplePostResponseDTO> {
+    // 기존 요청서 존재 확인
+    const existingRequest = await this.chatRepository.getChatRequestById(requestId);
+    if (!existingRequest) {
+      throw new CreateTargetNotFoundError('채팅 요청서를 찾을 수 없습니다.');
+    }
+
+    // 수정 가능한 필드만 업데이트
+    const updateData: any = {};
+    if (request.image !== undefined) updateData.image = request.image;
+    if (request.title !== undefined) updateData.title = request.title;
+    if (request.content !== undefined) updateData.content = request.content;
+    if (request.minBudget !== undefined) updateData.minBudget = request.minBudget;
+    if (request.maxBudget !== undefined) updateData.maxBudget = request.maxBudget;
+
+    // Repository를 통해 업데이트 수행
+    const updatedRequest = await this.chatRepository.updateChatRequest(requestId, updateData);
+
+    return {
+      id: updatedRequest.chat_request_id,
+      createdAt: updatedRequest.updated_at as Date
+    };
+  }
+
+  // 채팅 제안서 수정
+  async updateChatProposal(
+    proposalId: string,
+    request: any
+  ): Promise<SimplePostResponseDTO> {
+    // 기존 제안서 존재 확인
+    const existingProposal = await this.chatRepository.getChatProposalById(proposalId);
+    if (!existingProposal) {
+      throw new CreateTargetNotFoundError('채팅 제안서를 찾을 수 없습니다.');
+    }
+
+    // 수정 가능한 필드만 업데이트
+    const updateData: any = {};
+    if (request.price !== undefined) updateData.price = request.price;
+    if (request.delivery !== undefined) updateData.delivery = request.delivery;
+    if (request.expectedWorking !== undefined) updateData.expectedWorking = request.expectedWorking;
+
+    // Repository를 통해 업데이트 수행
+    const updatedProposal = await this.chatRepository.updateChatProposal(proposalId, updateData);
+
+    return {
+      id: updatedProposal.chat_proposal_id,
+      createdAt: updatedProposal.updated_at as Date
+    };
   }
 
 

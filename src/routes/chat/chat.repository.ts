@@ -3,7 +3,6 @@ import { handleDbError } from '../../utils/dbErrorHandler.js';
 import { ChatMessage, ChatRoom, MessageType } from './chat.model.js';
 import { Prisma } from '@prisma/client';
 import { ChatRoomPreviewDTO, ChatRoomListDTO } from './chat.dto.js';
-import { Message } from 'aws-sdk/clients/cloudwatch.js';
 
 interface RepoParams {
   myId: string;
@@ -459,6 +458,60 @@ export class ChatRepository {
             },
           },
         },
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async updateChatRequest(
+    requestId: string,
+    updateData: {
+      image?: string[] | null;
+      title?: string;
+      content?: string;
+      minBudget?: number | null;
+      maxBudget?: number | null;
+    }
+  ) {
+    try {
+      const data: any = {};
+      if (updateData.image !== undefined) data.image = updateData.image;
+      if (updateData.title !== undefined) data.title = updateData.title;
+      if (updateData.content !== undefined) data.content = updateData.content;
+      if (updateData.minBudget !== undefined) data.min_budget = updateData.minBudget;
+      if (updateData.maxBudget !== undefined) data.max_budget = updateData.maxBudget;
+
+      return await prisma.chat_request.update({
+        where: {
+          chat_request_id: requestId
+        },
+        data
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async updateChatProposal(
+    proposalId: string,
+    updateData: {
+      price?: number;
+      delivery?: number;
+      expectedWorking?: number;
+    }
+  ) {
+    try {
+      const data: any = {};
+      if (updateData.price !== undefined) data.price = updateData.price;
+      if (updateData.delivery !== undefined) data.delivery = updateData.delivery;
+      if (updateData.expectedWorking !== undefined) data.expected_working = updateData.expectedWorking;
+
+      return await prisma.chat_proposal.update({
+        where: {
+          chat_proposal_id: proposalId
+        },
+        data
       });
     } catch (error) {
       throw handleDbError(error);
