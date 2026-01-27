@@ -464,6 +464,47 @@ export class ChatRepository {
       throw handleDbError(error);
     }
   }
+
+  async getChatMessagesPagingById(
+    roomId: string,
+    cursor?: string,
+    limit: number = 20
+  ) {
+    try {
+      const whereClause: Prisma.chat_messageWhereInput = {
+        chat_room_id: roomId,
+        ...(cursor && { message_id: { lt: cursor } })
+      };
+
+      const messages = await prisma.chat_message.findMany({
+        where: whereClause,
+        orderBy: [
+          { message_id: 'desc' }
+        ],
+        take: limit + 1
+      });
+
+      const hasMore = messages.length > limit;
+      const dataMessages = hasMore ? messages.slice(0, limit) : messages;
+      
+      let nextCursor: string | null = null;
+      if (hasMore && dataMessages.length > 0) {
+        const lastMessage = dataMessages[dataMessages.length - 1];
+        nextCursor = lastMessage.message_id;
+      }
+
+      return {
+        data: dataMessages,
+        meta: {
+          nextCursor: nextCursor ?? '',
+          hasMore
+        }
+      };
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
 }
 
 export class TargetRepository {

@@ -138,4 +138,13 @@ export class ChatController extends Controller {
     const result = await this.chatService.getChatProposal(proposalId);
     return new ResponseHandler<ChatProposalResponseDTO>(result);
   }
+
+
+  @Get('/chat/rooms/{roomId}/{messageId}')
+  public async getChatMessage(
+    @Path() roomId: string,
+    @Path() messageId: string
+  ): Promise<any> {
+    return await this.chatService.getChatMessage(roomId, messageId);
+  }
 }

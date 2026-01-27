@@ -151,3 +151,18 @@ export interface ChatProposalResponseDTO {
     },
     createdAt : Date;
 }
+
+export interface GetChatMessageListDTO {
+
+    chatMessages : ChatMessageDTO[];
+    meta: Pagenation;
+}
+
+export interface ChatMessageDTO {
+    messageId : UUID;
+    senderId : UUID;
+    senderType : 'OWNER' | 'USER';
+    messageType : 'TEXT' | 'IMAGE' | 'OTHER';
+    content : string;
+    createdAt : Date;
+}

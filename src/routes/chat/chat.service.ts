@@ -1,9 +1,10 @@
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO } from './chat.dto.js';
+import { GetChatMessageListDTO,ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { v4, v7 } from 'uuid'
+import { Get } from 'aws-sdk/clients/dynamodb.js';
 
 export class ChatService {
   
@@ -285,6 +286,16 @@ export class ChatService {
         },
         createdAt: chatProposal.created_at as Date,
       };
+  }
+
+
+  async getChatMessage(
+    roomId: string,
+    messageId: string
+  ): Promise<GetChatMessageListDTO> {
+
+    const chatMessage = await this.chatRepository.getChatMessagesPagingById(roomId, messageId);
+    return chatMessage;
   }
 
 
