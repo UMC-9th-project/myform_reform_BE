@@ -1,43 +1,57 @@
-import { ItemDto, ReformDto } from './dto/profile.dto.js';
 import { ProfileRepository } from './profile.repository.js';
-import { S3 } from '../../config/s3.js';
-import { ItemAddError, OrderItemError } from './profile.error.js';
-import { target_type_enum } from '@prisma/client';
+import {
+  CategoryNotExist,
+  ItemAddError,
+  OrderItemError
+} from './profile.error.js';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
-import { Sale, SaleDetail } from './profile.model.js';
-import { SaleResponseDto } from './dto/profile.res.dto.js';
+import {
+  Item,
+  ItemDto,
+  Reform,
+  ReformDto,
+  Sale,
+  SaleDetail
+} from './profile.model.js';
+
 export class ProfileService {
   private profileRepository: ProfileRepository;
-  private s3: S3;
 
   constructor() {
     this.profileRepository = new ProfileRepository();
-    this.s3 = new S3();
   }
 
-  async addProduct(
-    mode: 'ITEM' | 'REFORM',
-    dto: ItemDto | ReformDto,
-    images: Express.Multer.File[]
-  ) {
+  async addProduct(mode: 'ITEM' | 'REFORM', dto: Item | Reform) {
     try {
-      const image: {
-        content: string;
-        photo_order: number;
-      }[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const ans = await this.s3.uploadToS3(images[i]);
-        const obj = {
-          content: ans,
-          photo_order: i + 1
-        };
-        image.push(obj);
+      const data = dto.toDto();
+      const category = await this.profileRepository.getCategory(data);
+      if (category === null) {
+        throw new CategoryNotExist('카테고리가 없습니다');
       }
-      dto.images = image;
-      await this.profileRepository.addProduct(mode, dto);
+      const categoryId = category.category_id;
+
+      switch (mode) {
+        case 'ITEM': {
+          const itemDto = data as ItemDto;
+          const item = await this.profileRepository.addItem(
+            itemDto,
+            categoryId
+          );
+          if (itemDto.option && itemDto.option.length > 0) {
+            await this.profileRepository.addOption(
+              item.item_id,
+              itemDto.option
+            );
+          }
+          break;
+        }
+        case 'REFORM':
+          await this.profileRepository.addReform(data as ReformDto, categoryId);
+          break;
+      }
     } catch (err: any) {
       console.log(err);
-      throw new ItemAddError(err);
+      throw new Error(err);
     }
   }
 
