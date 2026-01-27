@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files
+__test__
+coverage
+*.test.ts
+*.spec.ts
+jest.config.js
+
+# Development files
+*.md
+LICENSE
+.prettierrc
+eslint.config.js
+tunnel.sh
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# GitHub
+.github

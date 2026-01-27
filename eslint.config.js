@@ -17,7 +17,7 @@ export default [
     languageOptions: {
       parser: typescriptEslintParser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: ['./tsconfig.json', './tsconfig.scripts.json'],
         sourceType: 'module'
       }
     },
