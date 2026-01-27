@@ -18,7 +18,7 @@ export type RawSaleData = Prisma.orderGetPayload<{
         name: true;
       };
     };
-    reciept: {
+    receipt: {
       select: {
         created_at: true;
       };
@@ -50,7 +50,7 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
         phone: true;
       };
     };
-    reciept: {
+    receipt: {
       select: {
         created_at: true;
       };
@@ -93,7 +93,7 @@ export class Sale {
       price: raw.price!.toNumber(),
       deliveryFee: raw.delivery_fee!.toNumber(),
       userName: raw.user.name ?? '',
-      createdAt: raw.reciept.created_at ?? new Date(),
+      createdAt: raw.receipt.created_at ?? new Date(),
       title: title ?? '',
       thumbnail: raw.quote_photo[0]?.content ?? ''
     });
@@ -127,7 +127,7 @@ export class SaleDetail {
       price: raw.price!.toNumber(),
       deliveryFee: raw.delivery_fee!.toNumber(),
       userName: raw.user.name ?? '',
-      createdAt: raw.reciept.created_at ?? new Date(),
+      createdAt: raw.receipt.created_at ?? new Date(),
       title: title,
       thumbnail: raw.quote_photo[0]?.content ?? '',
       phone: raw.user.phone ?? '',

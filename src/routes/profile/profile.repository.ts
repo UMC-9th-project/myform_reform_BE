@@ -124,7 +124,7 @@ export class ProfileRepository {
             name: true
           }
         },
-        reciept: {
+        receipt: {
           select: {
             created_at: true
           }
@@ -194,7 +194,7 @@ export class ProfileRepository {
             phone: true
           }
         },
-        reciept: {
+        receipt: {
           select: {
             created_at: true
           }

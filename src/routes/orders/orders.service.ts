@@ -23,6 +23,7 @@ import type {
 import type { GetOrderResponseDto } from './orders.dto.js';
 import { OrdersRepository } from './orders.repository.js';
 import { customAlphabet } from 'nanoid';
+import { Decimal } from '@prisma/client/runtime/binary';
 
 export class OrdersService {
   private static readonly ORDER_NUMBER_ALPHABET = '0123456789';
@@ -832,7 +833,7 @@ export class OrdersService {
 
       // 총 배송비는 각 order의 delivery_fee 중 최대값
       const maxDeliveryFee = Math.max(
-        ...receipt.order.map((o: { delivery_fee: number | null }) =>
+        ...receipt.order.map((o: { delivery_fee: Decimal | null }) =>
           o.delivery_fee ? Number(o.delivery_fee) : 0
         )
       );
@@ -875,10 +876,10 @@ export class OrdersService {
   /**
    * 포트원 API로 결제보 조회 (재시도 로직 포함)
    */
-  private async tchPaymentInfoWithRetry(
-    impUid: stri
-  ): Promise<PornePaymentInfo> {
-    let paymennfo: PortonePaymentInfo | null = null;
+  private async fetchPaymentInfoWithRetry(
+    impUid: string
+  ): Promise<PortonePaymentInfo> {
+    let paymentInfo: PortonePaymentInfo | null = null;
     let retryCount = 0;
     const maxRetries = 3;
     let lastError: Error | null = null;
@@ -963,13 +964,13 @@ export class OrdersService {
             const cardInfo =
               paymentInfo.card_name && paymentInfo.card_number
                 ? JSON.stringify({
-                    imp_uid: impUid,
-                    card_name: paymentInfo.card_name,
-                    card_number: paymentInfo.card_number,
-                    card_code: paymentInfo.card_code || null,
-                    card_quota: paymentInfo.card_quota || 0,
-                    card_type: paymentInfo.card_type || null
-                  })
+                  imp_uid: impUid,
+                  card_name: paymentInfo.card_name,
+                  card_number: paymentInfo.card_number,
+                  card_code: paymentInfo.card_code || null,
+                  card_quota: paymentInfo.card_quota || 0,
+                  card_type: paymentInfo.card_type || null
+                })
                 : impUid;
 
             await this.repository.updateReceipt(receipt.receipt_id, {
@@ -1005,7 +1006,7 @@ export class OrdersService {
         if (throwOnError) {
           throw new OrderError(
             '결제 검증할 수 없는 주문 상태입니다.',
-            `일부 주문이 PENDING 상태가 아닙니다.`
+            '일부 주문이 PENDING 상태가 아닙니다.'
           );
         }
         return false;
@@ -1062,13 +1063,13 @@ export class OrdersService {
         const cardInfo =
           paymentInfo.card_name && paymentInfo.card_number
             ? JSON.stringify({
-                imp_uid: impUid,
-                card_name: paymentInfo.card_name,
-                card_number: paymentInfo.card_number,
-                card_code: paymentInfo.card_code || null,
-                card_quota: paymentInfo.card_quota || 0,
-                card_type: paymentInfo.card_type || null
-              })
+              imp_uid: impUid,
+              card_name: paymentInfo.card_name,
+              card_number: paymentInfo.card_number,
+              card_code: paymentInfo.card_code || null,
+              card_quota: paymentInfo.card_quota || 0,
+              card_type: paymentInfo.card_type || null
+            })
             : impUid;
 
         await this.repository.updateReceipt(receipt.receipt_id, {
@@ -1108,12 +1109,12 @@ export class OrdersService {
         orderReceipt.receipt_id
       );
       if (!receiptData) {
-        throw new OrrNotFoundError(orderId);
+        throw new OrderNotFoundError(orderId);
       }
 
       const receipt = {
-        receipt_id: ceiptData.receipt_id,
-        receipt_numer: receiptData.receipt_number,
+        receipt_id: receiptData.receipt_id,
+        receipt_number: receiptData.receipt_number,
         total_amount: receiptData.total_amount
           ? Number(receiptData.total_amount)
           : null,
@@ -1125,11 +1126,11 @@ export class OrdersService {
             order_option?: Array<{ option_item_id: string }>;
           }) => ({
             order_id: o.order_id,
-            status: o.satus,
-            quantity: oquantity,
+            status: o.status,
+            quantity: o.quantity,
             order_optio: o.order_option?.map(
-              (oo: { opion_item_id: string }) => ({
-                option_tem_id: oo.option_item_id
+              (oo: { option_item_id: string }) => ({
+                option_item_id: oo.option_item_id
               })
             )
           })
@@ -1238,13 +1239,13 @@ export class OrdersService {
                 transaction:
                   paymentInfo.card_name && paymentInfo.card_number
                     ? JSON.stringify({
-                        imp_uid: impUid,
-                        card_name: paymentInfo.card_name,
-                        card_number: paymentInfo.card_number,
-                        card_code: paymentInfo.card_code || null,
-                        card_quota: paymentInfo.card_quota || 0,
-                        card_type: paymentInfo.card_type || null
-                      })
+                      imp_uid: impUid,
+                      card_name: paymentInfo.card_name,
+                      card_number: paymentInfo.card_number,
+                      card_code: paymentInfo.card_code || null,
+                      card_quota: paymentInfo.card_quota || 0,
+                      card_type: paymentInfo.card_type || null
+                    })
                     : impUid
               });
             } catch (createError: any) {
@@ -1263,13 +1264,13 @@ export class OrdersService {
                   const cardInfo =
                     paymentInfo.card_name && paymentInfo.card_number
                       ? JSON.stringify({
-                          imp_uid: impUid,
-                          card_name: paymentInfo.card_name,
-                          card_number: paymentInfo.card_number,
-                          card_code: paymentInfo.card_code || null,
-                          card_quota: paymentInfo.card_quota || 0,
-                          card_type: paymentInfo.card_type || null
-                        })
+                        imp_uid: impUid,
+                        card_name: paymentInfo.card_name,
+                        card_number: paymentInfo.card_number,
+                        card_code: paymentInfo.card_code || null,
+                        card_quota: paymentInfo.card_quota || 0,
+                        card_type: paymentInfo.card_type || null
+                      })
                       : impUid;
 
                   await this.repository.updateReceipt(receiptData.receipt_id, {
