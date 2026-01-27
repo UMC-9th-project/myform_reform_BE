@@ -253,24 +253,25 @@ model order_option {
 }
 
 model owner {
-  owner_id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email             String?              @unique(map: "owner_email_unique") @db.VarChar(30)
-  hashed            String?              @db.VarChar(256)
-  name              String?              @db.VarChar(50)
-  nickname          String?              @unique(map: "owner_nickname_unique") @db.VarChar(50)
-  phone             String?              @unique(map: "owner_phone_unique") @db.VarChar(50)
-  created_at        DateTime?            @default(now()) @db.Timestamp(6)
-  updated_at        DateTime?            @default(now()) @db.Timestamp(6)
-  age_confirmed_at  DateTime             @default(now()) @db.Timestamp(6)
-  terms_agreed_at   DateTime             @default(now()) @db.Timestamp(6)
-  privacy_opt_in_at DateTime?            @db.Timestamp(6)
-  status            reformer_status_enum @default(PENDING)
-  profile_photo     String?              @db.VarChar(256)
+  owner_id          String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email             String?                  @unique(map: "owner_email_unique") @db.VarChar(30)
+  hashed            String?                  @db.VarChar(256)
+  name              String?                  @db.VarChar(50)
+  nickname          String?                  @unique(map: "owner_nickname_unique") @db.VarChar(50)
+  phone             String?                  @unique(map: "owner_phone_unique") @db.VarChar(50)
+  created_at        DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?                @default(now()) @db.Timestamp(6)
+  age_confirmed_at  DateTime                 @default(now()) @db.Timestamp(6)
+  terms_agreed_at   DateTime                 @default(now()) @db.Timestamp(6)
+  privacy_opt_in_at DateTime?                @db.Timestamp(6)
+  status            reformer_status_enum     @default(PENDING)
+  profile_photo     String?                  @db.VarChar(256)
   bio               String?
-  keywords          String[]             @default([])
-  avg_star          Decimal?             @db.Decimal
+  keywords          String[]                 @default([])
+  avg_star          Decimal?                 @db.Decimal
   review_count      Int?
   trade_count       Int?
+  search_vector     Unsupported("tsvector")?
   chat_room         chat_room[]
   delivery_address  delivery_address[]
   feed              feed[]
@@ -279,6 +280,8 @@ model owner {
   owner_wish        owner_wish[]
   reform_proposal   reform_proposal[]
   reformer_auth     reformer_auth[]
+
+  @@index([search_vector], map: "owner_search_idx", type: Gin)
 }
 
 model owner_wish {
