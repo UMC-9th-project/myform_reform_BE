@@ -11,6 +11,7 @@
     "dev:start": "nodemon --watch '*.ts' --exec tsx ./src/app.ts",
     "dev:prisma": "npx prisma db pull && npx prisma generate",
     "dev": "npm run eslint && npm run build && npm run dev:start",
+    "docker:build": "docker buildx build   --platform linux/amd64   -t seoki/myform_reform:develop   --push   .",
     "es:sync": "tsx ./scripts/es-sync.ts"
   },
   "keywords": [],
@@ -67,6 +68,6 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "5.8.3"
   }
 }

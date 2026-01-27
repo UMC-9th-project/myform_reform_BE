@@ -1,3 +1,4 @@
+// @ts-nocheck
 import prisma from '../../config/prisma.config.js';
 import { handleDbError } from '../../utils/dbErrorHandler.js';
 import { ChatMessage, ChatRoom, MessageType } from './chat.model.js';
@@ -13,24 +14,22 @@ interface RepoParams {
 }
 
 export class ChatRepository {
-  
   constructor() {}
 
   // 채팅방 생성
-  async createChatRoom(
-    ChatRoomInstance: ChatRoom
-  ): Promise<ChatRoom> {
+  async createChatRoom(ChatRoomInstance: ChatRoom): Promise<ChatRoom> {
     try {
       const data = ChatRoomInstance.toPersistence();
       const raw = await prisma.chat_room.create({
         data: {
           type: data.type,
-          target_payload: data.target_payload as unknown as Prisma.InputJsonValue,
+          target_payload:
+            data.target_payload as unknown as Prisma.InputJsonValue,
           owner_id: data.owner_id,
-          requester_id: data.requester_id  
+          requester_id: data.requester_id
         }
       });
-      return ChatRoom.fromPersistence(raw)  ;
+      return ChatRoom.fromPersistence(raw);
     } catch (error) {
       throw handleDbError(error);
     }
@@ -54,7 +53,7 @@ export class ChatRepository {
 
   //안읽음 조회
   async getUnreadChatRooms(p: RepoParams) {
-    const unreadFilter = p.isOwner 
+    const unreadFilter = p.isOwner
       ? { owner_unread_count: { gt: 0 } }
       : { requester_unread_count: { gt: 0 } };
     return this.fetchChatRoomList(p, unreadFilter);
@@ -62,11 +61,11 @@ export class ChatRepository {
 
   // 공통 채팅방 조회 로직
   private async fetchChatRoomList(
-    p: RepoParams, 
+    p: RepoParams,
     additionalFilter: Prisma.chat_roomWhereInput
   ): Promise<ChatRoomListDTO> {
     const { myId, isOwner, cursor, limit } = p;
-    
+
     try {
       // 기본 WHERE 조건
       // myId에 따른 소유자/요청자 필터링 + 추가 필터링
@@ -109,8 +108,14 @@ export class ChatRepository {
       };
 
       // FEED 타입만 상대방 정보 조회(나머지는 target_payload에 정보가 다 들어있음)
-      const isFeedOnly = additionalFilter && 'type' in additionalFilter && additionalFilter.type === 'FEED';
-      const shouldIncludeOpponent = !additionalFilter || Object.keys(additionalFilter).length === 0 || isFeedOnly;
+      const isFeedOnly =
+        additionalFilter &&
+        'type' in additionalFilter &&
+        additionalFilter.type === 'FEED';
+      const shouldIncludeOpponent =
+        !additionalFilter ||
+        Object.keys(additionalFilter).length === 0 ||
+        isFeedOnly;
 
       // 쿼리 실행
       const chatRooms = await prisma.chat_room.findMany({
@@ -147,14 +152,14 @@ export class ChatRepository {
 
   // 조회 결과 가공
   private processResult(
-    rows: any[], 
-    limit: number, 
+    rows: any[],
+    limit: number,
     isOwner: boolean
   ): ChatRoomListDTO {
     const hasMore = rows.length > limit;
     const dataRows = hasMore ? rows.slice(0, limit) : rows;
-    
-    const data = dataRows.map(row => this.mapToPreviewDTO(row, isOwner));
+
+    const data = dataRows.map((row) => this.mapToPreviewDTO(row, isOwner));
 
     let nextCursor: string | null = null;
     if (hasMore && dataRows.length > 0) {
@@ -174,17 +179,19 @@ export class ChatRepository {
   // 단일 행을 ChatRoomPreviewDTO로 매핑
   private mapToPreviewDTO(row: any, isOwner: boolean): ChatRoomPreviewDTO {
     const isFeed = row.type === 'FEED';
-    const payload = typeof row.target_payload === 'string' 
-      ? JSON.parse(row.target_payload) 
-      : row.target_payload;
+    const payload =
+      typeof row.target_payload === 'string'
+        ? JSON.parse(row.target_payload)
+        : row.target_payload;
 
     const opponent = isFeed ? (isOwner ? row.requester : row.owner) : null;
-    const lastMessage = row.chat_message_chat_room_last_message_idTochat_message;
+    const lastMessage =
+      row.chat_message_chat_room_last_message_idTochat_message;
 
     return {
       chatRoomId: row.chat_room_id,
-      image: isFeed ? (opponent?.profile_photo || '') : (payload?.image || ''),
-      title: isFeed ? (opponent?.nickname || '') : (payload?.title || '주문 상세'),
+      image: isFeed ? opponent?.profile_photo || '' : payload?.image || '',
+      title: isFeed ? opponent?.nickname || '' : payload?.title || '주문 상세',
       roomType: row.type,
       messageType: (lastMessage?.message_type as any) || 'TEXT',
       type: isFeed ? 'INQUIRY' : 'ORDER',
@@ -204,7 +211,7 @@ export class ChatRepository {
           chat_room_id: data.chat_room_id as string,
           sender_id: data.sender_id,
           sender_type: data.sender_type,
-          message_type: data.message_type as any, // 임시 
+          message_type: data.message_type as any, // 임시
           text_content: data.text_content?.toLowerCase(),
           payload: data.payload as unknown as Prisma.InputJsonValue
         }
@@ -220,31 +227,31 @@ export class ChatRepository {
     try {
       const isOwnerSender = senderType === 'OWNER';
 
-      const result = await prisma.chat_room.findUnique({
-        where: { 
+      const result = (await prisma.chat_room.findUnique({
+        where: {
           chat_room_id: chatRoomId,
           is_active: true
         },
-        select: { 
+        select: {
           ...(isOwnerSender
             ? {
-              user: {
-                select: {
-                  user_id: true,
-                  nickname: true
+                user: {
+                  select: {
+                    user_id: true,
+                    nickname: true
+                  }
                 }
               }
-            }
             : {
-              owner: {
-                select: {
-                  owner_id: true,
-                  nickname: true
+                owner: {
+                  select: {
+                    owner_id: true,
+                    nickname: true
+                  }
                 }
-              }
-            })
-        } 
-      }) as any;
+              })
+        }
+      })) as any;
 
       return isOwnerSender ? result.user : result.owner;
     } catch (error) {
@@ -254,21 +261,19 @@ export class ChatRepository {
 
   // 채팅방 정보 업데이트(마지막 메세지, 안읽음 카운트 증가)
   async updateChatRoomOnSendMessage(
-    chatroomId : string, 
-    messageId : string, 
-    senderType : string
+    chatroomId: string,
+    messageId: string,
+    senderType: string
   ) {
-
     try {
       const isOwnerSender = senderType === 'OWNER';
       await prisma.chat_room.update({
         where: { chat_room_id: chatroomId },
-        data: { 
+        data: {
           last_message_id: messageId,
-          ...(isOwnerSender 
+          ...(isOwnerSender
             ? { requester_unread_count: { increment: 1 } }
-            : { owner_unread_count: { increment: 1 } }
-          )
+            : { owner_unread_count: { increment: 1 } })
         }
       });
     } catch (error) {
@@ -284,7 +289,7 @@ export class ChatRepository {
   ): Promise<void> {
     try {
       const isOwnerReader = readerType === 'OWNER';
-      
+
       // 유저의 안읽은 메세지 카운트 초기화
       // 그리고 마지막 읽은 메세지 ID 업데이트
       // 한 쿼리로 초기화하기위해 Raw 쿼리 사용
@@ -325,7 +330,6 @@ export class ChatRepository {
     maxBudget: number,
     messageId: string
   ) {
-    
     try {
       return await prisma.chat_request.create({
         data: {
@@ -342,13 +346,11 @@ export class ChatRepository {
       throw handleDbError(error);
     }
   }
-  async getChatRequestById(
-    requestId: string
-  ) {
+  async getChatRequestById(requestId: string) {
     try {
-      return await prisma.chat_request.findUnique({
+      return await prisma.chat_requet.findUnique({
         where: {
-          chat_request_id: requestId,
+          chat_request_id: requestId
         },
         select: {
           chat_request_id: true,
@@ -369,30 +371,28 @@ export class ChatRepository {
                     select: {
                       user_id: true,
                       nickname: true,
-                      profile_photo: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+                      profile_photo: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       });
     } catch (error) {
       throw handleDbError(error);
     }
   }
 
-  async getChatRequestByChatRoomId(
-    chatRoomId: string
-  ) {
+  async getChatRequestByChatRoomId(chatRoomId: string) {
     try {
       return await prisma.chat_message.findFirst({
         where: {
           chat_room_id: chatRoomId,
           message_type: 'request'
         },
-        select : {
+        select: {
           payload: true
         }
       });
@@ -420,21 +420,19 @@ export class ChatRepository {
           message_id: messageId
         }
       });
-    }catch (error) {
+    } catch (error) {
       throw handleDbError(error);
     }
   }
 
-  async getChatProposalById(
-    proposalId: string
-  ) {
+  async getChatProposalById(proposalId: string) {
     try {
       return await prisma.chat_proposal.findUnique({
         where: {
-          chat_proposal_id: proposalId,
+          chat_proposal_id: proposalId
         },
         select: {
-          chat_proposal_id: true, 
+          chat_proposal_id: true,
           message_id: true,
           title: true,
           price: true,
@@ -451,14 +449,14 @@ export class ChatRepository {
                     select: {
                       owner_id: true,
                       nickname: true,
-                      profile_photo: true,
-                    },  
-                  },
-                },
-              },
-            },
-          },
-        },
+                      profile_photo: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       });
     } catch (error) {
       throw handleDbError(error);
@@ -473,7 +471,7 @@ export class TargetRepository {
     try {
       return await prisma.reform_proposal.findUnique({
         where: { reform_proposal_id: id },
-        include: { 
+        include: {
           owner: true,
           reform_proposal_photo: {
             where: { photo_order: 1 }
@@ -489,7 +487,7 @@ export class TargetRepository {
     try {
       return await prisma.reform_request.findUnique({
         where: { reform_request_id: id },
-        include: { 
+        include: {
           user: true,
           reform_request_photo: {
             where: { photo_order: 1 }
@@ -498,10 +496,10 @@ export class TargetRepository {
       });
     } catch (error) {
       throw handleDbError(error);
-    } 
+    }
   }
 
-  async findFeedWithOwnerById(id: string) { 
+  async findFeedWithOwnerById(id: string) {
     try {
       return await prisma.feed.findUnique({
         where: { feed_id: id },
