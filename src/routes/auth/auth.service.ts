@@ -61,11 +61,11 @@ export class AuthService {
     
     // SMS 전송 로직
     try {
-      await messageService.send({
-        to: cleanPhoneNumber,
-        from: process.env.SOLAPI_PHONE_NUMBER as string,
-        text: textMessage
-      });
+      // await messageService.send({
+      //   to: cleanPhoneNumber,
+      //   from: process.env.SOLAPI_PHONE_NUMBER as string,
+      //   text: textMessage
+      // });
       console.log(`${cleanPhoneNumber} 번호로 ${authCode} 인증 코드를 전송했습니다.`);
     } catch (error: any){
       //SMS 전송 실패 시 Redis에서 인증 코드 삭제

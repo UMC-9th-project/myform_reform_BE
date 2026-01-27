@@ -8,7 +8,7 @@ export interface UpdateReformerStatusRequest {
 export interface UserProfile {
   userId: string;
   nickname?: string;
-  phoneNumber?: string;
+  phone?: string;
   email?: string;
 }
 
@@ -16,25 +16,20 @@ export interface UserProfile {
 export type UpdateUserProfileRequest = Partial<Omit<UserProfile, 'userId'>>;
 
 // 유저 프로필 업데이트 요청 (Service -> Repository)
-export interface UpdateUserProfileParams extends UpdateUserProfileRequest {}
-
-// 유저 프로필 업데이트 결과 데이터 (Repository -> Service)
-export interface UpdateUserProfileResult extends UserProfile {}
+export interface UpdateUserProfileParams extends UserProfile {}
 
 export interface UserImage {
   userId: string;
-  profileImage: string;
+  profileImage: Express.Multer.File;
 }
 
-// 유저 프로필 사진 업데이트 요청 데이터 (Controller -> Service)
-export type UpdateUserImageRequest = Partial<Omit<UserImage, 'userId'>>;
-
 // 유저 프로필 사진 업데이트 요청 (Service -> Repository)
-export interface UpdateUserImageParams extends UserImage {}
+export interface UpdateUserImageParams {
+  userId: string;
+  profileUrl: string;
+}
 
-// 유저 프로필 사진 업데이트 결과 데이터 (Repository -> Service)
-export interface UpdateUserImageResult extends UserImage {}
-
+// 리폼러 프로필 데이터
 export interface ReformerProfile {
   reformerId: string;
   nickname?: string;
@@ -42,15 +37,13 @@ export interface ReformerProfile {
   keywords?: string[];
 }
 
-// 리폼러 프로필 업데이트 요청
+// 리폼러 프로필 업데이트 요청 데이터 (Controller -> Service)
 export type UpdateReformerProfileRequest = Partial<Omit<ReformerProfile, 'reformerId'>>;
 
 // 리폼러 프로필 업데이트 요청 (Service -> Repository)
 export interface UpdateReformerProfileParams extends UpdateReformerProfileRequest {}
 
-// 리폼러 프로필 업데이트 결과 데이터 (Repository -> Service)
-export interface UpdateReformerProfileResult extends ReformerProfile {}
-
+// 배송지 데이터
 export interface Address {
   deliveryAddressId: string;
   userId: string;

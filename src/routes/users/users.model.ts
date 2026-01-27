@@ -1,6 +1,6 @@
 import prisma from '../../config/prisma.config.js';
 import { UsersInfoResponse } from './users.res.dto.js';
-import { UpdateReformerStatusRequest } from './users.req.dto.js';
+import { Address, UpdateReformerStatusRequest } from './users.req.dto.js';
 import { account_role, delivery_address, owner, provider_type, social_account, user } from '@prisma/client';
 
 export class UsersModel {
