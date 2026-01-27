@@ -118,14 +118,14 @@ export class AuthController extends Controller {
           secure: process.env.NODE_ENV === 'production', 
           maxAge: 60 * 60 * 24 * 14 * 1000, 
           path: '/', 
-          sameSite: 'lax' as const
+          sameSite: 'none'
         });
         res.cookie('accessToken', result.accessToken, {
           httpOnly: false, 
           secure: process.env.NODE_ENV === 'production',
           maxAge: 5 * 60 * 1000, 
           path: '/', 
-          sameSite: 'lax' as const
+          sameSite: 'none'
         });
         return res.redirect(process.env.FRONTEND_URL_LOGIN!);
       }
@@ -138,7 +138,7 @@ export class AuthController extends Controller {
           secure: process.env.NODE_ENV === 'production',
           maxAge: 5 * 60 * 1000, 
           path: '/', 
-          sameSite: 'lax' as const
+          sameSite: 'none'
         });
         return res.redirect(process.env.FRONTEND_URL_SIGNUP!);
       }
@@ -180,7 +180,7 @@ export class AuthController extends Controller {
     await this.authService.logout(userId);
 
     this.setStatus(200);
-    this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=Lax');
+    this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
     return new ResponseHandler<LogoutResponse>({
       statusCode: 200,
       message: '로그아웃이 성공적으로 완료되었습니다.(리프레쉬 토큰 무효화) 쿠키 삭제 후 프론트엔드에서 accessToken 삭제 필요'
@@ -209,7 +209,7 @@ export class AuthController extends Controller {
     const result = await this.authService.signupUser(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=Lax`);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
     return new ResponseHandler<AuthPublicResponse>({
       accessToken: accessToken
     });
@@ -242,7 +242,7 @@ export class AuthController extends Controller {
     const result = await this.authService.signupReformer(requestBody, portfolioPhotos);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=Lax`);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
     return new ResponseHandler<AuthPublicResponse>({
       accessToken: accessToken
     });
@@ -273,7 +273,7 @@ export class AuthController extends Controller {
     const result = await this.authService.loginLocal(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(200);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=Lax`);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
     return new ResponseHandler<AuthPublicResponse>({
       accessToken: accessToken
     });
@@ -303,7 +303,7 @@ export class AuthController extends Controller {
     const result = await this.authService.reissueAccessToken({refreshToken: refreshTokenFromCookie});
     const { accessToken, refreshToken } = result; 
     this.setStatus(200);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=Lax`);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
     
     return new ResponseHandler<RefreshTokenPublicResponse>({
       accessToken: accessToken
