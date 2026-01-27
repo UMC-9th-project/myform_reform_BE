@@ -387,7 +387,7 @@ model review {
   created_at   DateTime?      @default(now()) @db.Timestamp(6)
   updated_at   DateTime?      @default(now()) @db.Timestamp(6)
   order_id     String         @db.Uuid
-  order        order          @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_order_TO_review_1")
+  order        order          @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_to_review_1")
   review_photo review_photo[]
 
   @@index([order_id], map: "idx_review_order")
@@ -451,9 +451,13 @@ enum account_role {
   OWNER
 }
 
-enum chat_target_type_enum {
-  REQUEST
-  PROPOSAL
+enum message_type {
+  image
+  request
+  proposal
+  text
+  payment
+  result
 }
 
 enum message_type {
@@ -501,6 +505,12 @@ enum sender_type {
 }
 
 enum target_type_enum {
+  REQUEST
+  PROPOSAL
+  ITEM
+}
+
+enum chat_target_type_enum {
   REQUEST
   PROPOSAL
   ITEM

@@ -71,11 +71,7 @@ export interface CreateChatRoomDTO{
 }
 
 export interface ChatRoomPreviewDTO {
-    /**
-     * @format uuid
-     * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
+
     chatRoomId : UUID;
     image: string;
     title: string;
@@ -95,4 +91,63 @@ export interface ChatRoomPreviewDTO {
 export interface ChatRoomListDTO {
     data : ChatRoomPreviewDTO[];
     meta: Pagenation;
+}
+
+export interface CreateChatRequestDTO {
+    chatRoomId: UUID;
+    myId: UUID;// 테스트용 - 로그인 구현 전까지 사용
+    myType: 'OWNER' | 'REQUESTER'; // 테스트용 - 로그인 구현 전까지 사용
+    image: string[] | null;
+    title: string;
+    content: string;
+    maxBudget: number | null;
+    minBudget: number | null;
+}
+
+
+export interface ChatRequestResponseDTO {
+
+    chatRequestId : UUID;
+    messageId : UUID;
+    requester : {
+        id : UUID;
+        nickname : string;
+        profileImage : string | null;
+    },
+    body : {
+        title : string;
+        content : string;
+        minBudget : number | null;
+        maxBudget : number | null;
+        images : string[] | null;
+    },
+    createdAt : Date;
+}
+
+
+export interface CreateChatProposalDTO {
+
+    chatRoomId: UUID;
+    myId: UUID;// 테스트용 - 로그인 구현 전까지 사용
+    myType: 'OWNER' | 'REQUESTER'; // 테스트용 - 로그인 구현 전까지 사용
+    price: number;
+    delivery: number;
+    expectedWorking: number;
+}
+
+export interface ChatProposalResponseDTO {
+    chatProposalId : UUID;
+    messageId : UUID;
+    owner : {
+        id : UUID;
+        nickname : string;
+        profileImage : string | null;
+    },
+    body : {
+        title : string;
+        price : number | null;
+        delivery : number;
+        expectedWorking : number;
+    },
+    createdAt : Date;
 }

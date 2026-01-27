@@ -5,7 +5,6 @@ node_modules
 .DS_Store
 coverage/
 dist/
-
 src/routes/tsoaRoutes.ts
 src/config/swagger.json
 .vscode/
