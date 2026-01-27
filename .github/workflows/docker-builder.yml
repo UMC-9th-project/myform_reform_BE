@@ -30,7 +30,7 @@ jobs:
             git pull origin ${{ github.ref_name }}
 
             echo "🐳 Docker login"
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+            /usr/local/bin/docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
             echo "🏗 Docker build & push"
-            docker buildx build --platform linux/amd64 -t seoki/myform_reform:${{ github.ref_name }} --push .
+            /usr/local/bin/docker buildx build --platform linux/amd64 -t seoki/myform_reform:${{ github.ref_name }} --push .
