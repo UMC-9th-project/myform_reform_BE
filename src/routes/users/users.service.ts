@@ -1,4 +1,5 @@
-import { CheckNicknameResponse, UsersInfoResponse, UpdateReformerStatusRequest } from './users.dto.js';
+import { CheckNicknameResponse, UsersInfoResponse } from './users.res.dto.js';
+import { UpdateReformerStatusRequest } from './users.req.dto.js';
 import { validateNickname } from '../../utils/validators.js';
 import { UsersModel } from './users.model.js';
 import { UnknownAuthError } from '../auth/auth.error.js';

@@ -1,6 +1,6 @@
 import { Body, Path, Post, Patch, Controller, Route, Tags, Query, SuccessResponse, Example, Response } from 'tsoa';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
-import { CheckNicknameResponse, UpdateReformerStatusRequest, UsersInfoResponse } from './users.dto.js';
+import { CheckNicknameResponse, UpdateReformerStatusRequest, UsersInfoResponse } from './users.res.dto.js';
 import { UsersService } from './users.service.js';
 
 

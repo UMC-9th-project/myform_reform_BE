@@ -10,7 +10,7 @@ import { runInTransaction } from '../../config/prisma.config.js';
 import { AuthModel } from './auth.model.js';
 import { S3 } from '../../config/s3.js';
 import { UsersModel } from '../users/users.model.js';
-import { UsersInfoResponse } from '../users/users.dto.js';
+import { UsersInfoResponse } from '../users/users.res.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
 import { NicknameDuplicateError, PhoneNumberDuplicateError } from '../users/users.error.js';
 import { provider_type } from '@prisma/client';

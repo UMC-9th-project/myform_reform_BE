@@ -1,6 +1,7 @@
 import prisma from '../../config/prisma.config.js';
-import { UpdateReformerStatusRequest, UsersInfoResponse } from './users.dto.js';
-import { account_role, owner, provider_type, social_account, user } from '@prisma/client';
+import { UsersInfoResponse } from './users.res.dto.js';
+import { UpdateReformerStatusRequest } from './users.req.dto.js';
+import { account_role, delivery_address, owner, provider_type, social_account, user } from '@prisma/client';
 
 export class UsersModel {
   private prisma;
@@ -191,4 +192,26 @@ export class UsersModel {
     }
     return null;
   }
+}
+
+export class DeliveryAddressEntity implements Address{
+  constructor(
+    public readonly userId: string,
+    public readonly deliveryAddressId: string,
+    public readonly postalCode: string,
+    public readonly address: string,
+    public readonly detailAddress: string | null,
+    public readonly isDefault: boolean
+  ) {}
+
+static fromPrisma(data: delivery_address): DeliveryAddressEntity {
+  return new DeliveryAddressEntity(
+    data.user_id as string,
+    data.delivery_address_id as string,
+    data.postal_code as string,
+    data.address as string,
+    data.address_detail as string | null,
+    data.is_default as boolean
+  );
+}
 }
