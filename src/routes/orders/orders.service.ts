@@ -20,7 +20,7 @@ import type {
   OrderResponse,
   OrderItemInfo
 } from './orders.model.js';
-import type { GetOrderResponseDto } from './orders.dto.js';
+import type { GetOrderResponseDto } from './dto/orders.res.dto.js';
 import { OrdersRepository } from './orders.repository.js';
 import { customAlphabet } from 'nanoid';
 
