@@ -17,6 +17,7 @@ jobs:
           host: ${{ secrets.A_SERVER_HOST }}
           username: ${{ secrets.A_SERVER_USER }}
           key: ${{ secrets.A_SERVER_SSH_KEY }}
+          port: 11857
           script: |
             set -e
 
