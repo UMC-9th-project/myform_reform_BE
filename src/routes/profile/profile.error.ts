@@ -23,3 +23,9 @@ export class CategoryNotExist extends BasicError {
     super(404, 'e400', '아이템 등록 오류', des);
   }
 }
+
+export class OrderItemError extends BasicError {
+  constructor(des: string) {
+    super(400, 'e400', '판매목록을 조회하는중 오류가 발생했습니다', des);
+  }
+}
