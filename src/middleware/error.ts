@@ -54,7 +54,7 @@ export const errorHandler = (
   });
 };
 
-export class BasicError<T = any> extends Error {
+export class BasicError<T = string> extends Error {
   public status: number;
   public code: string;
   public description: T;

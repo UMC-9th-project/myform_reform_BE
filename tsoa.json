@@ -5,10 +5,18 @@
   "spec": {
     "outputDirectory": "src/config",
     "specVersion": 3,
-    "basePath": "myform_reform/api/v1"
+    "basePath": "myform_reform/api/v1",
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
   },
   "routes": {
     "routesDir": "src/routes",
+    "authenticationModule": "src/routes/auth/authHandler.ts",
     "routesFileName": "tsoaRoutes.ts",
     "middleware": "express",
     "esm": true,
