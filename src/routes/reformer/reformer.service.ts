@@ -1,16 +1,28 @@
 import {
-  ReformerSearchReqDTO,
   ReformerSearchResDTO,
   ReformerSummaryDTO,
   ReformerHomeResDTO,
-  FeedPhotoDTO
-} from './reformer.dto.js';
+  FeedPhotoDTO,
+  ReformerListResDTO
+} from './dto/reformer.res.dto.js';
+import {
+  ReformerSearchReqDTO,
+  ReformerListReqDTO
+} from './dto/reformer.req.dto.js';
 import { ReformerModel } from './reformer.model.js';
 import { ReformerSearchResult } from './reformer.model.js';
+import type {
+  ReformerCursorParts,
+  NameCursor,
+  RatingCursor,
+  TradeCursor
+} from './reformer.model.js';
+import { CursorUtil } from '../../utils/cursorUtil.js';
 
 export class ReformerService {
   private reformerModel = new ReformerModel();
 
+  // 리폼러 검색
   public async searchReformers(
     dto: ReformerSearchReqDTO
   ): Promise<ReformerSearchResDTO> {
@@ -18,10 +30,8 @@ export class ReformerService {
     const limit = 9;
     const searchKeyword = keyword!.trim();
 
-    // Decode base64 cursor
-    const decodedCursor = cursor
-      ? Buffer.from(cursor, 'base64').toString('utf8')
-      : undefined;
+    const decodedArr = CursorUtil.decode(cursor);
+    const decodedCursor = decodedArr ? decodedArr.join('_') : undefined;
 
     /*
      *  [정렬 우선순위] : 정확도(키워드 위치) > 신뢰도(평점) > 고유성(ID)
@@ -51,11 +61,12 @@ export class ReformerService {
       trade_count: item.trade_count ?? 0
     }));
 
-    // Encode next cursor to base64
     const nextCursor = hasNextPage
-      ? Buffer.from(
-          `${nodes[nodes.length - 1].rank}_${nodes[nodes.length - 1].avg_star}_${nodes[nodes.length - 1].owner_id}`
-        ).toString('base64')
+      ? CursorUtil.encode([
+          nodes[nodes.length - 1].rank,
+          nodes[nodes.length - 1].avg_star ?? 0,
+          nodes[nodes.length - 1].owner_id
+        ])
       : null;
 
     return {
@@ -66,6 +77,7 @@ export class ReformerService {
     };
   }
 
+  // 리폼러 홈 데이터 조회
   public async getHome(): Promise<ReformerHomeResDTO> {
     const rawTop = await this.reformerModel.findTopByReviewCount(3);
     const topReformers: ReformerSummaryDTO[] = rawTop.map((item) => ({
@@ -88,6 +100,85 @@ export class ReformerService {
     return {
       topReformers,
       recentFeedPhotos
+    };
+  }
+
+  // 전체 리폼러 탐색
+  public async searchAllReformers(
+    dto: ReformerListReqDTO
+  ): Promise<ReformerListResDTO> {
+    const { sort = 'name', cursor } = dto;
+    const perPage = 15;
+
+    const decodedArr = CursorUtil.decode(cursor);
+
+    let cursorParts: ReformerCursorParts | undefined = undefined;
+    if (decodedArr && Array.isArray(decodedArr)) {
+      if (sort === 'name') {
+        if (decodedArr.length >= 2) {
+          cursorParts = [
+            String(decodedArr[0]),
+            String(decodedArr[1])
+          ] as NameCursor;
+        }
+      } else if (sort === 'rating') {
+        if (decodedArr.length >= 2) {
+          const avg =
+            typeof decodedArr[0] === 'number'
+              ? decodedArr[0]
+              : Number(decodedArr[0]);
+          cursorParts = [avg, String(decodedArr[1])] as RatingCursor;
+        }
+      } else {
+        if (decodedArr.length >= 2) {
+          cursorParts = [
+            Number(decodedArr[0]),
+            String(decodedArr[1])
+          ] as TradeCursor;
+        }
+      }
+    }
+
+    const raw = await this.reformerModel.findAllWithSort(
+      sort,
+      cursorParts,
+      perPage
+    );
+
+    const totalCount = await this.reformerModel.countAll();
+
+    const hasNextPage = raw.length > perPage;
+    const nodes = hasNextPage ? raw.slice(0, perPage) : raw;
+
+    const reformers: ReformerSummaryDTO[] = nodes.map((r) => ({
+      owner_id: r.owner_id,
+      nickname: r.nickname ?? '',
+      keywords: r.keywords ?? [],
+      bio: r.bio ?? '',
+      profile_photo: r.profile_photo ?? '',
+      avg_star: r.avg_star ? Number(r.avg_star) : 0,
+      review_count: r.review_count ?? 0,
+      trade_count: r.trade_count ?? 0
+    }));
+
+    let nextCursor: string | null = null;
+    if (hasNextPage) {
+      const last = nodes[nodes.length - 1];
+      if (sort === 'name') {
+        nextCursor = CursorUtil.encode([last.nickname ?? '', last.owner_id]);
+      } else if (sort === 'rating') {
+        nextCursor = CursorUtil.encode([last.avg_star ?? 0, last.owner_id]);
+      } else {
+        nextCursor = CursorUtil.encode([last.trade_count ?? 0, last.owner_id]);
+      }
+    }
+
+    return {
+      reformers,
+      nextCursor,
+      hasNextPage,
+      perPage,
+      totalCount
     };
   }
 }

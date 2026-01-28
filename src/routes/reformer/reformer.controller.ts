@@ -10,7 +10,12 @@ import {
   Tags
 } from 'tsoa';
 import { ReformerService } from './reformer.service.js';
-import { ReformerSearchResDTO, ReformerHomeResDTO } from './reformer.dto.js';
+import {
+  ReformerSearchResDTO,
+  ReformerHomeResDTO,
+  ReformerListResDTO
+} from './dto/reformer.res.dto.js';
+import { ReformerSortOption } from './dto/reformer.req.dto.js';
 
 @Route('/reformer')
 @Tags('Reformer')
@@ -48,5 +53,19 @@ export class ReformerController extends Controller {
   @SuccessResponse(200, '리폼러 홈 데이터 조회 성공')
   public async getHome(): Promise<ReformerHomeResDTO> {
     return await this.reformerService.getHome();
+  }
+
+  /**
+   * @summary 전체 리폼러 탐색
+   * @param cursor 다음 페이지를 위한 커서 (옵션)
+   * @param sort 정렬 기준: 'name'|'rating'|'trades'
+   */
+  @Get('/list')
+  @SuccessResponse(200, '리폼러 목록 조회 성공')
+  public async listReformers(
+    @Query() sort: ReformerSortOption = 'name',
+    @Query() cursor?: string
+  ): Promise<ReformerListResDTO> {
+    return await this.reformerService.searchAllReformers({ sort, cursor });
   }
 }
