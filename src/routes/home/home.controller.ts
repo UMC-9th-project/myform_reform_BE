@@ -10,7 +10,8 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { HomeService } from './home.service.js';
-import { AuthUser, HomeDataResponseDto, GetHomeRequestDto } from './home.dto.js';
+import { AuthUser, GetHomeRequestDto } from './dto/home.req.dto.js';
+import { HomeDataResponseDto } from './dto/home.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
 
 @Route('home')

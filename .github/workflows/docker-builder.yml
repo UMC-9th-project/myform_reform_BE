@@ -1,4 +1,4 @@
-name: PR Docker Build & Push
+name: Docker Build & Push
 
 on:
   push:
@@ -7,30 +7,38 @@ on:
       - main
 
 jobs:
-  build-on-a-server:
+  build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            tag_suffix: amd64
+          - platform: linux/arm64
+            tag_suffix: arm64
 
     steps:
-      - name: SSH to A server and build docker image
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          host: ${{ secrets.A_SERVER_HOST }}
-          username: ${{ secrets.A_SERVER_USER }}
-          key: ${{ secrets.A_SERVER_SSH_KEY }}
-          port: 11857
-          script: |
-            set -e
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-            echo "📦 Move to project directory"
-            cd /Users/develop_user/workspace/dev/myform_reform
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-            echo "🔄 Fetch latest code"
-            git fetch origin
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            echo "🐳 Docker login"
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-
-            echo "🏗 Docker build & push"
-            docker buildx build --platform linux/amd64 -t seoki/myform_reform:${{ github.ref_name }} --push .
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.platform }}
+          tags: seoki/myform_reform:${{ github.ref_name }}-${{ matrix.tag_suffix }}
+          cache-from: type=gha,scope=${{ matrix.tag_suffix }}
+          cache-to: type=gha,scope=${{ matrix.tag_suffix }},mode=max
