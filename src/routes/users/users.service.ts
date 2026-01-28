@@ -48,13 +48,13 @@ export class UsersService {
   // 유저 프로필 업데이트
   async updateUserProfile(userId: string, requestBody: UpdateUserProfileRequest): Promise<UpdateUserProfileResult> {
     const {nickname, phone, email} = requestBody;
-    if (nickname) {
+    if (nickname !== undefined && nickname !== null) {
       await this.validateAndCheckNickname(nickname);
     }
-    if (phone) {
+    if (phone !== undefined && phone !== null) {
       await this.validateAndCheckPhoneNumber(phone, userId);
     }
-    if (email) {
+    if (email !== undefined && email !== null) {
       await this.validateAndCheckEmail(email, userId);
     }
 
@@ -69,7 +69,7 @@ export class UsersService {
   // 리폼러 프로필 업데이트
   async updateReformerProfile(reformerId: string, requestBody: UpdateReformerProfileRequest): Promise<UpdateReformerProfileResult> {
     const {nickname, bio, keywords, profileImageUrl} = requestBody;
-    if (nickname) {
+    if (nickname !== undefined && nickname !== null) {
       await this.validateAndCheckNickname(nickname);
     }
     if (bio) {
@@ -97,6 +97,7 @@ export class UsersService {
     }
   }
 
+  // 전화번호 유효성 및 중복 검사
   private async validateAndCheckPhoneNumber(phone: string, userId: string): Promise<void> {
     validatePhoneNumber(phone as string);
     const user = await this.usersModel.findUserByPhoneNumber(phone as string);
@@ -104,6 +105,7 @@ export class UsersService {
       throw new PhoneNumberDuplicateError('이미 존재하는 전화번호입니다.');
     }
   }
+  // 이메일 유효성 및 중복 검사
   private async validateAndCheckEmail(email: string, userId: string): Promise<void> {
     validateEmail(email as string);
     const user = await this.usersModel.findUserByEmail(email as string);
@@ -140,6 +142,7 @@ export class UsersService {
     throw new AccountNotFoundError('존재하지 않는 사용자입니다.');
   }
 
+  // 리폼러 정보 조회
   async getReformerDetailInfo(reformerId: string): Promise<ReformerDetailInfoResponse> {
     const reformer = await this.usersRepository.findReformerbyReformerId(reformerId);
     if (reformer) {

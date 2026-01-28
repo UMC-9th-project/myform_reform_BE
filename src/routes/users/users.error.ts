@@ -24,3 +24,4 @@ export class InvalidBioLengthError extends BasicError {
     super(400, 'Users_103', '자기 소개의 길이가 적절하지 않습니다.', description);
   }
 }
+

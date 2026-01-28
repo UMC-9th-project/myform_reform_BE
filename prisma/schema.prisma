@@ -116,15 +116,19 @@ model chat_room {
 }
 
 model delivery_address {
-  delivery_address_id String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  postal_code         String?  @db.VarChar(200)
-  address             String?  @db.VarChar(200)
-  address_detail      String?  @db.VarChar(200)
-  is_default          Boolean? @default(false)
-  user_id             String   @db.Uuid
-  owner_id            String   @db.Uuid
-  owner               owner    @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_delivery_address_1")
-  user                user     @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_delivery_address_1")
+  delivery_address_id String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  postal_code         String    @db.VarChar(200)
+  address             String    @db.VarChar(200)
+  address_detail      String?   @db.VarChar(200)
+  is_default          Boolean?  @default(false)
+  user_id             String    @db.Uuid
+  owner_id            String    @db.Uuid
+  address_name        String?   @db.VarChar(50)
+  recipient           String    @db.VarChar(100)
+  phone               String    @db.VarChar(50)
+  created_at          DateTime? @default(now()) @db.Timestamp(6)
+  owner               owner     @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_delivery_address_1")
+  user                user      @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_delivery_address_1")
 }
 
 model feed {
