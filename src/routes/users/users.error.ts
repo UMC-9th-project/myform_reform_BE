@@ -18,3 +18,9 @@ export class DatabaseError extends BasicError {
     super(500, 'Users_102', 'DB에서 오류가 발생했습니다.', description);
   }
 }
+
+export class InvalidBioLengthError extends BasicError {
+  constructor(description: string) {
+    super(400, 'Users_103', '자기 소개의 길이가 적절하지 않습니다.', description);
+  }
+}

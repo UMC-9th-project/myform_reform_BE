@@ -1,10 +1,11 @@
-import { AuthStatus } from '../auth/auth.dto.js';
+import { AuthStatus } from '../../auth/auth.dto.js';
 
 // 리폼러 상태 업데이트 요청 데이터 (Controller -> Service)
 export interface UpdateReformerStatusRequest {
   status: AuthStatus;
 }
 
+// 유저 프로필 데이터
 export interface UserProfile {
   userId: string;
   nickname?: string;
@@ -18,20 +19,22 @@ export type UpdateUserProfileRequest = Partial<Omit<UserProfile, 'userId'>>;
 // 유저 프로필 업데이트 요청 (Service -> Repository)
 export interface UpdateUserProfileParams extends UserProfile {}
 
+// 유저 프로필 사진 데이터
 export interface UserImage {
   userId: string;
-  profileImage: Express.Multer.File;
+  profileImageUrl: string;
 }
 
+// 유저 프로필 사진 업데이트 요청 데이터 (Controller -> Service)
+export type UpdateUserImageRequest = Partial<Omit<UserImage, 'userId'>>;
+
 // 유저 프로필 사진 업데이트 요청 (Service -> Repository)
-export interface UpdateUserImageParams {
-  userId: string;
-  profileUrl: string;
-}
+export interface UpdateUserImageParams extends UserImage {}
 
 // 리폼러 프로필 데이터
 export interface ReformerProfile {
   reformerId: string;
+  profileImageUrl?: string;
   nickname?: string;
   bio?: string;
   keywords?: string[];
@@ -41,7 +44,7 @@ export interface ReformerProfile {
 export type UpdateReformerProfileRequest = Partial<Omit<ReformerProfile, 'reformerId'>>;
 
 // 리폼러 프로필 업데이트 요청 (Service -> Repository)
-export interface UpdateReformerProfileParams extends UpdateReformerProfileRequest {}
+export interface UpdateReformerProfileParams extends ReformerProfile {}
 
 // 배송지 데이터
 export interface Address {

@@ -1,6 +1,6 @@
 import prisma from '../../config/prisma.config.js';
-import { UsersInfoResponse } from './users.res.dto.js';
-import { Address, UpdateReformerStatusRequest } from './users.req.dto.js';
+import { UserDetailInfoResponse, UsersInfoResponse } from './dto/users.res.dto.js';
+import { Address, UpdateReformerStatusRequest } from './dto/users.req.dto.js';
 import { account_role, delivery_address, owner, provider_type, social_account, user } from '@prisma/client';
 
 export class UsersModel {
@@ -192,26 +192,22 @@ export class UsersModel {
     }
     return null;
   }
-}
 
-export class DeliveryAddressEntity implements Address{
-  constructor(
-    public readonly userId: string,
-    public readonly deliveryAddressId: string,
-    public readonly postalCode: string,
-    public readonly address: string,
-    public readonly detailAddress: string | null,
-    public readonly isDefault: boolean
-  ) {}
-
-static fromPrisma(data: delivery_address): DeliveryAddressEntity {
-  return new DeliveryAddressEntity(
-    data.user_id as string,
-    data.delivery_address_id as string,
-    data.postal_code as string,
-    data.address as string,
-    data.address_detail as string | null,
-    data.is_default as boolean
-  );
-}
+  async findUserDetailInfo(userId: string): Promise<UserDetailInfoResponse | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId }
+    });
+    if (!user){
+      return null;
+    }
+    return{
+      userId: user?.user_id,
+      email: user?.email,
+      name: user?.name ?? '',
+      nickname: user?.nickname,
+      phone: user?.phone,
+      profileImageUrl: user?.profile_photo ?? '',
+      role: 'user'
+    } as UserDetailInfoResponse;
+  }
 }

@@ -1,4 +1,5 @@
 import { InputValidationError, InvalidDescriptionLengthError, InvalidBusinessNumberError, InvalidPhotoNumberError } from '../routes/auth/auth.error.js';
+import { InvalidBioLengthError } from '../routes/users/users.error.js';
 
 export const validatePhoneNumber = (phoneNumber: string): void => {
   //한국 전화번호 형식 (하이픈 포함 또는 미포함)
@@ -89,5 +90,11 @@ export const validateDescription = (description: string): void => {
 export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]): void => {
   if (portfolioPhotos.length === 0 || portfolioPhotos.length > 9){
     throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
+  }
+};
+
+export const validateBio = (bio: string): void => {
+  if (bio.length > 200){
+    throw new InvalidBioLengthError('자기 소개의 길이가 적절하지 않습니다. 200자 이하로 입력해주세요.');
   }
 };
