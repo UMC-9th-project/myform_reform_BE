@@ -18,15 +18,17 @@ import { BasicError } from '../../middleware/error.js';
 import { OrdersService } from './orders.service.js';
 import {
   GetOrderSheetRequestDto,
-  GetOrderSheetResponseDto,
   CreateOrderRequestDto,
-  CreateOrderResponseDto,
   VerifyPaymentRequestDto,
-  VerifyPaymentResponseDto,
-  GetOrderResponseDto,
   GetOrderSheetFromCartRequestDto,
   CreateOrderFromCartRequestDto
-} from './orders.dto.js';
+} from './dto/orders.req.dto.js';
+import {
+  GetOrderSheetResponseDto,
+  CreateOrderResponseDto,
+  VerifyPaymentResponseDto,
+  GetOrderResponseDto
+} from './dto/orders.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
 
 @Route('orders')

@@ -11,7 +11,7 @@ import type {
   GetItemReviewsResponseDto,
   GetItemReviewPhotosResponseDto,
   GetReviewDetailResponseDto
-} from './market.dto.js';
+} from './dto/market.res.dto.js';
 import type { ItemWithRelations, ReviewWithPhotos } from './market.model.js';
 import { MarketRepository } from './market.repository.js';
 import { DatabaseForeignKeyError } from '../../utils/dbErrorHandler.js';

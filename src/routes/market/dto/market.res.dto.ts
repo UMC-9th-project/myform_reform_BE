@@ -1,26 +1,3 @@
-import { IsOptional, IsString, IsIn, IsInt, Min, Max, IsUUID } from 'class-validator';
-
-export class GetItemListRequestDto {
-  @IsOptional()
-  @IsUUID()
-  category_id?: string;
-
-  @IsOptional()
-  @IsIn(['popular', 'latest'])
-  sort?: 'popular' | 'latest';
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-}
-
 export interface GetItemListResponseDto {
   items: Array<{
     item_id: string;
@@ -86,23 +63,6 @@ export interface GetItemDetailResponseDto {
   }>;
 }
 
-export class GetItemReviewsRequestDto {
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-
-  @IsOptional()
-  @IsIn(['latest', 'star_high', 'star_low'])
-  sort?: 'latest' | 'star_high' | 'star_low';
-}
-
 export interface GetItemReviewsResponseDto {
   reviews: Array<{
     review_id: string;
@@ -123,19 +83,6 @@ export interface GetItemReviewsResponseDto {
   has_prev_page: boolean;
 }
 
-export class GetItemReviewPhotosRequestDto {
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  offset?: number;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-}
-
 export interface GetItemReviewPhotosResponseDto {
   photos: Array<{
     photo_index: number;
@@ -147,13 +94,6 @@ export interface GetItemReviewPhotosResponseDto {
   offset: number;
   limit: number;
   total_count: number;
-}
-
-export class GetReviewDetailRequestDto {
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  photoIndex?: number;
 }
 
 export interface GetReviewDetailResponseDto {

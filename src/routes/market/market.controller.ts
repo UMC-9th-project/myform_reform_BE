@@ -16,13 +16,15 @@ import {
   GetItemListRequestDto,
   GetItemReviewsRequestDto,
   GetItemReviewPhotosRequestDto,
-  GetReviewDetailRequestDto,
-  type GetItemListResponseDto,
-  type GetItemDetailResponseDto,
-  type GetItemReviewsResponseDto,
-  type GetItemReviewPhotosResponseDto,
-  type GetReviewDetailResponseDto
-} from './market.dto.js';
+  GetReviewDetailRequestDto
+} from './dto/market.req.dto.js';
+import type {
+  GetItemListResponseDto,
+  GetItemDetailResponseDto,
+  GetItemReviewsResponseDto,
+  GetItemReviewPhotosResponseDto,
+  GetReviewDetailResponseDto
+} from './dto/market.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
 
 @Route('market')
