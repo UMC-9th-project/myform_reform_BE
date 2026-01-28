@@ -37,11 +37,11 @@ export default [
       '@typescript-eslint/await-thenable': 'warn',
 
       // 스타일 (Google 권장), 사실 prettier에서 전부 잡을 수 있다.
-      indent: ['warn', 2],
-      quotes: ['warn', 'single'],
-      semi: ['warn', 'always'],
-      'comma-dangle': ['warn', 'never'],
-      'brace-style': ['warn', '1tbs', { allowSingleLine: true }],
+      // indent: ['warn', 2],
+      // quotes: ['warn', 'single'],
+      // semi: ['warn', 'always'],
+      // 'comma-dangle': ['warn', 'never'],
+      // 'brace-style': ['warn', '1tbs', { allowSingleLine: true }],
 
       // 네이밍 컨벤션 (Google 기준)
       '@typescript-eslint/naming-convention': [
