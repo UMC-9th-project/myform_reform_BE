@@ -124,8 +124,8 @@ model delivery_address {
   user_id             String    @db.Uuid
   owner_id            String    @db.Uuid
   address_name        String?   @db.VarChar(50)
-  recipient           String    @db.VarChar(100)
-  phone               String    @db.VarChar(50)
+  recipient           String?   @db.VarChar(100)
+  phone               String?   @db.VarChar(50)
   created_at          DateTime? @default(now()) @db.Timestamp(6)
   owner               owner     @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_delivery_address_1")
   user                user      @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_delivery_address_1")
@@ -441,6 +441,16 @@ model cart_option {
   @@index([option_item_id], map: "idx_cart_option_item")
 }
 
+model quote_photo {
+  quote_photo_id String    @id(map: "quote_photo_pk") @db.Uuid
+  content        String?   @db.VarChar(100)
+  created_at     DateTime? @db.Date
+  photo_order    Int?
+  updated_at     DateTime? @db.Date
+  order_id       String?   @db.Uuid
+  order          order?    @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "quote_photo_order_order_id_fk")
+}
+
 model receipt {
   receipt_id      String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   created_at      DateTime? @default(now()) @db.Timestamp(6)
@@ -452,16 +462,6 @@ model receipt {
   receipt_number  String?   @unique(map: "receipt_receipt_number_unique") @db.VarChar(20)
   total_amount    Decimal?  @db.Decimal
   order           order[]
-}
-
-model quote_photo {
-  quote_photo_id String    @id(map: "quote_photo_pk") @db.Uuid
-  content        String?   @db.VarChar(100)
-  created_at     DateTime? @db.Date
-  photo_order    Int?
-  updated_at     DateTime? @db.Date
-  order_id       String?   @db.Uuid
-  order          order?    @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "quote_photo_order_order_id_fk")
 }
 
 enum account_role {
