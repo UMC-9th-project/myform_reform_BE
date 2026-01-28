@@ -15,7 +15,7 @@ RUN npx prisma generate
 
 COPY tsconfig.json tsoa.json ./
 COPY src ./src
-COPY @types ./@types
+# COPY @types ./@types
 
 # RUN node -v && npm -v && npx tsc -v
 
@@ -35,12 +35,10 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # 프로덕션 의존성만 설치
 COPY package*.json ./
-RUN npm ci
-# RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Prisma 스키마 복사 및 클라이언트 생성
-COPY prisma ./prisma
-RUN npx prisma generate
+# builder에서 생성된 Prisma 클라이언트 복사
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # 빌드된 파일 복사
 COPY --from=builder /app/dist ./dist
