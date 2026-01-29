@@ -26,7 +26,7 @@ export class TooManyCodeAttemptsError<T = any> extends BasicError<T> {
 
 export class UnauthorizedError extends BasicError {
   constructor(description: string) {
-    super(401, 'Auth_105', '로그인 되어있지 않습니다.', description);
+    super(401, 'Auth_105', '토큰이 존재하지 않거나 유효하지 않은 Access Token입니다.', description);
   }
 }
 

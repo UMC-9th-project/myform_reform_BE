@@ -8,14 +8,16 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
           - platform: linux/amd64
             tag_suffix: amd64
+            runner: ubuntu-latest
           - platform: linux/arm64
             tag_suffix: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout code
@@ -27,9 +29,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -38,7 +37,6 @@ jobs:
         with:
           context: .
           push: true
-          platforms: ${{ matrix.platform }}
           tags: seoki/myform_reform:${{ github.ref_name }}-${{ matrix.tag_suffix }}
           cache-from: type=gha,scope=${{ matrix.tag_suffix }}
           cache-to: type=gha,scope=${{ matrix.tag_suffix }},mode=max
