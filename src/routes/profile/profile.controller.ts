@@ -8,7 +8,9 @@ import {
   Get,
   Path,
   Body,
-  Query
+  Query,
+  Security,
+  Request
 } from 'tsoa';
 import { ProfileService } from './profile.service.js';
 import {
@@ -26,7 +28,11 @@ import {
   SaleDetailResponseDto,
   SaleResponseDto
 } from './dto/profile.res.dto.js';
+import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
+import { JwtPayload } from 'jsonwebtoken';
+import { CustomJwt } from '../../../@types/expreees.js';
+import { ItemAddError } from './profile.error.js';
 
 @Route('profile')
 @Tags('Profile Router')
@@ -45,13 +51,19 @@ export class ProfileController extends Controller {
    * @returns 판매글 등록 결과
    */
   @Post('add/item')
+  @Security('jwt')
   @SuccessResponse(200, '판매글 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addItem(
-    @Body() body: AddItemRequestDto
+    @Body() body: AddItemRequestDto,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
     //TODO: JWT 로직 추가 이후 ownerID 목업 삭제
-    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
+    const payload = req.user; // 자동으로 CustomJWT 타입으로 추론됨
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 등록 할 수 있습니다.');
+    }
+    const ownerId = payload.id;
     const dto = Item.create(body, ownerId);
     await this.profileService.addProduct('ITEM', dto);
 
@@ -66,12 +78,18 @@ export class ProfileController extends Controller {
    * @returns 주문제작 등록 결과
    */
   @Post('add/reform')
+  @Security('jwt')
   @SuccessResponse(200, '주문제작 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addReform(
-    @Body() body: AddReformRequestDto
+    @Body() body: AddReformRequestDto,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
-    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 등록 할 수 있습니다.');
+    }
+    const ownerId = payload.id;
     const dto = Reform.create(body, ownerId);
     await this.profileService.addProduct('REFORM', dto);
 
@@ -87,14 +105,20 @@ export class ProfileController extends Controller {
    * @param limit 한 페이지 보여줄 목록 수
    */
   @Get('sales')
+  @Security('jwt')
   @SuccessResponse(200, '판매관리 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getSales(
     @Query() type: 'ITEM' | 'REFORM',
     @Query() page: number = 1,
-    @Query() limit: number = 15
+    @Query() limit: number = 15,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<SaleResponseDto[]>> {
-    const ownerId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
     const dto = new SaleRequestDto(type, page, limit, ownerId);
     const data = await this.profileService.getSales(dto);
 
@@ -112,12 +136,18 @@ export class ProfileController extends Controller {
    * @returns 판매상품 상세 정보
    */
   @Get('sales/:id')
+  @Security('jwt')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
-    @Path() id: string
+    @Path() id: string,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<SaleDetailResponseDto>> {
-    const ownerId = 'cf8b817a-4a6e-43db-bfc0-dc38a67001b5';
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
 
     const data = await this.profileService.getSaleDetail(ownerId, id);
 
