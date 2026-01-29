@@ -24,6 +24,7 @@ export class ProfileService {
   async addProduct(mode: 'ITEM' | 'REFORM', dto: Item | Reform) {
     try {
       const data = dto.toDto();
+
       const category = await this.profileRepository.getCategory(data);
       if (category === null) {
         throw new CategoryNotExist('카테고리가 없습니다');
@@ -95,6 +96,11 @@ export class ProfileService {
   }
 
   async getSaleDetail(ownerId: string, orderId: string): Promise<SaleDetail> {
+    const check = await this.profileRepository.isOrderOwner(ownerId, orderId);
+    if (!check) {
+      throw new OrderItemError('본인의 판매 내용이 아닙니다.');
+    }
+
     const order = await this.profileRepository.getOrderDetail(ownerId, orderId);
     const option = await this.profileRepository.getOption(orderId);
 
