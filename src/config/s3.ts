@@ -26,7 +26,12 @@ export class S3 {
     if (!file.mimetype.startsWith('image/')) {
       throw new S3UploadError('지원되지 않는 파일 형식입니다.');
     }
-    const uniqueName = `${v4()}-${file.originalname}`;
+    const filename = file.originalname;
+    const _lastDot = filename.lastIndexOf('.');
+    const _fileLen = filename.length;
+    const ext = filename.substring(_lastDot, _fileLen).toLowerCase();
+
+    const uniqueName = `${v4()}${ext}`;
     const command = new PutObjectCommand({
       Bucket: process.env.S3_NAME || '',
       Key: uniqueName,
@@ -46,9 +51,11 @@ export class S3 {
   // 여러 파일을 한번에 S3에 업로드
   async uploadManyToS3(files: Express.Multer.File[]): Promise<string[]> {
     const urls: string[] = [];
-    if(!files || files. length === 0) return [];
+    if (!files || files.length === 0) return [];
     try {
-      const uploadPromises = files.map(async (file: Express.Multer.File) => this.uploadToS3(file));
+      const uploadPromises = files.map(async (file: Express.Multer.File) =>
+        this.uploadToS3(file)
+      );
       const uploadedUrls = await Promise.all(uploadPromises);
       return uploadedUrls;
     } catch (err) {
