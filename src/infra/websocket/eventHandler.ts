@@ -7,6 +7,10 @@ interface SendMessageData {
   content: any;
 }
 
+interface ReadChatRoomData {
+  chatRoomId: string;
+}
+
 export class ChatEventHandler {
 
   private chatService = new ChatService();
@@ -41,7 +45,7 @@ export class ChatEventHandler {
   private registerEventListeners(socket: Socket): void {
     socket.on('sendMessage', (data: SendMessageData) => this.handleSendMessage(socket, data));
     socket.on('disconnect', () => this.handleDisconnect(socket));
-    socket.on('readChatRoom', (chatroomId: string) => this.handleReadChatRoom(socket, chatroomId));
+    socket.on('readChatRoom', (data: ReadChatRoomData ) => this.handleReadChatRoom(socket, data));
   }
 
   // 메시지 전송 처리
@@ -74,7 +78,7 @@ export class ChatEventHandler {
     // 상대방이 접속해 있는 경우에만 발송
     if (userRoom && userRoom.size > 0) {
       const messageResponse = {
-        chatroomId: message['props'].chat_room_id,
+        chatRoomId: message['props'].chat_room_id,
         senderId: message['props'].sender_id,
         messageType: message['props'].message_type,
         textContent: message['props'].text_content,
@@ -89,13 +93,13 @@ export class ChatEventHandler {
 
 
   // 읽음 처리
-  private async handleReadChatRoom(socket: Socket, chatroomId: string): Promise<void> {
+  private async handleReadChatRoom(socket: Socket, data: ReadChatRoomData): Promise<void> {
     const { userId, authType } = this.getUserInfo(socket);
 
-    console.log(`[읽음 처리] ${userId} -> 방 ${chatroomId}`);
+    console.log(`[읽음 처리] ${userId} -> 방 ${data.chatRoomId}`);
     try {
       await this.chatService.readChatRoomEvent(
-        chatroomId,
+        data.chatRoomId,
         authType,
         userId
       );
