@@ -1,98 +1,31 @@
 import { DatabaseError } from "./users.error.js";
-import { UpdateReformerProfileParams, UpdateUserImageParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
-import { UpdateReformerProfileResult, UpdateUserImageResult, UpdateUserProfileResult } from "./dto/users.res.dto.js";
+import { UpdateReformerProfileParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
 import prisma from "../../config/prisma.config.js";
 import { user, owner } from "@prisma/client";
 
 export class UsersRepository {
-  async updateUserProfile(updateUserProfileParams: UpdateUserProfileParams): Promise<UpdateUserProfileResult> {
-    const { userId, ...rest } = updateUserProfileParams;
+  async updateUserProfile(updateUserProfileParams: UpdateUserProfileParams): Promise<user> {
+    const data = updateUserProfileParams.toPrismaUpdateData();
     try {
     const user = await prisma.user.update({
-      where: { user_id: userId },
-      data: rest,
-      select: {
-        user_id: true,
-        nickname: true,
-        phone: true,
-        email: true,
-      }
+      where: { user_id: updateUserProfileParams.userId },
+      data: data
     });
-    const result: UpdateUserProfileResult = {
-      userId: user.user_id,
-      nickname: user.nickname as string,
-      phone: user.phone as string,
-      email: user.email as string
-    };
-      return result;
+    return user;
     } catch (error) {
       console.error(error);
       throw new DatabaseError('유저 프로필 업데이트 중 DB에서 오류가 발생했습니다.');
     }
   }
 
-  async updateUserImage(updateUserImageParams: UpdateUserImageParams): Promise<UpdateUserImageResult> {
-    const { userId, profileImageUrl } = updateUserImageParams;
-    try {
-      const user = await prisma.user.update({
-        where: { user_id: userId },
-        data: { profile_photo: profileImageUrl },
-        select: {
-          user_id: true,
-          profile_photo: true
-        }
-      });
-      const result: UpdateUserImageResult = {
-        userId: user.user_id,
-        profileImageUrl: user.profile_photo as string,
-      };
-      return result;
-    } catch (error) {
-      console.error(error);
-      throw new DatabaseError('유저 프로필 사진 업데이트 중 DB에서 오류가 발생했습니다.');
-    }
-  }
-
-  async getProfileImage(userId: string): Promise<string | null> {
-    try {
-      const profileImageUrl = await prisma.user.findUnique({
-        where: { user_id: userId },
-        select: { profile_photo: true }
-      });
-      return profileImageUrl?.profile_photo || null;
-    } catch (error) {
-      console.error(error);
-      throw new DatabaseError('유저 프로필 사진 조회 중 DB에서 오류가 발생했습니다.');
-    }
-  }
-
-  async updateReformerProfile(updateReformerProfileParams: UpdateReformerProfileParams): Promise<UpdateReformerProfileResult> {
-    const { reformerId, nickname, bio, keywords, profileImageUrl } = updateReformerProfileParams;
+  async updateReformerProfile(updateReformerProfileParams: UpdateReformerProfileParams): Promise<owner> {
+    const data = updateReformerProfileParams.toPrismaUpdateData();
     try {
       const reformer = await prisma.owner.update({
-        where: { owner_id: reformerId },
-        data: {
-          nickname: nickname,
-          bio: bio,
-          keywords: keywords,
-          profile_photo: profileImageUrl,
-        },
-        select: {
-          owner_id: true,
-          nickname: true,
-          bio: true,
-          keywords: true,
-          profile_photo: true,
-        }
+        where: { owner_id: updateReformerProfileParams.reformerId },
+        data: data,
       });
-      const result: UpdateReformerProfileResult = {
-        reformerId: reformer.owner_id as string,
-        nickname: reformer.nickname || undefined,
-        bio: reformer.bio ?? "",
-        keywords: reformer.keywords || [],
-        profileImageUrl: reformer.profile_photo ?? "",
-      };
-      return result;
+      return reformer;
     } catch (error) {
       console.error(error);
       throw new DatabaseError('리폼러 프로필 업데이트 중 DB에서 오류가 발생했습니다.');

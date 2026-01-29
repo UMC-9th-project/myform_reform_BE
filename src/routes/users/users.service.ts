@@ -1,8 +1,8 @@
-import { CheckNicknameResponse, UpdateUserImageResult, UpdateUserProfileResult, UsersInfoResponse, UpdateReformerProfileResult, UserDetailInfoResponse, ReformerDetailInfoResponse } from './dto/users.res.dto.js';
-import { UpdateReformerStatusRequest, UpdateUserImageParams, UpdateUserProfileParams, UpdateUserProfileRequest, UpdateReformerProfileRequest, UpdateReformerProfileParams } from './dto/users.req.dto.js';
-import { validateEmail, validateNickname, validatePhoneNumber, validateBio } from '../../utils/validators.js';
+import { CheckNicknameResponse, UpdateUserProfileResponseDto, UsersInfoResponse, UpdateReformerProfileResponseDto, UserDetailInfoResponseDto, ReformerDetailInfoResponseDto } from './dto/users.res.dto.js';
+import { UpdateReformerStatusRequest, UpdateUserProfileParams, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto, UpdateReformerProfileParams } from './dto/users.req.dto.js';
+import { validateNickname } from '../../utils/validators.js';
 import { UsersModel } from './users.model.js';
-import { EmailDuplicateError, UnknownAuthError, InputValidationError, AccountNotFoundError } from '../auth/auth.error.js';
+import { EmailDuplicateError, UnknownAuthError, AccountNotFoundError } from '../auth/auth.error.js';
 import { NicknameDuplicateError, PhoneNumberDuplicateError } from './users.error.js';
 import { UsersRepository } from './users.repository.js';
 import { AuthStatus } from '../auth/auth.dto.js';
@@ -46,51 +46,42 @@ export class UsersService {
   }
 
   // 유저 프로필 업데이트
-  async updateUserProfile(userId: string, requestBody: UpdateUserProfileRequest): Promise<UpdateUserProfileResult> {
+  async updateUserProfile(userId: string, requestBody: UpdateUserProfileRequestDto): Promise<UpdateUserProfileResponseDto> {
     const {nickname, phone, email} = requestBody;
-    if (nickname !== undefined && nickname !== null) {
-      await this.validateAndCheckNickname(nickname);
+    if (nickname !== undefined) {
+      await this.checkNicknameDuplicate(nickname);
     }
-    if (phone !== undefined && phone !== null) {
-      await this.validateAndCheckPhoneNumber(phone, userId);
+    if (phone !== undefined) {
+      await this.checkPhoneNumberDuplicate(phone, userId);
     }
-    if (email !== undefined && email !== null) {
-      await this.validateAndCheckEmail(email, userId);
+    if (email !== undefined) {
+      await this.checkEmailDuplicate(email, userId);
     }
 
-    const updateUserProfileParams: UpdateUserProfileParams = {
+    const updateUserProfileParams = new UpdateUserProfileParams({
       userId: userId,
       ...requestBody
-    };
-    const updatedProfileResult = await this.usersRepository.updateUserProfile(updateUserProfileParams);
-    return updatedProfileResult;
+    })
+    const updatedUser = await this.usersRepository.updateUserProfile(updateUserProfileParams);
+    const updatedUserProfileResult = new UpdateUserProfileResponseDto(updatedUser);
+    return updatedUserProfileResult;
   }
 
   // 리폼러 프로필 업데이트
-  async updateReformerProfile(reformerId: string, requestBody: UpdateReformerProfileRequest): Promise<UpdateReformerProfileResult> {
-    const {nickname, bio, keywords, profileImageUrl} = requestBody;
-    if (nickname !== undefined && nickname !== null) {
-      await this.validateAndCheckNickname(nickname);
-    }
-    if (bio) {
-      await validateBio(bio);
-    }
-    const processedKeywords = (keywords !== undefined)
-      ? await this.processKeywords(keywords)
-      : [];
-    const updateReformerProfileParams: UpdateReformerProfileParams = {
+  async updateReformerProfile(reformerId: string, requestBody: UpdateReformerProfileRequestDto): Promise<UpdateReformerProfileResponseDto> {
+    const updateReformerProfileParams = new UpdateReformerProfileParams({
       reformerId: reformerId,
-      nickname: nickname,
-      bio: bio,
-      keywords: processedKeywords,
-      profileImageUrl: profileImageUrl,
-    };
-    const updatedProfileResult = await this.usersRepository.updateReformerProfile(updateReformerProfileParams);
-    return updatedProfileResult;
+      ...requestBody
+    })
+    if (updateReformerProfileParams.nickname !== undefined) {
+      await this.checkNicknameDuplicate(updateReformerProfileParams.nickname);
+    }
+    const updatedReformer = await this.usersRepository.updateReformerProfile(updateReformerProfileParams);
+    const updatedReformerProfileResult = new UpdateReformerProfileResponseDto(updatedReformer);
+    return updatedReformerProfileResult;
   }
   
-  private async validateAndCheckNickname(nickname: string): Promise<void> {
-    validateNickname(nickname);
+  private async checkNicknameDuplicate(nickname: string): Promise<void> {
     const isDuplicate = await this.usersModel.isNicknameDuplicate(nickname);
     if (isDuplicate) {
       throw new NicknameDuplicateError('이미 존재하는 닉네임입니다.');
@@ -98,83 +89,37 @@ export class UsersService {
   }
 
   // 전화번호 유효성 및 중복 검사
-  private async validateAndCheckPhoneNumber(phone: string, userId: string): Promise<void> {
-    validatePhoneNumber(phone as string);
+  private async checkPhoneNumberDuplicate(phone: string, userId: string): Promise<void> {
     const user = await this.usersModel.findUserByPhoneNumber(phone as string);
     if (user && user.id !== userId) {
       throw new PhoneNumberDuplicateError('이미 존재하는 전화번호입니다.');
     }
   }
   // 이메일 유효성 및 중복 검사
-  private async validateAndCheckEmail(email: string, userId: string): Promise<void> {
-    validateEmail(email as string);
+  private async checkEmailDuplicate(email: string, userId: string): Promise<void> {
     const user = await this.usersModel.findUserByEmail(email as string);
     if (user && user.id !== userId) {
       throw new EmailDuplicateError('이미 존재하는 이메일입니다.');
     }
   }
 
-  // 유저 프로필 사진 업데이트
-  async updateUserImage(userId: string, profileImageUrl: string): Promise<UpdateUserImageResult> {
-    const updateUserImageParams: UpdateUserImageParams = {
-      userId: userId,
-      profileImageUrl: profileImageUrl
-    };
-    const updatedImageResult = await this.usersRepository.updateUserImage(updateUserImageParams);
-    return updatedImageResult;
-  }
-
   // 사용자 정보 조회
-  async getUserDetailInfo(userId: string): Promise<UserDetailInfoResponse> {
+  async getUserDetailInfo(userId: string): Promise<UserDetailInfoResponseDto> {
     const user = await this.usersRepository.findUserbyUserId(userId);
     if (user) {
-      const userDetailInfo: UserDetailInfoResponse = {
-        userId: user.user_id,
-        role: 'user',
-        email: user.email as string,
-        name: user.name as string,
-        nickname: user.nickname as string,
-        phone: user.phone as string,
-        profileImageUrl: user.profile_photo ?? ''
-      };
+      const userDetailInfo = new UserDetailInfoResponseDto(user);
       return userDetailInfo;
     }
     throw new AccountNotFoundError('존재하지 않는 사용자입니다.');
   }
 
   // 리폼러 정보 조회
-  async getReformerDetailInfo(reformerId: string): Promise<ReformerDetailInfoResponse> {
+  async getReformerDetailInfo(reformerId: string): Promise<ReformerDetailInfoResponseDto> {
     const reformer = await this.usersRepository.findReformerbyReformerId(reformerId);
     if (reformer) {
-      const reformerDetailInfo: ReformerDetailInfoResponse = {
-        reformerId: reformer.owner_id,
-        role: 'reformer',
-        email: reformer.email as string,
-        name: reformer.name as string,
-        nickname: reformer.nickname as string,
-        phone: reformer.phone as string,
-        profileImageUrl: reformer.profile_photo ?? '',
-        status: reformer.status as AuthStatus,
-        keywords: reformer.keywords ?? [],
-        bio: reformer.bio ?? '',
-        averageRating: reformer.avg_star?.toNumber() ?? 0,
-        reviewCount: reformer.review_count ?? 0,
-        totalSales: reformer.trade_count ?? 0,
-      };
+      const reformerDetailInfo = new ReformerDetailInfoResponseDto(reformer);
       return reformerDetailInfo;
     }
     throw new AccountNotFoundError('존재하지 않는 리폼러입니다.');
-  }
-
-  private async processKeywords(keywords: string[]): Promise<string[]> {
-    if (keywords.length > 3) {
-      throw new InputValidationError('키워드의 개수가 올바르지 않습니다. 3개 이하로 입력해주세요.');
-    }
-    const uniqueKeywords = [...new Set(
-      keywords
-        .map(keyword => keyword.trim())
-        .filter(keyword => keyword.length > 0)
-    )];
-    return uniqueKeywords;
   }
 }

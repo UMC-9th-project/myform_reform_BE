@@ -1,7 +1,7 @@
 import prisma from '../../config/prisma.config.js';
-import { UserDetailInfoResponse, UsersInfoResponse } from './dto/users.res.dto.js';
-import { Address, UpdateReformerStatusRequest } from './dto/users.req.dto.js';
-import { account_role, delivery_address, owner, provider_type, social_account, user } from '@prisma/client';
+import { UsersInfoResponse } from './dto/users.res.dto.js';
+import { UpdateReformerStatusRequest } from './dto/users.req.dto.js';
+import { account_role, owner, provider_type, social_account, user } from '@prisma/client';
 
 export class UsersModel {
   private prisma;
@@ -191,23 +191,5 @@ export class UsersModel {
       }
     }
     return null;
-  }
-
-  async findUserDetailInfo(userId: string): Promise<UserDetailInfoResponse | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { user_id: userId }
-    });
-    if (!user){
-      return null;
-    }
-    return{
-      userId: user?.user_id,
-      email: user?.email,
-      name: user?.name ?? '',
-      nickname: user?.nickname,
-      phone: user?.phone,
-      profileImageUrl: user?.profile_photo ?? '',
-      role: 'user'
-    } as UserDetailInfoResponse;
   }
 }
