@@ -1,5 +1,5 @@
 import { order_status_enum } from '@prisma/client';
-import { UUID } from '../../../types/common.js';
+import { UUID } from '../../../@types/common.js';
 
 export interface SaleResponseDto {
   orderId: UUID;
