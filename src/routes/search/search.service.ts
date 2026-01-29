@@ -5,6 +5,7 @@ import { SearchResDTO, SearchListResDTO } from './search.dto.js';
 import type { target_type_enum } from '@prisma/client';
 
 type UserTargetType = Exclude<target_type_enum, 'REQUEST'>;
+type SearchCursor = [number, number, string]; // [score, createdAt, id]
 const PAGE_SIZE = 15;
 
 export class SearchService {
@@ -14,7 +15,7 @@ export class SearchService {
     userId: string,
     cursor?: string
   ): Promise<SearchListResDTO> {
-    const searchAfter = CursorUtil.decode(cursor);
+    const searchAfter = CursorUtil.decode<SearchCursor>(cursor);
 
     // Elasticsearch 쿼리 실행
     const esResponse = await esClient.search<Record<string, any>>({
@@ -70,7 +71,7 @@ export class SearchService {
     const lastHit = currentHits[currentHits.length - 1];
     const nextCursor =
       hasNextPage && lastHit?.sort
-        ? CursorUtil.encode(lastHit.sort as any[])
+        ? CursorUtil.encode<SearchCursor>(lastHit.sort as SearchCursor)
         : null;
 
     return {
