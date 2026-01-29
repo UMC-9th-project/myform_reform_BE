@@ -19,7 +19,9 @@ import type {
   ReformerCursorParts,
   NameCursor,
   RatingCursor,
-  TradeCursor
+  TradeCursor,
+  SearchCursor,
+  FeedCursor
 } from './reformer.model.js';
 import { CursorUtil } from '../../utils/cursorUtil.js';
 
@@ -61,8 +63,7 @@ export class ReformerService {
     const limit = 9;
     const searchKeyword = keyword!.trim();
 
-    const decodedArr = CursorUtil.decode(cursor);
-    const decodedCursor = decodedArr ? decodedArr.join('_') : undefined;
+    const decodedCursor = CursorUtil.decode<SearchCursor>(cursor);
 
     /*
      *  [정렬 우선순위] : 정확도(키워드 위치) > 신뢰도(평점) > 고유성(ID)
@@ -84,9 +85,9 @@ export class ReformerService {
     const reformers = nodes.map(toReformerSummaryDTO);
 
     const nextCursor = hasNextPage
-      ? CursorUtil.encode([
+      ? CursorUtil.encode<SearchCursor>([
           nodes[nodes.length - 1].rank,
-          nodes[nodes.length - 1].avg_star ?? 0,
+          Number(nodes[nodes.length - 1].avg_star) ?? 0,
           nodes[nodes.length - 1].owner_id
         ])
       : null;
@@ -123,32 +124,24 @@ export class ReformerService {
     const { sort = 'name', cursor } = dto;
     const perPage = 15;
 
-    const decodedArr = CursorUtil.decode(cursor);
-
     let cursorParts: ReformerCursorParts | undefined = undefined;
-    if (decodedArr && Array.isArray(decodedArr)) {
-      if (sort === 'name') {
-        if (decodedArr.length >= 2) {
-          cursorParts = [
-            String(decodedArr[0]),
-            String(decodedArr[1])
-          ] as NameCursor;
-        }
-      } else if (sort === 'rating') {
-        if (decodedArr.length >= 2) {
-          const avg =
-            typeof decodedArr[0] === 'number'
-              ? decodedArr[0]
-              : Number(decodedArr[0]);
-          cursorParts = [avg, String(decodedArr[1])] as RatingCursor;
-        }
-      } else {
-        if (decodedArr.length >= 2) {
-          cursorParts = [
-            Number(decodedArr[0]),
-            String(decodedArr[1])
-          ] as TradeCursor;
-        }
+
+    if (sort === 'name') {
+      const decoded = CursorUtil.decode<NameCursor>(cursor);
+      if (decoded && decoded.length >= 2) {
+        cursorParts = [String(decoded[0]), String(decoded[1])] as NameCursor;
+      }
+    } else if (sort === 'rating') {
+      const decoded = CursorUtil.decode<RatingCursor>(cursor);
+      if (decoded && decoded.length >= 2) {
+        const avg =
+          typeof decoded[0] === 'number' ? decoded[0] : Number(decoded[0]);
+        cursorParts = [avg, String(decoded[1])] as RatingCursor;
+      }
+    } else {
+      const decoded = CursorUtil.decode<TradeCursor>(cursor);
+      if (decoded && decoded.length >= 2) {
+        cursorParts = [Number(decoded[0]), String(decoded[1])] as TradeCursor;
       }
     }
 
@@ -169,11 +162,20 @@ export class ReformerService {
     if (hasNextPage) {
       const last = nodes[nodes.length - 1];
       if (sort === 'name') {
-        nextCursor = CursorUtil.encode([last.nickname ?? '', last.owner_id]);
+        nextCursor = CursorUtil.encode<NameCursor>([
+          last.nickname ?? '',
+          last.owner_id
+        ]);
       } else if (sort === 'rating') {
-        nextCursor = CursorUtil.encode([last.avg_star ?? 0, last.owner_id]);
+        nextCursor = CursorUtil.encode<RatingCursor>([
+          Number(last.avg_star) ?? 0,
+          last.owner_id
+        ]);
       } else {
-        nextCursor = CursorUtil.encode([last.trade_count ?? 0, last.owner_id]);
+        nextCursor = CursorUtil.encode<TradeCursor>([
+          last.trade_count ?? 0,
+          last.owner_id
+        ]);
       }
     }
 
@@ -189,7 +191,8 @@ export class ReformerService {
   // 전체 피드 탐색
   public async getReformerFeed(cursor?: string): Promise<ReformerFeedResDTO> {
     const limit = 20;
-    const raw = await this.reformerModel.findFeeds(cursor, limit);
+    const decodedCursor = CursorUtil.decode<FeedCursor>(cursor);
+    const raw = await this.reformerModel.findFeeds(decodedCursor, limit);
 
     const hasNextPage = raw.length > limit;
     const nodes = hasNextPage ? raw.slice(0, limit) : raw;
@@ -201,7 +204,7 @@ export class ReformerService {
     }));
 
     const nextCursor = hasNextPage
-      ? CursorUtil.encode([nodes[nodes.length - 1].feed_id])
+      ? CursorUtil.encode<FeedCursor>([nodes[nodes.length - 1].feed_id])
       : null;
 
     return {

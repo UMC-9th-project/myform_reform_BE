@@ -2,17 +2,19 @@ import prisma from '../../config/prisma.config.js';
 import { owner, Prisma } from '@prisma/client';
 import { ReformerSummaryDTO, FeedPhotoDTO } from './dto/reformer.res.dto.js';
 import { ReformerSortOption } from './dto/reformer.req.dto.js';
-import { CursorUtil } from '../../utils/cursorUtil.js';
 
 export type ReformerSearchResult = Omit<owner, 'search_vector'> & {
   rank: number;
 };
 
 export type NameCursor = [string, string]; // [nickname, owner_id]
-export type RatingCursor = [number | string, string]; // [avg_star, owner_id]
+export type RatingCursor = [number, string]; // [avg_star, owner_id]
 export type TradeCursor = [number, string]; // [trade_count, owner_id]
+export type SearchCursor = [number, number, string]; // [rank, avg_star, owner_id]
+export type FeedCursor = [string]; // [feed_id]
 
 export type ReformerCursorParts = NameCursor | RatingCursor | TradeCursor;
+
 type FeedRow = {
   feed_id: string;
   created_at: Date;
@@ -96,11 +98,13 @@ export class ReformerModel {
 
   public async findByKeywordWithWeight(
     keyword: string,
-    cursor?: string,
+    cursor?: SearchCursor,
     limit: number = 9
   ): Promise<ReformerSearchResult[]> {
     const formattedKeyword = this.formatSearchKeyword(keyword);
     if (!formattedKeyword) return [];
+
+    const cursorString = cursor ? cursor.join('_') : null;
 
     return await prisma.$queryRaw<ReformerSearchResult[]>`
       SELECT 
@@ -111,15 +115,15 @@ export class ReformerModel {
       WHERE 
         search_vector @@ to_tsquery('simple', ${formattedKeyword})
         AND (
-          ${cursor}::text IS NULL OR 
+          ${cursorString}::text IS NULL OR 
           (
             ts_rank(search_vector, to_tsquery('simple', ${formattedKeyword})), 
             COALESCE(avg_star, 0), 
             owner_id::text
           ) < (
-            SPLIT_PART(${cursor}, '_', 1)::float4, 
-            SPLIT_PART(${cursor}, '_', 2)::numeric, 
-            SPLIT_PART(${cursor}, '_', 3)
+            SPLIT_PART(${cursorString}, '_', 1)::float4, 
+            SPLIT_PART(${cursorString}, '_', 2)::numeric, 
+            SPLIT_PART(${cursorString}, '_', 3)
           )
         )
       ORDER BY rank DESC, avg_star DESC NULLS LAST, owner_id DESC
@@ -166,7 +170,7 @@ export class ReformerModel {
     if (sort === 'rating') {
       const parts = cursorParts as RatingCursor | undefined;
       const lastAvg = parts ? new Prisma.Decimal(parts[0]) : undefined;
-      const lastId = parts ? (parts[1] as string) : undefined;
+      const lastId = parts ? parts[1] : undefined;
 
       const where: Prisma.ownerWhereInput = {
         avg_star: { not: null },
@@ -185,9 +189,10 @@ export class ReformerModel {
         select: REFORMER_SELECT
       });
     }
+
     const parts = cursorParts as TradeCursor | undefined;
-    const lastTrades = parts ? Number(parts[0]) : undefined;
-    const lastId = parts ? (parts[1] as string) : undefined;
+    const lastTrades = parts ? parts[0] : undefined;
+    const lastId = parts ? parts[1] : undefined;
 
     const where: Prisma.ownerWhereInput = {
       trade_count: { not: null },
@@ -213,9 +218,8 @@ export class ReformerModel {
   }
 
   // 전체 피드 탐색
-  public async findFeeds(cursor?: string, limit: number = 20) {
-    const decodedCursorArr = CursorUtil.decode(cursor);
-    const cursorFeedId = decodedCursorArr?.[0] as string | undefined;
+  public async findFeeds(cursor?: FeedCursor, limit: number = 20) {
+    const cursorFeedId = cursor?.[0];
 
     // Raw SQL로 마이크로초 정밀도 유지 (최신순 정렬)
     const feeds = await prisma.$queryRaw<FeedRow[]>`
