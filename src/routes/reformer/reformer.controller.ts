@@ -13,7 +13,9 @@ import { ReformerService } from './reformer.service.js';
 import {
   ReformerSearchResDTO,
   ReformerHomeResDTO,
-  ReformerListResDTO
+  ReformerListResDTO,
+  ReformerFeedResDTO,
+  FeedPhotosResDTO
 } from './dto/reformer.res.dto.js';
 import { ReformerSortOption } from './dto/reformer.req.dto.js';
 
@@ -67,5 +69,31 @@ export class ReformerController extends Controller {
     @Query() cursor?: string
   ): Promise<ReformerListResDTO> {
     return await this.reformerService.searchAllReformers({ sort, cursor });
+  }
+
+  /**
+   * @summary 전체 피드 탐색 (썸네일만)
+   * @param cursor 다음 페이지를 위한 커서
+   * @returns 피드 목록 및 다음 페이지 커서(if exists)
+   */
+  @Get('/feed')
+  @SuccessResponse(200, '전체 피드 탐색 성공')
+  public async getReformerFeed(
+    @Query() cursor?: string
+  ): Promise<ReformerFeedResDTO> {
+    return await this.reformerService.getReformerFeed(cursor);
+  }
+
+  /**
+   * @summary 피드 내 전체 사진 조회
+   * @param feed_id 피드 아이디
+   * @returns 피드의 모든 사진
+   */
+  @Get('/feed/photos')
+  @SuccessResponse(200, '피드 내 사진 조회 성공')
+  public async getFeedPhotos(
+    @Query() feed_id: string
+  ): Promise<FeedPhotosResDTO> {
+    return await this.reformerService.getFeedPhotos(feed_id);
   }
 }

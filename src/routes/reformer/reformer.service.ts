@@ -3,7 +3,11 @@ import {
   ReformerSummaryDTO,
   ReformerHomeResDTO,
   FeedPhotoDTO,
-  ReformerListResDTO
+  ReformerListResDTO,
+  ReformerFeedResDTO,
+  FeedItemDTO,
+  FeedPhotosResDTO,
+  FeedPhotoDetailDTO
 } from './dto/reformer.res.dto.js';
 import {
   ReformerSearchReqDTO,
@@ -179,6 +183,46 @@ export class ReformerService {
       hasNextPage,
       perPage,
       totalCount
+    };
+  }
+
+  // 전체 피드 탐색
+  public async getReformerFeed(cursor?: string): Promise<ReformerFeedResDTO> {
+    const limit = 20;
+    const raw = await this.reformerModel.findFeeds(cursor, limit);
+
+    const hasNextPage = raw.length > limit;
+    const nodes = hasNextPage ? raw.slice(0, limit) : raw;
+
+    const feeds: FeedItemDTO[] = nodes.map((item) => ({
+      feed_id: item.feed_id,
+      photo_url: item.feed_photo[0]?.content ?? null,
+      is_multi_photo: item._count.feed_photo > 1
+    }));
+
+    const nextCursor = hasNextPage
+      ? CursorUtil.encode([nodes[nodes.length - 1].feed_id])
+      : null;
+
+    return {
+      feeds,
+      nextCursor,
+      hasNextPage
+    };
+  }
+
+  // 피드 내 전체 사진 조회
+  public async getFeedPhotos(feedId: string): Promise<FeedPhotosResDTO> {
+    const photos = await this.reformerModel.findFeedPhotos(feedId);
+
+    const photoDetails: FeedPhotoDetailDTO[] = photos.map((photo) => ({
+      photo_order: photo.photo_order ?? 0,
+      url: photo.content ?? null
+    }));
+
+    return {
+      feed_id: feedId,
+      photos: photoDetails
     };
   }
 }

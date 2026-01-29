@@ -38,3 +38,29 @@ export interface ReformerListResDTO {
   perPage: number;
   totalCount: number;
 }
+
+// 피드 탐색 아이템 DTO
+export interface FeedItemDTO {
+  feed_id: string;
+  photo_url: string | null;
+  is_multi_photo: boolean;
+}
+
+// 피드 탐색 응답 DTO
+export interface ReformerFeedResDTO {
+  feeds: FeedItemDTO[];
+  nextCursor: string | null;
+  hasNextPage: boolean;
+}
+
+// 피드 사진 상세 DTO
+export interface FeedPhotoDetailDTO {
+  photo_order: number;
+  url: string | null;
+}
+
+// 피드 전체 사진 응답 DTO
+export interface FeedPhotosResDTO {
+  feed_id: string;
+  photos: FeedPhotoDetailDTO[];
+}

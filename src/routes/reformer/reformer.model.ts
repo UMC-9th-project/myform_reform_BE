@@ -2,6 +2,7 @@ import prisma from '../../config/prisma.config.js';
 import { owner, Prisma } from '@prisma/client';
 import { ReformerSummaryDTO, FeedPhotoDTO } from './dto/reformer.res.dto.js';
 import { ReformerSortOption } from './dto/reformer.req.dto.js';
+import { CursorUtil } from '../../utils/cursorUtil.js';
 
 export type ReformerSearchResult = Omit<owner, 'search_vector'> & {
   rank: number;
@@ -12,6 +13,12 @@ export type RatingCursor = [number | string, string]; // [avg_star, owner_id]
 export type TradeCursor = [number, string]; // [trade_count, owner_id]
 
 export type ReformerCursorParts = NameCursor | RatingCursor | TradeCursor;
+type FeedRow = {
+  feed_id: string;
+  created_at: Date;
+  photo_content: string | null;
+  photo_count: bigint;
+};
 
 const REFORMER_SELECT: Prisma.ownerSelect = {
   owner_id: true,
@@ -22,17 +29,6 @@ const REFORMER_SELECT: Prisma.ownerSelect = {
   avg_star: true,
   review_count: true,
   trade_count: true
-};
-
-export type ReformerListResult = {
-  owner_id: string;
-  nickname: string | null;
-  keywords: string[];
-  bio: string | null;
-  profile_photo: string | null;
-  avg_star: Prisma.Decimal | null;
-  review_count: number | null;
-  trade_count: number | null;
 };
 
 export class ReformerModel {
@@ -146,7 +142,7 @@ export class ReformerModel {
     sort: ReformerSortOption,
     cursorParts?: ReformerCursorParts,
     limit: number = 15
-  ): Promise<ReformerListResult[]> {
+  ) {
     if (sort === 'name') {
       const parts = cursorParts as NameCursor | undefined;
       const where: Prisma.ownerWhereInput = {
@@ -214,5 +210,62 @@ export class ReformerModel {
   public async countAll(): Promise<number> {
     const count = await prisma.owner.count();
     return count;
+  }
+
+  // 전체 피드 탐색
+  public async findFeeds(cursor?: string, limit: number = 20) {
+    const decodedCursorArr = CursorUtil.decode(cursor);
+    const cursorFeedId = decodedCursorArr?.[0] as string | undefined;
+
+    // Raw SQL로 마이크로초 정밀도 유지 (최신순 정렬)
+    const feeds = await prisma.$queryRaw<FeedRow[]>`
+      SELECT 
+        f.feed_id,
+        f.created_at,
+        (
+          SELECT fp.content 
+          FROM feed_photo fp 
+          WHERE fp.feed_id = f.feed_id AND fp.photo_order = 1 
+          LIMIT 1
+        ) as photo_content,
+        (
+          SELECT COUNT(*) 
+          FROM feed_photo fp 
+          WHERE fp.feed_id = f.feed_id
+        ) as photo_count
+      FROM feed f
+      WHERE (
+        ${cursorFeedId}::uuid IS NULL 
+        OR (f.created_at, f.feed_id) < (
+          (SELECT created_at FROM feed WHERE feed_id = ${cursorFeedId}::uuid),
+          ${cursorFeedId}::uuid
+        )
+      )
+      ORDER BY f.created_at DESC, f.feed_id DESC
+      LIMIT ${limit + 1}
+    `;
+
+    return feeds.map((row) => ({
+      feed_id: row.feed_id,
+      created_at: row.created_at,
+      feed_photo: row.photo_content ? [{ content: row.photo_content }] : [],
+      _count: { feed_photo: Number(row.photo_count) }
+    }));
+  }
+
+  // 피드 내 전체 사진 조회
+  public async findFeedPhotos(feedId: string) {
+    return await prisma.feed_photo.findMany({
+      where: {
+        feed_id: feedId
+      },
+      orderBy: {
+        photo_order: 'asc'
+      },
+      select: {
+        photo_order: true,
+        content: true
+      }
+    });
   }
 }
