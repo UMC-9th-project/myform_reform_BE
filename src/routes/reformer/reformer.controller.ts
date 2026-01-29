@@ -1,14 +1,4 @@
-import {
-  Route,
-  Controller,
-  Get,
-  SuccessResponse,
-  Body,
-  Response,
-  Example,
-  Query,
-  Tags
-} from 'tsoa';
+import { Route, Controller, Get, SuccessResponse, Query, Tags } from 'tsoa';
 import { ReformerService } from './reformer.service.js';
 import {
   ReformerSearchResDTO,
@@ -24,11 +14,6 @@ import { ReformerSortOption } from './dto/reformer.req.dto.js';
 export class ReformerController extends Controller {
   private reformerService = new ReformerService();
 
-  constructor() {
-    super();
-    this.reformerService = new ReformerService();
-  }
-
   /**
    * @summary 리폼러 키워드 검색
    * @param keyword 검색어 (필수)
@@ -41,10 +26,7 @@ export class ReformerController extends Controller {
     @Query() keyword: string,
     @Query() cursor?: string
   ): Promise<ReformerSearchResDTO> {
-    return await this.reformerService.searchReformers({
-      keyword,
-      cursor
-    });
+    return await this.reformerService.searchReformers({ keyword, cursor });
   }
 
   /**
@@ -59,8 +41,8 @@ export class ReformerController extends Controller {
 
   /**
    * @summary 전체 리폼러 탐색
-   * @param cursor 다음 페이지를 위한 커서 (옵션)
    * @param sort 정렬 기준: 'name'|'rating'|'trades'
+   * @param cursor 다음 페이지를 위한 커서 (옵션)
    */
   @Get('/list')
   @SuccessResponse(200, '리폼러 목록 조회 성공')
@@ -73,7 +55,7 @@ export class ReformerController extends Controller {
 
   /**
    * @summary 전체 피드 탐색 (썸네일만)
-   * @param cursor 다음 페이지를 위한 커서
+   * @param cursor 다음 페이지를 위한 커서 (옵션)
    * @returns 피드 목록 및 다음 페이지 커서(if exists)
    */
   @Get('/feed')
