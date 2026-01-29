@@ -1,14 +1,25 @@
 {
   "entryFile": "src/app.ts",
   "noImplicitAdditionalProperties": "throw-on-extras",
-  "controllerPathGlobs": ["src/routes/**/*.Controller.ts"],
+  "controllerPathGlobs": ["src/routes/**/*.controller.ts"],
   "spec": {
     "outputDirectory": "src/config",
-    "specVersion": 3
+    "specVersion": 3,
+    "basePath": "myform_reform/api/v1",
+    "securityDefinitions": {
+      "jwt": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
   },
   "routes": {
     "routesDir": "src/routes",
+    "authenticationModule": "src/routes/auth/authHandler.ts",
     "routesFileName": "tsoaRoutes.ts",
-    "middleware": "express"
+    "middleware": "express",
+    "esm": true,
+    "basePath": "myform_reform/api/v1"
   }
 }
