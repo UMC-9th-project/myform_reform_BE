@@ -8,16 +8,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            tag_suffix: amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            tag_suffix: arm64
-            runner: ubuntu-24.04-arm
+    runs-on: ${{ github.ref_name == 'develop' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout code
@@ -37,6 +28,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: seoki/myform_reform:${{ github.ref_name }}-${{ matrix.tag_suffix }}
-          cache-from: type=gha,scope=${{ matrix.tag_suffix }}
-          cache-to: type=gha,scope=${{ matrix.tag_suffix }},mode=max
+          tags: seoki/myform_reform:${{ github.ref_name }}
+          cache-from: type=gha,scope=${{ github.ref_name }}
+          cache-to: type=gha,scope=${{ github.ref_name }},mode=max

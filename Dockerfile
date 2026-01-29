@@ -1,29 +1,42 @@
 # ============================================
-# Stage 1: Build
+# Stage 1: Dependencies (캐시 최적화)
+# ============================================
+FROM node:23-alpine AS deps
+
+WORKDIR /app
+
+# 의존성 파일만 먼저 복사 (레이어 캐시 활용)
+COPY package*.json ./
+
+# 전체 의존성 설치 (빌드용)
+RUN npm ci
+
+# ============================================
+# Stage 2: Build
 # ============================================
 FROM node:23-alpine AS builder
 
 WORKDIR /app
 
-# 의존성 파일 복사 및 설치
+# deps 스테이지에서 node_modules 복사
+COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
-RUN npm ci
 
 # Prisma 스키마 복사 및 클라이언트 생성
 COPY prisma ./prisma
 RUN npx prisma generate
 
+# 소스 코드 복사 및 빌드
 COPY tsconfig.json tsoa.json ./
 COPY src ./src
-# COPY @types ./@types
 
-# RUN node -v && npm -v && npx tsc -v
-
-# TypeScript 빌드 (tsoa 라우트 생성 + tsc 컴파일)
 RUN npm run build
 
+# 빌드 후 devDependencies 제거 (production용)
+RUN npm prune --omit=dev
+
 # ============================================
-# Stage 2: Production
+# Stage 3: Production
 # ============================================
 FROM node:23-alpine AS production
 
@@ -33,31 +46,24 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# 프로덕션 의존성만 설치
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-# builder에서 생성된 Prisma 클라이언트 복사
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# builder에서 정리된 node_modules 복사 (npm ci 재실행 불필요!)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
 
 # 빌드된 파일 복사
 COPY --from=builder /app/dist ./dist
 
-# Swagger 문서 복사 (tsoa가 생성)
+# Swagger 문서 복사
 COPY --from=builder /app/src/config/swagger.json ./dist/config/swagger.json
 
 # 소유권 변경
 RUN chown -R nodejs:nodejs /app
 
-# non-root 사용자로 전환
 USER nodejs
 
-# 환경 변수 설정
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# 포트 노출
 EXPOSE 3001
 
-# 애플리케이션 실행
 CMD ["node", "dist/app.js"]
