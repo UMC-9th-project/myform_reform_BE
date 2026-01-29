@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { UUID } from '../../types/common.js';
+import { UUID } from '../../@types/common.js';
 import {
   SaleDetailResponseDto,
   SaleResponseDto
@@ -8,7 +8,7 @@ import {
   AddItemRequestDto,
   AddReformRequestDto
 } from './dto/profile.req.dto.js';
-import { Category, OptionGroup } from '../../types/item.js';
+import { Category, OptionGroup } from '../../@types/item.js';
 
 export type RawSaleData = Prisma.orderGetPayload<{
   select: {

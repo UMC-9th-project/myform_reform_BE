@@ -30,9 +30,8 @@ import {
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
-import { JwtPayload } from 'jsonwebtoken';
-import { CustomJwt } from '../../../@types/expreees.js';
 import { ItemAddError } from './profile.error.js';
+import { CustomJwt } from '../../@types/expreees.js';
 
 @Route('profile')
 @Tags('Profile Router')
