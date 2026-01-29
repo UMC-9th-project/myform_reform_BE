@@ -29,7 +29,7 @@ export function expressAuthentication(
         // 사용 예 : @Security('jwt', ['user'])
         if (scopes && scopes.length > 0) {
           if (!scopes.includes(decoded.role)) {
-            reject(new UnauthorizedError('해당 리소스에 접근 권한이 없습니다.'));
+            reject(new ForbiddenError('해당 리소스에 접근 권한이 없습니다.'));
           }
           // 리폼러 인증 상태 검증 
           // 사용 예 : @Security('jwt', ['reformer:approved'])

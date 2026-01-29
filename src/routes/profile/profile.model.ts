@@ -4,6 +4,11 @@ import {
   SaleDetailResponseDto,
   SaleResponseDto
 } from './dto/profile.res.dto.js';
+import {
+  AddItemRequestDto,
+  AddReformRequestDto
+} from './dto/profile.req.dto.js';
+import { Category, OptionGroup } from '../../types/item.js';
 
 export type RawSaleData = Prisma.orderGetPayload<{
   select: {
@@ -78,6 +83,27 @@ export type RawOption = Prisma.order_optionGetPayload<{
   };
 }>;
 
+export type ItemDto = {
+  ownerId: string;
+  images: { content: string; photo_order: number }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  option: OptionGroup[];
+  category: Category;
+};
+
+export type ReformDto = {
+  ownerId: string;
+  images: { content: string; photo_order: number }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expectedWorking: number;
+  category: Category;
+};
 export class Sale {
   private props: SaleResponseDto;
 
@@ -138,6 +164,62 @@ export class SaleDetail {
     });
   }
   toResponse(): SaleDetailResponseDto {
+    return { ...this.props };
+  }
+}
+
+export class Item {
+  private props: ItemDto;
+
+  private constructor(props: ItemDto) {
+    this.props = props;
+  }
+
+  static create(raw: AddItemRequestDto, ownerId: string): Item {
+    return new Item({
+      ownerId,
+      images: raw.imageUrls.map((url, i) => ({
+        content: url,
+        photo_order: i + 1
+      })),
+      title: raw.title,
+      content: raw.content,
+      price: raw.price,
+      delivery: raw.delivery,
+      option: raw.option,
+      category: raw.category
+    });
+  }
+
+  toDto(): ItemDto {
+    return { ...this.props };
+  }
+}
+
+export class Reform {
+  private props: ReformDto;
+
+  private constructor(props: ReformDto) {
+    this.props = props;
+  }
+
+  static create(raw: AddReformRequestDto, ownerId: string): Reform {
+    return new Reform({
+      ownerId,
+      images: raw.imageUrls.map((url, i) => ({
+        content: url,
+        photo_order: i + 1
+      })),
+      title: raw.title,
+      content: raw.content,
+      price: raw.price,
+      delivery: raw.delivery,
+      expectedWorking: raw.expected_working,
+      category: raw.category
+    });
+  }
+
+  toDto(): ReformDto {
     return { ...this.props };
   }
 }

@@ -1,4 +1,5 @@
 import { InputValidationError, InvalidDescriptionLengthError, InvalidBusinessNumberError, InvalidPhotoNumberError } from '../routes/auth/auth.error.js';
+import { InvalidBioLengthError } from '../routes/users/users.error.js';
 
 export const validatePhoneNumber = (phoneNumber: string): void => {
   //한국 전화번호 형식 (하이픈 포함 또는 미포함)
@@ -91,3 +92,24 @@ export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]):
     throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
   }
 };
+
+export const validateBio = (bio: string): void => {
+  if (bio.length > 200){
+    throw new InvalidBioLengthError('자기 소개의 길이가 적절하지 않습니다. 200자 이하로 입력해주세요.');
+  }
+};
+
+export const processKeywords = (keywords: string[]): string[] => {
+  if (keywords.length === 0) {
+    return [];
+  }
+  if (keywords.length > 3) {
+    throw new InputValidationError('키워드의 개수가 올바르지 않습니다. 3개 이하로 입력해주세요.');
+  }
+  const uniqueKeywords = [...new Set(
+    keywords
+      .map(keyword => keyword.trim())
+      .filter(keyword => keyword.length > 0)
+  )];
+  return uniqueKeywords;
+}

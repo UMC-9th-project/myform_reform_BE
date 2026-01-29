@@ -1,12 +1,20 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { ItemDto, ReformDto } from './dto/profile.dto.js';
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
 import { SaleRequestDto } from './dto/profile.req.dto.js';
-import { RawOption, RawSaleData, RawSaleDetailData } from './profile.model.js';
+import {
+  Item,
+  ItemDto,
+  RawOption,
+  RawSaleData,
+  RawSaleDetailData,
+  Reform,
+  ReformDto
+} from './profile.model.js';
+import { OptionGroup } from '../../types/item.js';
 
 export class ProfileRepository {
   private prisma: PrismaClient;
@@ -14,90 +22,75 @@ export class ProfileRepository {
     this.prisma = prisma;
   }
 
-  async addProduct(
-    mode: 'ITEM' | 'REFORM',
-    dto: ItemDto | ReformDto
-  ): Promise<void> {
-    if (mode === 'ITEM') {
-      const { images, option, category, ownerId, ...data } = dto as ItemDto;
-      await prisma.$transaction(async (tx) => {
-        const categorydata = await tx.category.findFirst({
-          where: { name: category.sub },
-          select: { category_id: true }
-        });
+  async getCategory(dto: ItemDto | ReformDto) {
+    const category = dto.category;
+    return await prisma.category.findFirst({
+      where: { name: category.sub },
+      select: { category_id: true }
+    });
+  }
 
-        if (categorydata === null) {
-          throw new CategoryNotExist('카테고리가 존재하지 않습니다.');
+  async isOrderOwner(ownerId: string, orderId: string) {
+    return (
+      (await prisma.order.findFirst({
+        where: {
+          owner_id: ownerId,
+          order_id: orderId
         }
+      })) !== null
+    );
+  }
 
-        const ans = await tx.item.create({
+  async addItem(dto: ItemDto, categoryId: string) {
+    return await prisma.item.create({
+      data: {
+        owner_id: dto.ownerId,
+        title: dto.title,
+        content: dto.content,
+        price: dto.price,
+        delivery: dto.delivery,
+        category_id: categoryId
+      }
+    });
+  }
+
+  async addOption(itemId: string, options: OptionGroup[]) {
+    const groups = await Promise.all(
+      options.map((opt) =>
+        prisma.option_group.create({
           data: {
-            owner_id: ownerId,
-            ...data,
-            category_id: categorydata.category_id
-          }
-        });
-
-        for (const img of images) {
-          await tx.item_photo.create({
-            data: {
-              item_id: ans.item_id,
-              content: img.content,
-              photo_order: img.photo_order
-            }
-          });
-        }
-        for (const opt of option) {
-          const group = await tx.option_group.create({
-            data: {
-              item_id: ans.item_id,
-              name: opt.title,
-              sort_order: opt.sortOrder
-            }
-          });
-          for (const optItem of opt.content) {
-            await tx.option_item.create({
-              data: {
-                option_group_id: group.option_group_id,
-                name: optItem.comment,
-                extra_price: optItem.price,
-                quantity: optItem.quantity,
-                sort_order: optItem.sortOrder
+            item_id: itemId,
+            name: opt.title,
+            sort_order: opt.sortOrder,
+            option_item: {
+              createMany: {
+                data: opt.content.map((optItem) => ({
+                  name: optItem.comment,
+                  extra_price: optItem.price,
+                  quantity: optItem.quantity,
+                  sort_order: optItem.sortOrder
+                }))
               }
-            });
-          }
-        }
-      });
-    } else if (mode == 'REFORM') {
-      const { images, category, ownerId, ...data } = dto as ReformDto;
-      await prisma.$transaction(async (tx) => {
-        const categorydata = await tx.category.findFirst({
-          where: { name: category.sub },
-          select: { category_id: true }
-        });
-
-        if (categorydata === null) {
-          throw new CategoryNotExist('카테고리가 존재하지 않습니다.');
-        }
-
-        const ans = await tx.reform_proposal.create({
-          data: {
-            owner_id: ownerId,
-            ...data,
-            category_id: categorydata.category_id
-          }
-        });
-        for (const img of images) {
-          await tx.reform_proposal_photo.create({
-            data: {
-              reform_proposal_id: ans.reform_proposal_id,
-              content: img.content,
-              photo_order: img.photo_order
             }
-          });
-        }
-      });
-    }
+          }
+        })
+      )
+    );
+    return groups;
+  }
+
+  async addReform(dto: ReformDto, categoryId: string) {
+    return await prisma.reform_proposal.create({
+      data: {
+        owner_id: dto.ownerId,
+        title: dto.title,
+        content: dto.content,
+        price: dto.price,
+        delivery: dto.delivery,
+        expected_working: dto.expectedWorking,
+        category_id: categoryId
+      }
+    });
   }
 
   async getOrder(dto: SaleRequestDto): Promise<RawSaleData[]> {

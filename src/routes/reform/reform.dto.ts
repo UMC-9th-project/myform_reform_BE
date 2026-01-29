@@ -9,7 +9,19 @@ import {
 } from '@prisma/client';
 import { Category } from '../../types/item.js';
 import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
-import { Reform } from '../profile/dto/profile.dto.js';
+
+export interface Reform {
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expected_working: number;
+  category: Category;
+}
 
 export interface RequestItems {
   thumbnail: string;
