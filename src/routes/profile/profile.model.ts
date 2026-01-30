@@ -1,100 +1,225 @@
-/* tslint:disable */
-/* eslint-disable */
+import { Prisma } from '@prisma/client';
+import { UUID } from '../../@types/common.js';
+import {
+  SaleDetailResponseDto,
+  SaleResponseDto
+} from './dto/profile.res.dto.js';
+import {
+  AddItemRequestDto,
+  AddReformRequestDto
+} from './dto/profile.req.dto.js';
+import { Category, OptionGroup } from '../../@types/item.js';
 
-import { ItemDto, ReformDto } from './profile.dto.js';
-import prisma from '../../config/prisma.config.js';
-import { PrismaClient } from '@prisma/client/extension';
-import { CategoryNotExist } from './profile.error.js';
+export type RawSaleData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    user: {
+      select: {
+        name: true;
+      };
+    };
+    receipt: {
+      select: {
+        created_at: true;
+      };
+    };
+    quote_photo: {
+      select: {
+        content: true;
+      };
+      orderBy: {
+        photo_order: 'asc';
+      };
+      take: 1;
+    };
+  };
+}>;
 
-export class ProfileModel {
-  private prisma: PrismaClient;
-  constructor() {
-    this.prisma = prisma;
+export type RawSaleDetailData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    user_address: true;
+    user: {
+      select: {
+        name: true;
+        phone: true;
+      };
+    };
+    receipt: {
+      select: {
+        created_at: true;
+      };
+    };
+    quote_photo: {
+      select: {
+        content: true;
+      };
+      orderBy: {
+        photo_order: 'asc';
+      };
+      take: 1;
+    };
+  };
+}>;
+
+export type RawOption = Prisma.order_optionGetPayload<{
+  select: {
+    option_item: {
+      select: {
+        name: true;
+        extra_price: true;
+      };
+    };
+  };
+}>;
+
+export type ItemDto = {
+  ownerId: string;
+  images: { content: string; photo_order: number }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  option: OptionGroup[];
+  category: Category;
+};
+
+export type ReformDto = {
+  ownerId: string;
+  images: { content: string; photo_order: number }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expectedWorking: number;
+  category: Category;
+};
+export class Sale {
+  private props: SaleResponseDto;
+
+  private constructor(props: SaleResponseDto) {
+    this.props = props;
   }
 
-  async addProduct(
-    mode: 'ITEM' | 'REFORM',
-    dto: ItemDto | ReformDto
-  ): Promise<void> {
-    if (mode === 'ITEM') {
-      const { images, option, category, ownerId, ...data } = dto as ItemDto;
-      await prisma.$transaction(async (tx) => {
-        const categorydata = await tx.category.findFirst({
-          where: { name: category.sub },
-          select: { category_id: true }
-        });
+  static create(raw: RawSaleData, title: string): Sale {
+    return new Sale({
+      orderId: raw.order_id as UUID,
+      targetId: raw.target_id as UUID,
+      status: raw.status!,
+      price: raw.price!.toNumber(),
+      deliveryFee: raw.delivery_fee!.toNumber(),
+      userName: raw.user.name ?? '',
+      createdAt: raw.receipt.created_at ?? new Date(),
+      title: title ?? '',
+      thumbnail: raw.quote_photo[0]?.content ?? ''
+    });
+  }
 
-        if (categorydata === null) {
-          throw new CategoryNotExist('카테고리가 존재하지 않습니다.');
-        }
+  toResponse(): SaleResponseDto {
+    return { ...this.props };
+  }
 
-        const ans = await tx.item.create({
-          data: {
-            owner_id: ownerId,
-            ...data,
-            category_id: categorydata.category_id
-          }
-        });
+  // 나중에 비즈니스 메서드 추가 가능
+  // canCancel(): boolean { ... }
+  // calculateTotalPrice(): number { ... }
+}
 
-        for (const img of images) {
-          await tx.item_photo.create({
-            data: {
-              item_id: ans.item_id,
-              content: img.content,
-              photo_order: img.photo_order
-            }
-          });
-        }
-        for (const opt of option) {
-          const group = await tx.option_group.create({
-            data: {
-              item_id: ans.item_id,
-              name: opt.title,
-              sort_order: opt.sortOrder
-            }
-          });
-          for (const optItem of opt.content) {
-            await tx.option_item.create({
-              data: {
-                option_group_id: group.option_group_id,
-                name: optItem.comment,
-                extra_price: optItem.price,
-                quantity: optItem.quantity,
-                sort_order: optItem.sortOrder
-              }
-            });
-          }
-        }
-      });
-    } else if (mode == 'REFORM') {
-      const { images, category, ownerId, ...data } = dto as ReformDto;
-      await prisma.$transaction(async (tx) => {
-        const categorydata = await tx.category.findFirst({
-          where: { name: category.sub },
-          select: { category_id: true }
-        });
+export class SaleDetail {
+  private props: SaleDetailResponseDto;
 
-        if (categorydata === null) {
-          throw new CategoryNotExist('카테고리가 존재하지 않습니다.');
-        }
+  private constructor(props: SaleDetailResponseDto) {
+    this.props = props;
+  }
 
-        const ans = await tx.reform_proposal.create({
-          data: {
-            owner_id: ownerId,
-            ...data,
-            category_id: categorydata.category_id
-          }
-        });
-        for (const img of images) {
-          await tx.reform_proposal_photo.create({
-            data: {
-              reform_proposal_id: ans.reform_proposal_id,
-              content: img.content,
-              photo_order: img.photo_order
-            }
-          });
-        }
-      });
-    }
+  static create(
+    raw: RawSaleDetailData,
+    option: RawOption | null,
+    title: string
+  ) {
+    return new SaleDetail({
+      orderId: raw.order_id as UUID,
+      targetId: raw.target_id as UUID,
+      status: raw.status!,
+      price: raw.price!.toNumber(),
+      deliveryFee: raw.delivery_fee!.toNumber(),
+      userName: raw.user.name ?? '',
+      createdAt: raw.receipt.created_at ?? new Date(),
+      title: title,
+      thumbnail: raw.quote_photo[0]?.content ?? '',
+      phone: raw.user.phone ?? '',
+      address: raw.user_address ?? '',
+      //FIXME: option, 운송장번호 어떻게 구현할지 논의 해야함
+      option: option?.option_item?.name ?? '',
+      billNumber: ''
+    });
+  }
+  toResponse(): SaleDetailResponseDto {
+    return { ...this.props };
+  }
+}
+
+export class Item {
+  private props: ItemDto;
+
+  private constructor(props: ItemDto) {
+    this.props = props;
+  }
+
+  static create(raw: AddItemRequestDto, ownerId: string): Item {
+    return new Item({
+      ownerId,
+      images: raw.imageUrls.map((url, i) => ({
+        content: url,
+        photo_order: i + 1
+      })),
+      title: raw.title,
+      content: raw.content,
+      price: raw.price,
+      delivery: raw.delivery,
+      option: raw.option,
+      category: raw.category
+    });
+  }
+
+  toDto(): ItemDto {
+    return { ...this.props };
+  }
+}
+
+export class Reform {
+  private props: ReformDto;
+
+  private constructor(props: ReformDto) {
+    this.props = props;
+  }
+
+  static create(raw: AddReformRequestDto, ownerId: string): Reform {
+    return new Reform({
+      ownerId,
+      images: raw.imageUrls.map((url, i) => ({
+        content: url,
+        photo_order: i + 1
+      })),
+      title: raw.title,
+      content: raw.content,
+      price: raw.price,
+      delivery: raw.delivery,
+      expectedWorking: raw.expected_working,
+      category: raw.category
+    });
+  }
+
+  toDto(): ReformDto {
+    return { ...this.props };
   }
 }

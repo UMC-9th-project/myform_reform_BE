@@ -7,9 +7,21 @@ import {
   reform_request_photo,
   target_type_enum
 } from '@prisma/client';
-import { Category } from '../../types/item.js';
-import { Reform } from '../profile/profile.dto.js';
-import { AddQuoteReq, ReformRequestReq } from './dto/reform.req.dto.js';
+import { Category } from '../../@types/item.js';
+import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
+
+export interface Reform {
+  images: {
+    content: string;
+    photo_order: number;
+  }[];
+  title: string;
+  content: string;
+  price: number;
+  delivery: number;
+  expected_working: number;
+  category: Category;
+}
 
 export interface RequestItems {
   thumbnail: string;

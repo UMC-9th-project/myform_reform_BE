@@ -3,8 +3,8 @@ import {
   OwnerSelect,
   BannerSelect
 } from './home.model.js';
+import { AuthUser } from './dto/home.req.dto.js';
 import {
-  AuthUser,
   UserSessionDto,
   BannerDto,
   TrendingItemDto,
@@ -12,7 +12,7 @@ import {
   BestReformerDto,
   HomeDataDto,
   HomeDataResponseDto
-} from './home.dto.js';
+} from './dto/home.res.dto.js';
 import {
   HomeError,
   BannerNotFoundError,

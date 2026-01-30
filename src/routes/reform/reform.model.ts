@@ -7,8 +7,9 @@ import {
 import prisma from '../../config/prisma.config.js';
 import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
 import { ReformDBError } from './reform.error.js';
+import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { RequestFilterDto } from './dto/reform.req.dto.js';
-import { Category } from '../../types/item.js';
+import { Category } from '../../@types/item.js';
 
 export class ReformModel {
   private prisma;
@@ -151,6 +152,12 @@ export class ReformModel {
           }
         });
       }
+      // 큐 등록
+      await addSearchSyncJob({
+        type: 'REQUEST',
+        id: ans.reform_request_id,
+        action: 'UPSERT'
+      });
     });
   }
 

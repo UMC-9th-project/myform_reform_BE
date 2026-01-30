@@ -2,19 +2,17 @@ import {
   Controller,
   Post,
   Route,
-  Request,
   SuccessResponse,
   Response,
   Tags,
   Get,
   Path,
-  UploadedFiles,
   Body,
-  FormField,
-  Example
+  Query,
+  Security,
+  Request
 } from 'tsoa';
 import { ProfileService } from './profile.service.js';
-// import { Request as ExRequest } from 'express';
 import {
   ErrorResponse,
   ResponseHandler,
@@ -22,12 +20,18 @@ import {
   commonError
 } from '../../config/tsoaResponse.js';
 import {
-  ItemDto,
-  ItemRequest,
-  ReformDto,
-  ReformRequest
-} from './profile.dto.js';
+  AddItemRequestDto,
+  AddReformRequestDto,
+  SaleRequestDto
+} from './dto/profile.req.dto.js';
+import {
+  SaleDetailResponseDto,
+  SaleResponseDto
+} from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
+import { Item, Reform } from './profile.model.js';
+import { ItemAddError } from './profile.error.js';
+import { CustomJwt } from '../../@types/expreees.js';
 
 @Route('profile')
 @Tags('Profile Router')
@@ -39,27 +43,28 @@ export class ProfileController extends Controller {
   }
 
   /**
-   * 판매 상품 등록, body는 json stringfy후 제공되어야합니다.
-   *
-   * {\"title\":\"제목\",\"content\":\"설명\",\"price\":1000,\"delivery\":100,\"option\":[{\"title\":\"사이즈\",\"content\":[{\"comment\":\"S\",\"price\":0,\"quantity\":10},{\"comment\":\"M\",\"price\":0,\"quantity\":10}]}],\"category\":{\"major\":\"의류\",\"sub\":\"상의\"}}
+   * 판매 상품 등록
    *
    * @summary 새로운 판매 상품을 등록합니다
+   * @param body 판매 상품 정보
    * @returns 판매글 등록 결과
-   * @param body JSON 문자열 형태의 상품 정보
-   *
    */
   @Post('add/item')
+  @Security('jwt')
   @SuccessResponse(200, '판매글 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addItem(
-    @FormField() body: string,
-    @UploadedFiles('images') images: Express.Multer.File[]
+    @Body() body: AddItemRequestDto,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
     //TODO: JWT 로직 추가 이후 ownerID 목업 삭제
-    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
-    const dto = JSON.parse(body) as ItemRequest;
-    const itemDto = new ItemDto(dto, ownerId);
-    await this.profileService.addProduct('ITEM', itemDto, images);
+    const payload = req.user; // 자동으로 CustomJWT 타입으로 추론됨
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 등록 할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const dto = Item.create(body, ownerId);
+    await this.profileService.addProduct('ITEM', dto);
 
     return new ResponseHandler('판매글 등록 성공');
   }
@@ -67,37 +72,60 @@ export class ProfileController extends Controller {
   /**
    * 주문제작 상품 등록
    *
-   * {"title":"제목","content":"설명","price":1000,"delivery":100,"option":[{"title":"사이즈","sortOrder":1,"content":[{"comment":"S","price":0,"quantity":10,"sortOrder":1},{"comment":"M","price":0,"quantity":10,"sortOrder":2},{"comment":"L","price":500,"quantity":5,"sortOrder":3}]},{"title":"색상","sortOrder":2,"content":[{"comment":"블랙","price":0,"quantity":20,"sortOrder":1},{"comment":"화이트","price":0,"quantity":15,"sortOrder":2}]}],"category":{"major":"의류","sub":"상의"}}
-   *
    * @summary 새로운 주문제작 상품을 등록합니다
-   * @param body JSON 문자열 형태의 상품 정보
+   * @param body 주문제작 상품 정보
    * @returns 주문제작 등록 결과
    */
   @Post('add/reform')
+  @Security('jwt')
   @SuccessResponse(200, '주문제작 등록 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async addReform(
-    @FormField() body: string,
-    @UploadedFiles() images: Express.Multer.File[]
+    @Body() body: AddReformRequestDto,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
-    const ownerId = '7786f300-6e37-41b3-8bfb-2bca27846785';
-    const dto = JSON.parse(body) as ReformRequest;
-    const reformDto = new ReformDto(dto, ownerId);
-    await this.profileService.addProduct('REFORM', reformDto, images);
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 등록 할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const dto = Reform.create(body, ownerId);
+    await this.profileService.addProduct('REFORM', dto);
 
-    return new ResponseHandler('테스트');
+    return new ResponseHandler('주문제작 등록 성공');
   }
 
   /**
    * 판매관리 목록 조회
    * @summary 사용자의 전체 판매 상품 목록을 조회합니다
    * @returns 판매관리 목록
+   * @param type 주문제작 or 판매상품 선택
+   * @param page 현재 페이지
+   * @param limit 한 페이지 보여줄 목록 수
    */
-  @Get('order')
+  @Get('sales')
+  @Security('jwt')
   @SuccessResponse(200, '판매관리 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async getOrder(): Promise<TsoaResponse<string>> {
-    return new ResponseHandler('테스트');
+  public async getSales(
+    @Query() type: 'ITEM' | 'REFORM',
+    @Query() page: number = 1,
+    @Query() limit: number = 15,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<SaleResponseDto[]>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const dto = new SaleRequestDto(type, page, limit, ownerId);
+    const data = await this.profileService.getSales(dto);
+
+    const res = data.map((sale) => {
+      return sale.toResponse();
+    });
+
+    return new ResponseHandler(res);
   }
 
   /**
@@ -106,13 +134,22 @@ export class ProfileController extends Controller {
    * @param id 판매상품 ID
    * @returns 판매상품 상세 정보
    */
-  @Get('order/:id')
+  @Get('sales/:id')
+  @Security('jwt')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
-  public async getDetailOrder(
-    @Path() id: string
-  ): Promise<TsoaResponse<string>> {
-    console.log(id);
-    return new ResponseHandler('테스트');
+  public async getDetailSales(
+    @Path() id: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<SaleDetailResponseDto>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+
+    const data = await this.profileService.getSaleDetail(ownerId, id);
+
+    return new ResponseHandler(data.toResponse());
   }
 }
