@@ -14,7 +14,7 @@ import {
   Reform,
   ReformDto
 } from './profile.model.js';
-import { OptionGroup } from '../../types/item.js';
+import { OptionGroup } from '../../@types/item.js';
 
 export class ProfileRepository {
   private prisma: PrismaClient;

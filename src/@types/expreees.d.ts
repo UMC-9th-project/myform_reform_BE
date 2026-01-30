@@ -1,10 +1,10 @@
 import 'express';
-import { AuthStatus, Role } from '../src/routes/auth/auth.dto.ts';
+import { AuthStatus, Role } from '../routes/auth/auth.dto.ts';
 
 export interface CustomJwt {
   id: string;
   role: Role;
-  auth_status: AuthStatus;
+  auth_status?: AuthStatus;
   iat?: number; // JWT issued at
   exp?: number; // JWT expiration
 }

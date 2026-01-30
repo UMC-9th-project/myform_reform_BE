@@ -7,7 +7,7 @@ import {
   reform_request_photo,
   target_type_enum
 } from '@prisma/client';
-import { Category } from '../../types/item.js';
+import { Category } from '../../@types/item.js';
 import { AddQuoteReq, ReformRequestReq } from './reform.req.dto.js';
 
 export interface Reform {

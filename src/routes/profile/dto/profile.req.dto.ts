@@ -1,5 +1,5 @@
-import { UUID } from '../../../types/common.js';
-import { Category, OptionGroup } from '../../../types/item.js';
+import { UUID } from '../../../@types/common.js';
+import { Category, OptionGroup } from '../../../@types/item.js';
 
 // 판매관리 조회 요청 DTO
 export class SaleRequestDto {

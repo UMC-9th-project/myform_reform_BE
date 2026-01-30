@@ -1,4 +1,4 @@
-import { Category } from '../../types/item.js';
+import { Category } from '../../@types/item.js';
 
 export interface AddQuoteReq {
   userId: string;
