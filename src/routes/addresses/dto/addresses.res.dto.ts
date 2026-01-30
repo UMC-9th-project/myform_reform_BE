@@ -5,7 +5,7 @@ export class AddressesResponseDto {
   postalCode: string;
   address: string;
   addressDetail: string;
-  isDefault: boolean;
+  isDefault?: boolean;
   phone: string;
   recipient: string;
   addressName?: string;

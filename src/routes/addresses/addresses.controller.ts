@@ -10,6 +10,8 @@ import {
   Response,
   Post,
   Body,
+  Delete,
+  Path,
 } from 'tsoa';
 import { AddressesService } from './addresses.service.js';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
@@ -71,8 +73,30 @@ export class AddressesController extends Controller {
       throw new ForbiddenError('사용자만 주소를 추가할 수 있습니다.');
     }
     const userId = payload.id;
-
     const address = await this.addressesService.createAddress(userId, requestBody);
     return new ResponseHandler<AddressesResponseDto>(address);
+  }
+
+  /**
+   * @summary 주소록에 주소를 삭제합니다.
+   * @description 주소록에 주소를 삭제합니다.
+   * @returns 주소 삭제 결과
+   */
+
+  @Security('jwt', ['user'])
+  @Delete('/{addressId}')
+  @SuccessResponse(200, '주소 삭제 성공')
+  @Response<ErrorResponse>('400', '주소 삭제 오류')
+  @Response<ErrorResponse>('500', '서버 내부 오류')
+  public async deleteAddress(
+    @Path() addressId: string, @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = (req as any).user;
+    if (payload.role !== 'user') {
+      throw new ForbiddenError('사용자만 주소를 삭제할 수 있습니다.');
+    }
+    const userId = payload.id;
+    const result = await this.addressesService.deleteAddress(userId, addressId);
+    return new ResponseHandler<string>(result);
   }
 }

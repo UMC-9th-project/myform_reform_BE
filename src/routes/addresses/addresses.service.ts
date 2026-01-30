@@ -1,15 +1,16 @@
-import { AddressesCreateInput, AddressesCreateRequestDto, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
+import { AddressesCreateInput, AddressesCreateRequestDto, AddressesDeleteInput, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
 import { AddressesResponseDto } from './dto/addresses.res.dto.js';
 import { AddressesRepository } from './addresses.repository.js';
 import { AddressesGetError } from './addresses.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
-import { validatePhoneNumber } from '../../utils/validators.js';
+import { validatePhoneNumber, validatePostalCode } from '../../utils/validators.js';
 import { InputValidationError } from '../auth/auth.error.js';
 export class AddressesService {
   private addressesRepository: AddressesRepository;
   constructor() {
     this.addressesRepository = new AddressesRepository();
   }
+  // 주소를 조회합니다.
   async getAddresses(dto: AddressesGetRequestDto): Promise<AddressesResponseDto[]> {   
     try {
       const addresses = await this.addressesRepository.getAddresses(dto);
@@ -20,18 +21,28 @@ export class AddressesService {
     }
   }
 
+  // 주소를 생성합니다.
   async createAddress(userId: string, requestBody: AddressesCreateRequestDto): Promise<AddressesResponseDto> {
     return await runInTransaction(async () => {
+      this.validateAddress(requestBody);
       const input = new AddressesCreateInput(userId, requestBody);
       const address = await this.addressesRepository.createAddress(input);
       return new AddressesResponseDto(address);
     });
   }
+
+  // 주소를 삭제합니다.
+  async deleteAddress(userId: string, addressId: string): Promise<string> {
+    return await runInTransaction(async () => {
+      const input = new AddressesDeleteInput(userId, addressId);
+      await this.addressesRepository.deleteAddress(input);
+      return '주소 삭제가 완료되었습니다.';
+    });
+  }
   private validateAddress(requestBody: AddressesCreateRequestDto): void {
     const { postalCode, recipient, phone } = requestBody;
-    if (postalCode.length !== 5) {
-      throw new InputValidationError('유효하지 않은 우편번호 형식입니다. 입력받은 우편번호 : ${postalCode}');
-    }
+    // 숫자 만으로 구성된 우편번호 형식인지 확인
+    validatePostalCode(postalCode);
     if (recipient.length === 0) {
       throw new InputValidationError('수령인은 필수 입력 항목입니다.');
     }

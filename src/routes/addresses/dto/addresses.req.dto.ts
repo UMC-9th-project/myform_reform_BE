@@ -57,3 +57,13 @@ export class AddressesCreateInput{
     this.phone = requestBody.phone;
   }
 }
+
+export class AddressesDeleteInput{
+  userId: string;
+  addressId: string;
+
+  constructor(userId: string, addressId: string) {
+    this.userId = userId;
+    this.addressId = addressId;
+  }
+}
