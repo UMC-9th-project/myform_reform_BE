@@ -62,3 +62,20 @@ export class InvalidChatMessageTypeError extends BasicError {
   }
 }
 
+/**
+ * 웹소켓 핸드쉐이크시 인증 정보가 없을 때 발생하는 에러
+ */
+export class ChatWebSocketAuthError extends BasicError {
+  constructor(message: string) {
+    super(401, 'CHAT-4005', '웹소켓 인증에 실패했습니다.', message);
+  }
+}
+
+/**
+ * 채팅방 리소스에 접근 권한이 없을 때 발생하는 에러
+ */
+export class ChatRoomAccessDeniedError extends BasicError {
+  constructor(message: string) {
+    super(403, 'CHAT-4006', '채팅방 리소스에 대한 접근이 거부되었습니다.', message);
+  }
+}

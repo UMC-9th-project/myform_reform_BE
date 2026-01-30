@@ -364,6 +364,7 @@ export class ChatRepository {
           // 차후 db 설계 변경시 수정 예정
           chat_message: {
             select: {
+              chat_room_id: true,
               chat_room_chat_message_chat_room_idTochat_room: {
                 select: {
                   user: {
@@ -442,6 +443,7 @@ export class ChatRepository {
           // 차후 db 설계 변경시 수정 예정
           chat_message: {
             select: {
+              chat_room_id: true,
               chat_room_chat_message_chat_room_idTochat_room: {
                 select: {
                   owner: {
@@ -584,6 +586,70 @@ export class ChatRepository {
     }
   }
 
+  async isUserInChatRoom(
+    roomId: string,
+    userId: string,
+    isOwner: boolean
+  ): Promise<boolean> {
+    try {
+      const condition = isOwner
+        ? { owner_id: userId }
+        : { requester_id: userId };
+      const count = await prisma.chat_room.count({
+        where: {
+          chat_room_id: roomId,
+          ...condition
+        }
+      });
+
+      return count > 0;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async isMyChatRequest(
+    requestId: string,
+    userId: string
+  ): Promise<boolean> {
+    try {
+      const count = await prisma.chat_request.count({
+        where: {
+          chat_request_id: requestId,
+          chat_message: {
+            chat_room_chat_message_chat_room_idTochat_room: {
+              requester_id: userId
+            }
+          }
+        }
+      });
+      return count > 0;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async isMyChatProposal(
+    proposalId: string,
+    userId: string  
+  ): Promise<boolean> {
+    try {
+      const count = await prisma.chat_proposal.count({
+        where: {
+          chat_proposal_id: proposalId,
+          chat_message: {
+            chat_room_chat_message_chat_room_idTochat_room: {
+              owner_id: userId
+            }
+          }
+        }
+      });
+      return count > 0;
+    }
+    catch (error) {
+      throw handleDbError(error);
+    }
+  }
 }
 
 export class TargetRepository {
