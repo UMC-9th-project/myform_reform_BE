@@ -13,12 +13,12 @@ export class AddressesResponseDto {
   
   constructor(addressInfo: delivery_address) {
     this.addressId = addressInfo.delivery_address_id;
-    this.recipient = addressInfo.recipient!;
-    this.phone = addressInfo.phone!;
-    this.postalCode = addressInfo.postal_code!;
-    this.address = addressInfo.address!;
-    this.isDefault = addressInfo.is_default ?? false;
+    this.recipient = addressInfo.recipient ?? "";
+    this.phone = addressInfo.phone ?? "";
+    this.postalCode = addressInfo.postal_code;
+    this.address = addressInfo.address;
     this.addressDetail = addressInfo.address_detail ?? "";
+    this.isDefault = addressInfo.is_default ?? false;
     this.addressName = addressInfo.address_name ?? "";
     this.createdAt = addressInfo.created_at!;
   }
