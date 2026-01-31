@@ -82,3 +82,19 @@ export interface ReformDetailRequestResponseDto {
   name: string;
   profile: string;
 }
+
+export interface ReformDetailProposalResponseDto {
+  reformProposalId: UUID;
+  title: string;
+  price: number;
+  delivery: number;
+  expectedWorking: number;
+  isOwner: boolean;
+  images: {
+    photo: string;
+    photo_order: number;
+  }[];
+  content: string;
+  ownerName: string;
+  ownerProfile: string;
+}

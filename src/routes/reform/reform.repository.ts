@@ -1,20 +1,14 @@
-import {
-  reform_proposal,
-  reform_proposal_photo,
-  reform_request,
-  reform_request_photo
-} from '@prisma/client';
 import prisma from '../../config/prisma.config.js';
-import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
-import { ReformDBError } from './reform.error.js';
-import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { ReformFilter } from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
 import {
+  RawProposalDetail,
+  RawProposalDetailImages,
   RawProposalLatest,
   RawRequestDetail,
   RawRequestDetailImages,
   RawRequestLatest,
+  ReformProposalUpdate,
   ReformRequestCreate,
   ReformRequestUpdate
 } from './reform.model.js';
@@ -187,38 +181,6 @@ export class ReformRepository {
     });
   }
 
-  // async addRequest(dto: ReformRequestDto): Promise<void> {
-  //   const { userId, images, category, ...data } = dto;
-  //   await this.prisma.$transaction(async (tx) => {
-  //     const categorydata = await tx.category.findFirst({
-  //       where: { name: category.sub },
-  //       select: { category_id: true }
-  //     });
-  //     const ans = await tx.reform_request.create({
-  //       data: {
-  //         user_id: userId,
-  //         title: data.title,
-  //         content: data.contents,
-  //         min_budget: data.minBudget,
-  //         max_budget: data.maxBudget,
-  //         due_date: data.dueDate,
-  //         category_id: categorydata!.category_id
-  //       }
-  //     });
-  //     for (const img of images) {
-  //       await tx.reform_request_photo.create({
-  //         data: {
-  //           reform_request_id: ans.reform_request_id,
-  //           content: img.content,
-  //           photo_order: img.photo_order
-  //         }
-  //       });
-  //     }
-  //     // 큐 등록
-
-  //   });
-  // }
-
   async insertRequest(
     dto: ReformRequestCreate,
     categoryId: UUID
@@ -290,22 +252,44 @@ export class ReformRepository {
     return { images, body };
   }
 
-  async findDetailProposal(
-    id: string
-  ): Promise<{ images: reform_proposal_photo[]; body: reform_proposal }> {
+  async checkProposalOwner(ownerId: UUID, proposalId: UUID) {
+    return (
+      (await prisma.reform_proposal.findFirst({
+        where: {
+          reform_proposal_id: proposalId,
+          owner_id: ownerId
+        }
+      })) !== null
+    );
+  }
+
+  async selectDetailProposal(id: UUID): Promise<{
+    images: RawProposalDetailImages[];
+    body: RawProposalDetail | null;
+  }> {
     const [images, body] = await Promise.all([
       this.prisma.reform_proposal_photo.findMany({
-        where: { reform_proposal_id: id }
+        where: { reform_proposal_id: id },
+        select: { content: true, photo_order: true }
       }),
-      this.prisma.reform_proposal.findUnique({
-        where: { reform_proposal_id: id }
+      this.prisma.reform_proposal.findFirst({
+        where: { reform_proposal_id: id },
+        select: {
+          reform_proposal_id: true,
+          title: true,
+          content: true,
+          price: true,
+          delivery: true,
+          expected_working: true,
+          owner: {
+            select: {
+              name: true,
+              profile_photo: true
+            }
+          }
+        }
       })
     ]);
-
-    if (!body) {
-      throw new ReformDBError('해당 상품이 존재하지 않습니다');
-    }
-
     return { images, body };
   }
 
@@ -352,6 +336,54 @@ export class ReformRepository {
       }
 
       return data.requestId;
+    });
+    return result;
+  }
+
+  async updateProposal(
+    dto: ReformProposalUpdate,
+    categoryId?: UUID
+  ): Promise<string> {
+    const data = dto.toUpdateData();
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updateData: {
+        title?: string;
+        content?: string;
+        price?: number;
+        delivery?: number;
+        expected_working?: number;
+        category_id?: string;
+      } = {};
+
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.contents !== undefined) updateData.content = data.contents;
+      if (data.price !== undefined) updateData.price = data.price;
+      if (data.delivery !== undefined) updateData.delivery = data.delivery;
+      if (data.expectedWorking !== undefined)
+        updateData.expected_working = data.expectedWorking;
+      if (categoryId !== undefined) updateData.category_id = categoryId;
+
+      await tx.reform_proposal.update({
+        where: { reform_proposal_id: data.proposalId },
+        data: updateData
+      });
+
+      // 이미지가 있으면 기존 이미지 삭제 후 새 이미지 추가
+      if (data.images !== undefined && data.images.length > 0) {
+        await tx.reform_proposal_photo.deleteMany({
+          where: { reform_proposal_id: data.proposalId }
+        });
+
+        await tx.reform_proposal_photo.createMany({
+          data: data.images.map((img, index) => ({
+            reform_proposal_id: data.proposalId,
+            content: img,
+            photo_order: index + 1
+          }))
+        });
+      }
+
+      return data.proposalId;
     });
     return result;
   }

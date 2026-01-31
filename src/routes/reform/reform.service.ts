@@ -11,7 +11,9 @@ import {
   ReformProposalFactory,
   ReformRequestCreate,
   ReformDetailRequestResponse,
-  ReformRequestUpdate
+  ReformDetailProposalResponse,
+  ReformRequestUpdate,
+  ReformProposalUpdate
 } from './reform.model.js';
 import { ReformRepository } from './reform.repository.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
@@ -215,16 +217,96 @@ export class ReformService {
     }
   }
 
-  // async findDetailProposal(id: string): Promise<ProposalDetailDto> {
-  //   try {
-  //     const ans = await this.reformRepository.findDetailProposal(id);
-  //     const dto = new ProposalDetailDto(ans.body, ans.images);
-  //     return dto;
-  //   } catch (err: any) {
-  //     console.error(err);
-  //     throw new ReformError(err);
-  //   }
-  // }
+  async findDetailProposal(
+    payload: CustomJwt,
+    proposalId: string
+  ): Promise<ReformDetailProposalResponse> {
+    try {
+      const isOwner = await this.reformRepository.checkProposalOwner(
+        payload.id,
+        proposalId
+      );
+      const { images, body } =
+        await this.reformRepository.selectDetailProposal(proposalId);
+      if (body === null || images.length === 0)
+        throw new ReformError('존재하지 않는 제안서입니다.');
+
+      const dto = ReformProposalFactory.createFromDetailRaw(
+        body,
+        images,
+        isOwner
+      );
+
+      return dto;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async modifyProposal(dto: ReformProposalUpdate): Promise<string> {
+    try {
+      const data = dto.toUpdateData();
+
+      // 소유자 확인
+      const isOwner = await this.reformRepository.checkProposalOwner(
+        data.ownerId,
+        data.proposalId
+      );
+      if (!isOwner)
+        throw new ReformError('본인의 제안서만 수정할 수 있습니다.');
+
+      // 유효성 검사
+      if (data.title !== undefined && data.title.length > 40)
+        throw new ReformError('제목은 40자를 넘길 수 없습니다');
+
+      if (data.contents !== undefined && data.contents.length > 1000)
+        throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+      if (data.images !== undefined && data.images.length > 10)
+        throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+      if (
+        data.price !== undefined &&
+        (data.price < 0 || data.price > 999999999)
+      )
+        throw new ReformError('가격은 0원~999999999원 까지입니다.');
+
+      if (
+        data.delivery !== undefined &&
+        (data.delivery < 0 || data.delivery > 999999999)
+      )
+        throw new ReformError('배송비는 0원~999999999원 까지입니다.');
+
+      if (
+        data.expectedWorking !== undefined &&
+        (data.expectedWorking < 0 || data.expectedWorking > 365)
+      )
+        throw new ReformError('예상 작업일은 0일~365일 까지입니다.');
+
+      // 카테고리 ID 조회
+      let categoryId: string | undefined;
+      if (data.category !== undefined) {
+        const categoryIds = await this.reformRepository.getCategoryIds(
+          data.category
+        );
+        if (categoryIds.length === 0)
+          throw new ReformError('존재하지 않는 카테고리입니다');
+        categoryId = categoryIds[0];
+      }
+
+      const ans = await this.reformRepository.updateProposal(dto, categoryId);
+
+      await addSearchSyncJob({
+        type: 'PROPOSAL',
+        id: ans,
+        action: 'UPSERT'
+      });
+
+      return ans;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
 
   // async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
   //   try {

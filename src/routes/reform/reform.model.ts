@@ -1,10 +1,16 @@
 import { Prisma } from '@prisma/client';
 import {
+  ReformDetailProposalResponseDto,
   ReformDetailRequestResponseDto,
   ReformProposalResponseDto,
   ReformRequestResponseDto
 } from './dto/reform.res.dto.js';
-import { ModifyRequestRequest, ReformRequestRequest } from './dto/reform.req.dto.js';
+import {
+  ModifyProposalRequest,
+  ModifyRequestRequest,
+  ReformProposalRequest,
+  ReformRequestRequest
+} from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
 
 export interface ReformRequestCreateData {
@@ -26,6 +32,29 @@ export interface ReformRequestUpdateData {
   minBudget?: number;
   maxBudget?: number;
   dueDate?: Date;
+  category?: Category;
+  title?: string;
+}
+
+export interface ReformProposalCreateData {
+  ownerId: string;
+  images: string[];
+  contents: string;
+  price: number;
+  delivery: number;
+  expectedWorking: number;
+  category: Category;
+  title: string;
+}
+
+export interface ReformProposalUpdateData {
+  proposalId: string;
+  ownerId: string;
+  images?: string[];
+  contents?: string;
+  price?: number;
+  delivery?: number;
+  expectedWorking?: number;
   category?: Category;
   title?: string;
 }
@@ -87,6 +116,27 @@ export type RawRequestDetailImages = Prisma.reform_request_photoGetPayload<{
   select: { content: true; photo_order: true };
 }>;
 
+export type RawProposalDetail = Prisma.reform_proposalGetPayload<{
+  select: {
+    reform_proposal_id: true;
+    title: true;
+    content: true;
+    price: true;
+    delivery: true;
+    expected_working: true;
+    owner: {
+      select: {
+        name: true;
+        profile_photo: true;
+      };
+    };
+  };
+}>;
+
+export type RawProposalDetailImages = Prisma.reform_proposal_photoGetPayload<{
+  select: { content: true; photo_order: true };
+}>;
+
 // 조회용 응답 클래스
 export class ReformRequestResponse {
   private readonly props: ReformRequestResponseDto;
@@ -106,6 +156,17 @@ export class ReformDetailRequestResponse {
   }
 
   toDto(): ReformDetailRequestResponseDto {
+    return { ...this.props };
+  }
+}
+
+export class ReformDetailProposalResponse {
+  private readonly props: ReformDetailProposalResponseDto;
+  constructor(props: ReformDetailProposalResponseDto) {
+    this.props = props;
+  }
+
+  toDto(): ReformDetailProposalResponseDto {
     return { ...this.props };
   }
 }
@@ -222,6 +283,32 @@ export class ReformProposalResponse {
   }
 }
 
+// 제안서 생성용 클래스
+export class ReformProposalCreate {
+  private readonly data: ReformProposalCreateData;
+
+  constructor(data: ReformProposalCreateData) {
+    this.data = data;
+  }
+
+  toCreateData(): ReformProposalCreateData {
+    return { ...this.data };
+  }
+}
+
+// 제안서 수정용 클래스
+export class ReformProposalUpdate {
+  private readonly data: ReformProposalUpdateData;
+
+  constructor(data: ReformProposalUpdateData) {
+    this.data = data;
+  }
+
+  toUpdateData(): ReformProposalUpdateData {
+    return { ...this.data };
+  }
+}
+
 // 제안서 팩토리 클래스
 export class ReformProposalFactory {
   static createFromRaw(raw: RawProposalLatest): ReformProposalResponse {
@@ -233,6 +320,64 @@ export class ReformProposalFactory {
       avgStar: raw.avg_star?.toNumber() ?? 0,
       reviewCount: raw.review_count ?? 0,
       ownerName: raw.owner.name ?? ''
+    });
+  }
+
+  static createFromDetailRaw(
+    rawBody: RawProposalDetail,
+    rawPhoto: RawProposalDetailImages[],
+    isOwner: boolean
+  ): ReformDetailProposalResponse {
+    return new ReformDetailProposalResponse({
+      isOwner: isOwner,
+      reformProposalId: rawBody.reform_proposal_id,
+      title: rawBody.title ?? '',
+      content: rawBody.content ?? '',
+      price: rawBody.price?.toNumber() ?? 0,
+      delivery: rawBody.delivery?.toNumber() ?? 0,
+      expectedWorking: rawBody.expected_working?.toNumber() ?? 0,
+      ownerName: rawBody.owner.name ?? '',
+      ownerProfile: rawBody.owner.profile_photo ?? '',
+      images: rawPhoto.map((props) => {
+        return {
+          photo: props.content ?? '',
+          photo_order: props.photo_order ?? 0
+        };
+      })
+    });
+  }
+
+  static createFromRequest(
+    req: ReformProposalRequest,
+    ownerId: string
+  ): ReformProposalCreate {
+    return new ReformProposalCreate({
+      ownerId,
+      images: req.images,
+      contents: req.contents,
+      price: req.price,
+      delivery: req.delivery,
+      expectedWorking: req.expectedWorking,
+      category: req.category,
+      title: req.title
+    });
+  }
+
+  static createFromModifyRequest(
+    req: ModifyProposalRequest,
+    proposalId: string,
+    ownerId: string
+  ): ReformProposalUpdate {
+    return new ReformProposalUpdate({
+      proposalId,
+      ownerId,
+      images: req.images,
+      contents: req.contents,
+      price: req.price,
+      delivery: req.delivery,
+      expectedWorking: req.expectedWorking,
+      category: req.category,
+      title: req.title
     });
   }
 }

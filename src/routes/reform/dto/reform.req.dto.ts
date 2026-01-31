@@ -53,6 +53,40 @@ export interface ModifyRequestRequest {
   category?: Category;
 }
 
+export interface ReformProposalRequest {
+  /** @example ["https://image.png"] */
+  images: string[];
+  /** @example "맞춤 자켓 제작" */
+  title: string;
+  /** @example "고객님의 사이즈에 맞춰 자켓을 제작해드립니다" */
+  contents: string;
+  /** @example 150000 */
+  price: number;
+  /** @example 3000 */
+  delivery: number;
+  /** @example 14 */
+  expectedWorking: number;
+  /** @example {"major" : "의류", "sub" : "상의"} */
+  category: Category;
+}
+
+export interface ModifyProposalRequest {
+  /** @example ["https://image.png"] */
+  images?: string[];
+  /** @example "제목 수정" */
+  title?: string;
+  /** @example "내용 수정" */
+  contents?: string;
+  /** @example 150000 */
+  price?: number;
+  /** @example 3000 */
+  delivery?: number;
+  /** @example 14 */
+  expectedWorking?: number;
+  /** @example {"major" : "의류", "sub" : "상의"} */
+  category?: Category;
+}
+
 export class ReformFilter {
   sortBy: 'RECENT' | 'POPULAR' = 'RECENT';
   page: number = 1;
