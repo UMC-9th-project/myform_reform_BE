@@ -113,3 +113,10 @@ export const processKeywords = (keywords: string[]): string[] => {
   )];
   return uniqueKeywords;
 }
+
+export const validatePostalCode = (postalCode: string): void => {
+  const postalCodeRegex = /^[0-9]{5}$/;
+  if (!postalCodeRegex.test(postalCode)){
+    throw new InputValidationError(`유효하지 않은 우편번호 형식입니다. 입력받은 우편번호 : ${postalCode}`);
+  }
+};
