@@ -22,6 +22,17 @@ export class PartialCartNotFoundError extends BasicError {
   }
 }
 
+export class UnauthorizedCartAccessError extends BasicError {
+  constructor(cartIds: string[]) {
+    super(
+      403,
+      'CART-403',
+      'Unauthorized cart access',
+      `${cartIds.join(',')}에 해당하는 장바구니 아이템에 대한 권한이 없거나 존재하지 않습니다.`
+    );
+  }
+}
+
 export class ValidationError extends BasicError {
   constructor(description: any) {
     super(400, 'ERR-VALIDATION', 'Validation failed', description);
@@ -52,6 +63,11 @@ export class PartialOptionItemNotFoundError extends BasicError {
 
 export class IncompleteOptionSelectionError extends BasicError {
   constructor(description: any) {
-    super(422, 'OPTION-422-INCOMPLETE', 'Incomplete option selection', description);
+    super(
+      422,
+      'OPTION-422-INCOMPLETE',
+      'Incomplete option selection',
+      description
+    );
   }
 }

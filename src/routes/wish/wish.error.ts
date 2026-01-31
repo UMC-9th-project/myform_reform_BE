@@ -11,13 +11,13 @@ export class UserReqForbiddenError extends BasicError {
   }
 }
 
-export class OwnerReqForbiddenError extends BasicError {
+export class ReformerReqForbiddenError extends BasicError {
   constructor() {
     super(
       403,
       'Wish-403',
       'RoleForbiddenError',
-      'OWNER는 REQUEST 타입만 생성할 수 있습니다.'
+      'REFORMER는 REQUEST 타입만 생성할 수 있습니다.'
     );
   }
 }
