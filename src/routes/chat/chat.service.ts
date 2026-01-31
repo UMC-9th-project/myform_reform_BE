@@ -1,9 +1,9 @@
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO } from './chat.dto.js';
+import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
-import { v4, v7 } from 'uuid'
+import { v4, v7 } from 'uuid';
 
 export class ChatService {
   
@@ -287,5 +287,119 @@ export class ChatService {
       };
   }
 
+  // 채팅 요청서 수정
+  async updateChatRequest(
+    requestId: string,
+    data: UpdateChatRequestDTO
+  ): Promise<SimplePatchResponseDTO> {
+    return await runInTransaction(async () => {
+      const updateData: any = {};
+      
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.content !== undefined) updateData.content = data.content;
+      if (data.minBudget !== undefined) updateData.min_budget = data.minBudget;
+      if (data.maxBudget !== undefined) updateData.max_budget = data.maxBudget;
+      if (data.image !== undefined) updateData.image = data.image;
 
+      const updated = await this.chatRepository.updateChatRequest(requestId, updateData);
+
+      // 메시지의 payload도 함께 업데이트
+      if (updated.message_id) {
+        // 현재 payload 조회
+        const message = await this.chatRepository.getChatMessageById(updated.message_id);
+        
+        if (message) {
+          const currentPayload = message.payload as any || {};
+          
+          // payload 업데이트 데이터 생성
+          const newPayload = {
+            ...currentPayload,
+            ...(data.title !== undefined && { title: data.title }),
+            ...(data.minBudget !== undefined && { minBudget: data.minBudget }),
+            ...(data.maxBudget !== undefined && { maxBudget: data.maxBudget })
+          };
+
+          // 메시지 payload 업데이트
+          await this.chatRepository.updateChatMessagePayload(updated.message_id, newPayload);
+        }
+      }
+
+      return {
+        id: updated.chat_request_id,
+        updatedAt: updated.updated_at!
+      };
+    });
+  }
+
+  // 채팅 제안서 수정
+  async updateChatProposal(
+    proposalId: string,
+    data: UpdateChatProposalDTO
+  ): Promise<SimplePatchResponseDTO> {
+    return await runInTransaction(async () => {
+      const updateData: any = {};
+      
+      if (data.price !== undefined) updateData.price = data.price;
+      if (data.delivery !== undefined) updateData.delivery = data.delivery;
+      if (data.expectedWorking !== undefined) updateData.expected_working = data.expectedWorking;
+
+      const updated = await this.chatRepository.updateChatProposal(proposalId, updateData);
+
+      // 메시지의 payload도 함께 업데이트
+      if (updated.message_id) {
+        // 현재 payload 조회
+        const message = await this.chatRepository.getChatMessageById(updated.message_id);
+        
+        if (message) {
+          const currentPayload = message.payload as any || {};
+          
+          // payload 업데이트 데이터 생성
+          const newPayload = {
+            ...currentPayload,
+            ...(data.price !== undefined && { price: data.price }),
+            ...(data.delivery !== undefined && { delivery: data.delivery }),
+            ...(data.expectedWorking !== undefined && { expected_working: data.expectedWorking })
+          };
+
+          // 메시지 payload 업데이트
+          await this.chatRepository.updateChatMessagePayload(updated.message_id, newPayload);
+        }
+      }
+
+      return {
+        id: updated.chat_proposal_id,
+        updatedAt: updated.updated_at!
+      };
+    });
+  }
+
+
+  async getChatMessages(
+    roomId: string,
+    cursor?: string,
+    limit: number = 20
+  ): Promise<ChatMessageListDTO> {
+    // limit + 1개를 조회하여 다음 페이지 존재 여부 확인
+    const messages = await this.chatRepository.getChatMessagesByRoomId(roomId, cursor, limit);
+
+    const hasMore = messages.length > limit;
+    const data = hasMore ? messages.slice(0, limit) : messages;
+    const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].message_id : null;
+
+    return {
+      data: data.map(msg => ({
+        messageId: msg.message_id,
+        senderId: msg.sender_id,
+        senderType: msg.sender_type,
+        messageType: msg.message_type,
+        textContent: msg.text_content,
+        payload: msg.payload,
+        createdAt: msg.created_at!
+      })),
+      meta: {
+        nextCursor: nextCursor ?? '',
+        hasMore
+      }
+    };
+  }
 }

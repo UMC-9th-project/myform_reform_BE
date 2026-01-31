@@ -4,7 +4,6 @@ import { handleDbError } from '../../utils/dbErrorHandler.js';
 import { ChatMessage, ChatRoom, MessageType } from './chat.model.js';
 import { Prisma } from '@prisma/client';
 import { ChatRoomPreviewDTO, ChatRoomListDTO } from './chat.dto.js';
-import { Message } from 'aws-sdk/clients/cloudwatch.js';
 
 interface RepoParams {
   myId: string;
@@ -128,7 +127,7 @@ export class ChatRepository {
                 profile_photo: true
               }
             },
-            requester: {
+            user: {
               select: {
                 nickname: true,
                 profile_photo: true
@@ -184,7 +183,7 @@ export class ChatRepository {
         ? JSON.parse(row.target_payload)
         : row.target_payload;
 
-    const opponent = isFeed ? (isOwner ? row.requester : row.owner) : null;
+    const opponent = isFeed ? (isOwner ? row.user : row.owner) : null;
     const lastMessage =
       row.chat_message_chat_room_last_message_idTochat_message;
 
@@ -298,8 +297,8 @@ export class ChatRepository {
           UPDATE chat_room 
           SET owner_last_read_id = last_message_id,
               owner_unread_count = 0
-          WHERE chat_room_id = ${chatRoomId}
-            AND owner_id = ${readerId}
+          WHERE chat_room_id = ${chatRoomId}::uuid
+            AND owner_id = ${readerId}::uuid
             AND is_active = true
             AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
             AND (owner_last_read_id IS NULL OR owner_last_read_id != last_message_id) -- 업데이트가 필요할 때만
@@ -309,8 +308,8 @@ export class ChatRepository {
           UPDATE chat_room 
           SET requester_last_read_id = last_message_id,
               requester_unread_count = 0
-          WHERE chat_room_id = ${chatRoomId}
-            AND requester_id = ${readerId}
+          WHERE chat_room_id = ${chatRoomId}::uuid
+            AND requester_id = ${readerId}::uuid
             AND is_active = true
             AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
             AND (requester_last_read_id IS NULL OR requester_last_read_id != last_message_id) -- 업데이트가 필요할 때만
@@ -348,7 +347,7 @@ export class ChatRepository {
   }
   async getChatRequestById(requestId: string) {
     try {
-      return await prisma.chat_requet.findUnique({
+      return await prisma.chat_request.findUnique({
         where: {
           chat_request_id: requestId
         },
@@ -462,6 +461,129 @@ export class ChatRepository {
       throw handleDbError(error);
     }
   }
+
+  async updateChatRequest(
+    requestId: string,
+    updateData: {
+      image?: string[] | null;
+      title?: string;
+      content?: string;
+      minBudget?: number | null;
+      maxBudget?: number | null;
+    }
+  ) {
+    try {
+      const data: any = {};
+      if (updateData.image !== undefined) data.image = updateData.image;
+      if (updateData.title !== undefined) data.title = updateData.title;
+      if (updateData.content !== undefined) data.content = updateData.content;
+      if (updateData.minBudget !== undefined) data.min_budget = updateData.minBudget;
+      if (updateData.maxBudget !== undefined) data.max_budget = updateData.maxBudget;
+
+      return await prisma.chat_request.update({
+        where: {
+          chat_request_id: requestId
+        },
+        data,
+        select: {
+          chat_request_id: true,
+          message_id: true,
+          updated_at: true
+        }
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async updateChatProposal(
+    proposalId: string,
+    updateData: {
+      price?: number;
+      delivery?: number;
+      expectedWorking?: number;
+    }
+  ) {
+    try {
+      const data: any = {};
+      if (updateData.price !== undefined) data.price = updateData.price;
+      if (updateData.delivery !== undefined) data.delivery = updateData.delivery;
+      if (updateData.expectedWorking !== undefined) data.expected_working = updateData.expectedWorking;
+
+      return await prisma.chat_proposal.update({
+        where: {
+          chat_proposal_id: proposalId
+        },
+        data,
+        select: {
+          chat_proposal_id: true,
+          message_id: true,
+          updated_at: true
+        }
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async updateChatMessagePayload(
+    messageId: string,
+    payload: any
+  ) {
+    try {
+      return await prisma.chat_message.update({
+        where: { message_id: messageId },
+        data: { payload: payload as unknown as Prisma.InputJsonValue }
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async getChatMessageById(messageId: string) {
+    try {
+      return await prisma.chat_message.findUnique({
+        where: { message_id: messageId },
+        select: {
+          message_id: true,
+          sender_id: true,
+          sender_type: true,
+          message_type: true,
+          text_content: true,
+          payload: true,
+          created_at: true
+        }
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
+  async getChatMessagesByRoomId(
+    roomId: string,
+    cursor?: string,
+    limit: number = 20
+  ) {
+    try {
+      const whereClause: Prisma.chat_messageWhereInput = {
+        chat_room_id: roomId,
+        ...(cursor && { message_id: { lt: cursor } })
+      };
+
+      const messages = await prisma.chat_message.findMany({
+        where: whereClause,
+        orderBy: [
+          { message_id: 'desc' }
+        ],
+        take: limit + 1
+      });
+
+      return messages;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
 }
 
 export class TargetRepository {
