@@ -1,4 +1,4 @@
-import { AddressesCreateInput, AddressesCreateRequestDto, AddressesDeleteInput, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
+import { AddressesCreateInput, AddressesCreateRequestDto, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
 import { AddressesResponseDto } from './dto/addresses.res.dto.js';
 import { AddressesRepository } from './addresses.repository.js';
 import { AddressesGetError, AddressNotFoundError } from './addresses.error.js';
@@ -30,7 +30,7 @@ export class AddressesService {
         await this.addressesRepository.clearDefaultStatusByUserId(userId)
       } else {
       const isFirstAddress = await this.addressesRepository.existsByUserId(userId)
-        if (isFirstAddress) {
+        if (!isFirstAddress) {
           requestBody.isDefault = true;
         }
       }
@@ -43,22 +43,23 @@ export class AddressesService {
   // 주소를 삭제합니다.
   async deleteAddress(userId: string, addressId: string): Promise<string> {
     return await runInTransaction(async () => {
-      const input = new AddressesDeleteInput(userId, addressId);
-      const targetAddress = await this.addressesRepository.getAddressById(addressId);
+      const targetAddress = await this.addressesRepository.getAddressById(addressId, userId);
       if (!targetAddress) {
-        throw new AddressNotFoundError('입력 받은 주소를 찾을 수 없습니다.');
+        throw new AddressNotFoundError('입력 받은 주소를 찾을 수 없거나 삭제 권한이 없습니다.');
       }
       await this.addressesRepository.deleteAddressById(addressId);
       if (targetAddress.is_default) {
-        const nextDefaultAddress = await this.addressesRepository.getNextDefaultAddress(userId);
-        if (nextDefaultAddress) {
-          await this.addressesRepository.updateDefaultStatusByUserId(nextDefaultAddress.delivery_address_id, { is_default: true });
+        const nextDefaultCandidate = await this.addressesRepository.getNextDefaultAddress(userId);
+        if (nextDefaultCandidate) {
+          await this.addressesRepository.updateDefaultStatusByUserId(
+            nextDefaultCandidate.delivery_address_id, 
+            true);
         }
       }
-      await this.addressesRepository.deleteAddress(input);
       return '주소 삭제가 완료되었습니다.';
     });
   }
+
   private validateAddress(requestBody: AddressesCreateRequestDto): void {
     const { postalCode, recipient, phone } = requestBody;
     // 숫자 만으로 구성된 우편번호 형식인지 확인

@@ -1,12 +1,9 @@
-import { delivery_address, PrismaClient } from '@prisma/client';
+import { delivery_address } from '@prisma/client';
 import prisma from '../../config/prisma.config.js';
-import { AddressesCreateInput, AddressesDeleteInput, AddressesGetRequestDto } from './dto/addresses.req.dto.js'; 
-import { Prisma } from '@prisma/client';
-import { AddressNotFoundError } from './addresses.error.js';
+import { AddressesCreateInput, AddressesGetRequestDto } from './dto/addresses.req.dto.js'; 
 
 export class AddressesRepository {
   // 주소 목록을 조회합니다. 기본 주소가 상단에 오도록 정렬합니다.
-  
   async getAddresses(dto: AddressesGetRequestDto): Promise<delivery_address[]> {
     const { userId, page, limit, createdAtOrder } = dto;
 
@@ -23,10 +20,7 @@ export class AddressesRepository {
     });
   }
 
-  // 주소를 생성합니다. Service에서 runInTransaction 사용하여 트랜잭션 처리
-  // 기본 주소 설정 시 기존 기본 주소가 해제됩니다. 
-  // 또한, 기본 주소가 없는 경우 첫 주소를 기본 주소로 설정합니다.
-
+  // 기본 주소를 해제합니다.
   async clearDefaultStatusByUserId(userId: string): Promise<void> {
     await prisma.delivery_address.updateMany({
       where: {
@@ -37,6 +31,7 @@ export class AddressesRepository {
     });
   }
 
+  // 사용자의 주소록에 주소가 하나라도 있는지 확인합니다.
   async existsByUserId(userId: string): Promise<boolean> {
     const address = await prisma.delivery_address.count({
       where: {
@@ -46,6 +41,7 @@ export class AddressesRepository {
     return address > 0;
   }
 
+  // 주소를 생성합니다.
   async saveAddress(input: AddressesCreateInput): Promise<delivery_address> {
     const { userId, postalCode, address, addressDetail, addressName, recipient, phone, isDefault } = input;
     return await prisma.delivery_address.create({
@@ -63,22 +59,26 @@ export class AddressesRepository {
     });
   }
 
-  async getAddressById(addressId: string): Promise<delivery_address | null> {
-    return await prisma.delivery_address.findUnique({
+  // 주소를 조회합니다.
+  async getAddressById(addressId: string, userId: string): Promise<delivery_address | null> {
+    return await prisma.delivery_address.findFirst({
       where: {
         delivery_address_id: addressId,
+        user_id: userId,
       },
     });
   }
 
+  // 주소를 삭제합니다.
   async deleteAddressById(addressId: string): Promise<void> {
     await prisma.delivery_address.delete({
       where: {
-        delivery_address_id: addressId,
+        delivery_address_id: addressId
       },
     });
   }
 
+  // 기본 주소 상태를 업데이트합니다.
   async updateDefaultStatusByUserId(addressId: string, isDefault: boolean): Promise<void> {
     await prisma.delivery_address.update({
       where: {
