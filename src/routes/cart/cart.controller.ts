@@ -16,7 +16,7 @@ import { CartGroupedResDTO, CreateCartResDTO } from './dto/cart.res.dto.js';
 import { validateOrThrow } from '../../middleware/validator.js';
 
 @Route('/cart')
-@Tags('Cart Controller')
+@Tags('Cart')
 export class CartController extends Controller {
   private cartService: CartService;
 

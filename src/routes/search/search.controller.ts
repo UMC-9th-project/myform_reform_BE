@@ -9,7 +9,7 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler } from '../../config/tsoaResponse.js';
 import { SearchService } from './search.service.js';
-import { SearchListResDTO } from './search.dto.js';
+import { SearchListResDTO } from './search.res.dto.js';
 
 @Route('/search')
 @Tags('Search')

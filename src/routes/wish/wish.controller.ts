@@ -17,14 +17,12 @@ import {
   ErrorResponse
 } from '../../config/tsoaResponse.js';
 import { WishService } from './wish.service.js';
+import { WishReqDTO, WishType } from './dto/wish.req.dto.js';
 import {
   WishResDTO,
   WishListResDTO,
-  DeleteWishResDTO,
-  WishReqDTO,
-  WishType
-} from './wish.dto.js';
-
+  DeleteWishResDTO
+} from './dto/wish.res.dto.js';
 @Route('/wish')
 @Tags('Wish')
 export class WishController extends Controller {

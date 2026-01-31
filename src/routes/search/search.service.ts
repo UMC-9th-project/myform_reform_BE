@@ -1,7 +1,7 @@
 import { esClient } from '../../config/elasticsearch.js';
 import prisma from '../../config/prisma.config.js';
 import { CursorUtil } from '../../utils/cursorUtil.js';
-import { SearchResDTO, SearchListResDTO } from './search.dto.js';
+import { SearchResDTO, SearchListResDTO } from './search.res.dto.js';
 import type { target_type_enum } from '@prisma/client';
 
 type UserTargetType = Exclude<target_type_enum, 'REQUEST'>;
