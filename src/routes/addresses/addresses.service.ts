@@ -1,10 +1,11 @@
 import { AddressesCreateInput, AddressesCreateRequestDto, AddressesDeleteInput, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
 import { AddressesResponseDto } from './dto/addresses.res.dto.js';
 import { AddressesRepository } from './addresses.repository.js';
-import { AddressesGetError } from './addresses.error.js';
+import { AddressesGetError, AddressNotFoundError } from './addresses.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { validatePhoneNumber, validatePostalCode } from '../../utils/validators.js';
 import { InputValidationError } from '../auth/auth.error.js';
+
 export class AddressesService {
   private addressesRepository: AddressesRepository;
   constructor() {
@@ -25,9 +26,17 @@ export class AddressesService {
   async createAddress(userId: string, requestBody: AddressesCreateRequestDto): Promise<AddressesResponseDto> {
     return await runInTransaction(async () => {
       this.validateAddress(requestBody);
+      if (requestBody.isDefault) {
+        await this.addressesRepository.clearDefaultStatusByUserId(userId)
+      } else {
+      const isFirstAddress = await this.addressesRepository.existsByUserId(userId)
+        if (isFirstAddress) {
+          requestBody.isDefault = true;
+        }
+      }
       const input = new AddressesCreateInput(userId, requestBody);
-      const address = await this.addressesRepository.createAddress(input);
-      return new AddressesResponseDto(address);
+      const newAddress = await this.addressesRepository.saveAddress(input);
+      return new AddressesResponseDto(newAddress);
     });
   }
 
@@ -35,6 +44,17 @@ export class AddressesService {
   async deleteAddress(userId: string, addressId: string): Promise<string> {
     return await runInTransaction(async () => {
       const input = new AddressesDeleteInput(userId, addressId);
+      const targetAddress = await this.addressesRepository.getAddressById(addressId);
+      if (!targetAddress) {
+        throw new AddressNotFoundError('입력 받은 주소를 찾을 수 없습니다.');
+      }
+      await this.addressesRepository.deleteAddressById(addressId);
+      if (targetAddress.is_default) {
+        const nextDefaultAddress = await this.addressesRepository.getNextDefaultAddress(userId);
+        if (nextDefaultAddress) {
+          await this.addressesRepository.updateDefaultStatusByUserId(nextDefaultAddress.delivery_address_id, { is_default: true });
+        }
+      }
       await this.addressesRepository.deleteAddress(input);
       return '주소 삭제가 완료되었습니다.';
     });
