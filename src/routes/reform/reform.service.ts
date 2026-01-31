@@ -63,6 +63,12 @@ export class ReformService {
         return dto.map((o) => o.toDto());
       }
       if (filter.sortBy === 'POPULAR') {
+        const ans = await this.reformRepository.getRequestByPopular(
+          filter,
+          categoryId
+        );
+        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
+        return dto.map((o) => o.toDto());
       }
 
       return null;
@@ -208,6 +214,12 @@ export class ReformService {
         return dto.map((o) => o.toDto());
       }
       if (filter.sortBy === 'POPULAR') {
+        const ans = await this.reformRepository.getProposalByPopular(
+          filter,
+          categoryId
+        );
+        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
+        return dto.map((o) => o.toDto());
       }
 
       return null;

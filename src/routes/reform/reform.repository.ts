@@ -141,6 +141,43 @@ export class ReformRepository {
     });
   }
 
+  async getRequestByPopular(
+    filter: ReformFilter,
+    categoryId: string[]
+  ): Promise<RawRequestLatest[]> {
+    const { page, limit } = filter;
+
+    return await this.prisma.reform_request.findMany({
+      take: limit,
+      skip: (page - 1) * limit,
+      select: {
+        reform_request_id: true,
+        min_budget: true,
+        max_budget: true,
+        title: true,
+        reform_request_photo: {
+          take: 1,
+          select: {
+            content: true
+          }
+        }
+      },
+      where:
+        categoryId.length > 0
+          ? {
+              category_id: {
+                in: categoryId
+              }
+            }
+          : undefined,
+      orderBy: {
+        owner_wish: {
+          _count: 'desc'
+        }
+      }
+    });
+  }
+
   async getProposalByRecent(
     filter: ReformFilter,
     categoryId: string[]
@@ -178,6 +215,46 @@ export class ReformRepository {
             }
           : undefined,
       orderBy: { created_at: 'asc' }
+    });
+  }
+
+  async getProposalByPopular(
+    filter: ReformFilter,
+    categoryId: string[]
+  ): Promise<RawProposalLatest[]> {
+    const { page, limit } = filter;
+
+    return await this.prisma.reform_proposal.findMany({
+      take: limit,
+      skip: (page - 1) * limit,
+      select: {
+        reform_proposal_id: true,
+        title: true,
+        price: true,
+        avg_star: true,
+        review_count: true,
+        reform_proposal_photo: {
+          take: 1,
+          select: {
+            content: true
+          },
+          orderBy: {
+            photo_order: { sort: 'asc' }
+          }
+        },
+        owner: {
+          select: { name: true }
+        }
+      },
+      where:
+        categoryId.length > 0
+          ? {
+              category_id: {
+                in: categoryId
+              }
+            }
+          : undefined,
+      orderBy: [{ review_count: 'desc' }, { avg_star: 'desc' }]
     });
   }
 
