@@ -15,12 +15,7 @@ import {
   Tags
 } from 'tsoa';
 import { ReformService } from './reform.service.js';
-import {
-  ProposalDetail,
-  ProposalDetailDto,
-  RequestDetail,
-  RequestDetailDto
-} from './reform.dto.js';
+import { ProposalDetail, ProposalDetailDto } from './reform.dto.js';
 import {
   ErrorResponse,
   ResponseHandler,
@@ -29,14 +24,17 @@ import {
 // import RequestHandler from 'express';
 import { Request as ExRequest } from 'express';
 import {
-  AddQuoteReq,
+  ModifyRequestRequest,
   ReformRequestRequest,
-  RequestFilterDto
+  ReformFilter
 } from './dto/reform.req.dto.js';
-import { ReformHomeResponse } from './dto/reform.res.dto.js';
-import { ReformDBError, ReformError } from './reform.error.js';
+import {
+  ReformDetailRequestResponseDto,
+  ReformHomeResponse
+} from './dto/reform.res.dto.js';
+import { ReformError } from './reform.error.js';
 import { CustomJwt } from '../../@types/expreees.js';
-import { ReformRequest } from './reform.model.js';
+import { ReformRequestFactory } from './reform.model.js';
 
 @Tags('Reform Router')
 @Route('reform')
@@ -80,13 +78,7 @@ export class ReformController extends Controller {
     @Query() category?: string,
     @Query() subcategory?: string
   ) {
-    const dto = new RequestFilterDto(
-      sortBy,
-      page,
-      limit,
-      category,
-      subcategory
-    );
+    const dto = new ReformFilter(sortBy, page, limit, category, subcategory);
     const ans = await this.reformService.getRequest(dto);
     return new ResponseHandler(ans);
   }
@@ -111,7 +103,7 @@ export class ReformController extends Controller {
       throw new ReformError('일반 유저만 요청서를 작성 할 수 있습니다.');
 
     const userId = req.user.id;
-    const dto = ReformRequest.fromRequest(body, userId);
+    const dto = ReformRequestFactory.createFromRequest(body, userId);
     const ans = await this.reformService.addRequest(dto);
     return new ResponseHandler(ans);
   }
@@ -122,67 +114,111 @@ export class ReformController extends Controller {
    * @returns 리폼 요청 상세 정보
    */
   @Get('/request/:id')
+  @Security('jwt')
+  @Example<ReformDetailRequestResponseDto>({
+    isOwner: true,
+    reformRequestId: 'bb1a025b-2b3e-4218-85a0-454c05de22ce',
+    dueDate: new Date(),
+    title:
+      '제 소중한 기아 쿠로미 유니폼 짐색으로 만들어주실 리폼 장인을 찾아요',
+    content: 'string',
+    minBudget: 0,
+    maxBudget: 50000,
+    name: '홍길동',
+    profile: '',
+    images: [
+      {
+        photo: 'https://image.png',
+        photo_order: 1
+      }
+    ]
+  })
   @SuccessResponse(200, '조회 성공')
-  // @Example<RequestDetail>({
-  //   userId: '80f80aec-a750-4159-8e17-398a9dc6f14c',
-  //   images: [
-  //     {
-  //       content: 'http://example.png',
-  //       photo_order: 0
-  //     }
-  //   ],
-  //   contents:
-  //     '너무 길어서 기장을 5cm 정도 줄이고 싶습니다. 밑단은 원단 그대로 살려서 작업해주시면 감사하겠습니다.',
-  //   title: '청바지 기장 수선 요청합니다',
-  //   min_budget: 15000,
-  //   max_budget: 30000,
-  //   due_date: new Date(),
-  //   created_at: new Date()
-  // })
   public async findDetailRequest(
-    @Path() id: string
-  ): Promise<TsoaResponse<RequestDetailDto>> {
-    const ans = await this.reformService.findDetailRequest(id);
-    console.log(ans);
+    @Path() id: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<ReformDetailRequestResponseDto>> {
+    const payload = req.user;
+    const ans = (
+      await this.reformService.findDetailRequest(payload, id)
+    ).toDto();
     return new ResponseHandler(ans);
   }
 
   /**
    * @summary 특정 리폼 요청을 수정합니다.
    * @param id 리폼 요청 ID (UUID)
-   * @returns 수정된 리폼 요청 정보
+   * @param body 수정할 데이터
+   * @returns 수정된 리폼 요청 ID
    */
   @Patch('/request/:id')
-  public async modifyRequest() {}
+  @Security('jwt')
+  @SuccessResponse(200, '수정 성공')
+  public async modifyRequest(
+    @Path() id: string,
+    @Body() body: ModifyRequestRequest,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = req.user;
+    if (payload.role !== 'user')
+      throw new ReformError('일반 유저만 요청서를 수정할 수 있습니다.');
 
-  /**
-   * @summary 특정 리폼제안서의 상세 정보를 조회합니다.
-   * @param id 제안 ID (UUID)
-   * @returns 제안 상세 정보
-   */
-  @Get('/proposal/:id')
-  @SuccessResponse(200, '조회 성공')
-  @Example<ProposalDetail>({
-    ownerId: '7786f300-6e37-41b3-8bfb-2bca27846785',
-    images: [
-      {
-        content:
-          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/f7b43cdf-4512-4720-b5d8-682e0d3a5bd3',
-        photo_order: 1
-      }
-    ],
-    title: '맞춤 자켓 제작',
-    content: '고객님의 사이즈에 맞춰 자켓을 제작해드립니다',
-    price: 150000,
-    delivery: 3000,
-    expected_working: 14
-  })
-  public async findDetailProposal(
-    @Path() id: string
-  ): Promise<TsoaResponse<ProposalDetailDto>> {
-    const ans = await this.reformService.findDetailProposal(id);
+    const userId = req.user.id;
+    const dto = ReformRequestFactory.createFromModifyRequest(body, id, userId);
+    const ans = await this.reformService.modifyRequest(dto);
     return new ResponseHandler(ans);
   }
+
+  /**
+   * @summary 요청서 목록을 보여줍니다.
+   * @param sortBy 정렬 기준
+   * @param page 현재 페이지, 기본값 1
+   * @param limit 보여줄 최대 아이템 갯수 기본값 15
+   * @param category 카테고리 대분류
+   * @param subcategory 카테고리 소분류
+   */
+  @Get('/proposal')
+  @Security('jwt')
+  async getProposal(
+    @Query() sortBy: 'RECENT' | 'POPULAR',
+    @Query() page: number = 1,
+    @Query() limit: number = 15,
+    @Query() category?: string,
+    @Query() subcategory?: string
+  ) {
+    const dto = new ReformFilter(sortBy, page, limit, category, subcategory);
+    const ans = await this.reformService.getProposal(dto);
+    return new ResponseHandler(ans);
+  }
+
+  // /**
+  //  * @summary 특정 리폼제안서의 상세 정보를 조회합니다.
+  //  * @param id 제안 ID (UUID)
+  //  * @returns 제안 상세 정보
+  //  */
+  // @Get('/proposal/:id')
+  // @SuccessResponse(200, '조회 성공')
+  // @Example<ProposalDetail>({
+  //   ownerId: '7786f300-6e37-41b3-8bfb-2bca27846785',
+  //   images: [
+  //     {
+  //       content:
+  //         'https://myform-reform.s3.ap-northeast-2.amazonaws.com/f7b43cdf-4512-4720-b5d8-682e0d3a5bd3',
+  //       photo_order: 1
+  //     }
+  //   ],
+  //   title: '맞춤 자켓 제작',
+  //   content: '고객님의 사이즈에 맞춰 자켓을 제작해드립니다',
+  //   price: 150000,
+  //   delivery: 3000,
+  //   expected_working: 14
+  // })
+  // public async findDetailProposal(
+  //   @Path() id: string
+  // ): Promise<TsoaResponse<ProposalDetailDto>> {
+  //   const ans = await this.reformService.findDetailProposal(id);
+  //   return new ResponseHandler(ans);
+  // }
 
   /**
    * @summary 특정 제안을 수정합니다

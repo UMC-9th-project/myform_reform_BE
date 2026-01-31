@@ -8,12 +8,15 @@ import prisma from '../../config/prisma.config.js';
 import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
 import { ReformDBError } from './reform.error.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
-import { RequestFilterDto } from './dto/reform.req.dto.js';
+import { ReformFilter } from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
 import {
   RawProposalLatest,
+  RawRequestDetail,
+  RawRequestDetailImages,
   RawRequestLatest,
-  ReformRequest
+  ReformRequestCreate,
+  ReformRequestUpdate
 } from './reform.model.js';
 import { UUID } from '../../@types/common.js';
 
@@ -112,7 +115,7 @@ export class ReformRepository {
   }
 
   async getRequestByRecent(
-    filter: RequestFilterDto,
+    filter: ReformFilter,
     categoryId: string[]
   ): Promise<RawRequestLatest[]> {
     const { page, limit } = filter;
@@ -130,6 +133,46 @@ export class ReformRepository {
           select: {
             content: true
           }
+        }
+      },
+      where:
+        categoryId.length > 0
+          ? {
+              category_id: {
+                in: categoryId
+              }
+            }
+          : undefined,
+      orderBy: { created_at: 'asc' }
+    });
+  }
+
+  async getProposalByRecent(
+    filter: ReformFilter,
+    categoryId: string[]
+  ): Promise<RawProposalLatest[]> {
+    const { page, limit } = filter;
+
+    return await this.prisma.reform_proposal.findMany({
+      take: limit,
+      skip: (page - 1) * limit,
+      select: {
+        reform_proposal_id: true,
+        title: true,
+        price: true,
+        avg_star: true,
+        review_count: true,
+        reform_proposal_photo: {
+          take: 1,
+          select: {
+            content: true
+          },
+          orderBy: {
+            photo_order: { sort: 'asc' }
+          }
+        },
+        owner: {
+          select: { name: true }
         }
       },
       where:
@@ -176,7 +219,10 @@ export class ReformRepository {
   //   });
   // }
 
-  async insertRequest(dto: ReformRequest, categoryId: UUID): Promise<string> {
+  async insertRequest(
+    dto: ReformRequestCreate,
+    categoryId: UUID
+  ): Promise<string> {
     const { images, ...data } = dto.toCreateData();
     const result = await this.prisma.$transaction(async (tx) => {
       const ans = await tx.reform_request.create({
@@ -203,23 +249,44 @@ export class ReformRepository {
     return result;
   }
 
-  async findDetailRequest(
-    id: string
-  ): Promise<{ images: reform_request_photo[]; body: reform_request }> {
+  async checkRequestOwner(userId: UUID, requestId: UUID) {
+    return (
+      (await prisma.reform_request.findFirst({
+        where: {
+          reform_request_id: requestId,
+          user_id: userId
+        }
+      })) !== null
+    );
+  }
+
+  async selectDetailRequest(id: UUID): Promise<{
+    images: RawRequestDetailImages[];
+    body: RawRequestDetail | null;
+  }> {
     const [images, body] = await Promise.all([
       this.prisma.reform_request_photo.findMany({
-        where: { reform_request_id: id }
+        where: { reform_request_id: id },
+        select: { content: true, photo_order: true }
       }),
-      this.prisma.reform_request.findUnique({
-        where: { reform_request_id: id }
+      this.prisma.reform_request.findFirst({
+        where: { reform_request_id: id },
+        select: {
+          reform_request_id: true,
+          title: true,
+          max_budget: true,
+          min_budget: true,
+          content: true,
+          due_date: true,
+          user: {
+            select: {
+              name: true,
+              profile_photo: true
+            }
+          }
+        }
       })
     ]);
-
-    //FIXME: 에러로 던지지 말고 빈 배열로 던지도록 바꿔야 할듯
-    if (!body) {
-      throw new ReformDBError('해당 상품이 존재하지 않습니다');
-    }
-
     return { images, body };
   }
 
@@ -240,6 +307,53 @@ export class ReformRepository {
     }
 
     return { images, body };
+  }
+
+  async updateRequest(
+    dto: ReformRequestUpdate,
+    categoryId?: UUID
+  ): Promise<string> {
+    const data = dto.toUpdateData();
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updateData: {
+        title?: string;
+        content?: string;
+        min_budget?: number;
+        max_budget?: number;
+        due_date?: Date;
+        category_id?: string;
+      } = {};
+
+      if (data.title !== undefined) updateData.title = data.title;
+      if (data.contents !== undefined) updateData.content = data.contents;
+      if (data.minBudget !== undefined) updateData.min_budget = data.minBudget;
+      if (data.maxBudget !== undefined) updateData.max_budget = data.maxBudget;
+      if (data.dueDate !== undefined) updateData.due_date = data.dueDate;
+      if (categoryId !== undefined) updateData.category_id = categoryId;
+
+      await tx.reform_request.update({
+        where: { reform_request_id: data.requestId },
+        data: updateData
+      });
+
+      // 이미지가 있으면 기존 이미지 삭제 후 새 이미지 추가
+      if (data.images !== undefined && data.images.length > 0) {
+        await tx.reform_request_photo.deleteMany({
+          where: { reform_request_id: data.requestId }
+        });
+
+        await tx.reform_request_photo.createMany({
+          data: data.images.map((img, index) => ({
+            reform_request_id: data.requestId,
+            content: img,
+            photo_order: index + 1
+          }))
+        });
+      }
+
+      return data.requestId;
+    });
+    return result;
   }
 
   // async addQuoteOrder(dto: OrderQuoteDto) {

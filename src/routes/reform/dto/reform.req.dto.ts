@@ -36,7 +36,24 @@ export interface ReformRequestRequest {
   category: Category;
 }
 
-export class RequestFilterDto {
+export interface ModifyRequestRequest {
+  /** @example ["https://image.png"] */
+  images?: string[];
+  /** @example  "제목 수정"*/
+  title?: string;
+  /** @example "내용 수정" */
+  contents?: string;
+  /** @example 0 */
+  minBudget?: number;
+  /** @example 50000 */
+  maxBudget?: number;
+  /** @example 2026-01-31T00:49:39.236Z */
+  dueDate?: Date;
+  /** @example {"major" : "의류", "sub" : "상의"} */
+  category?: Category;
+}
+
+export class ReformFilter {
   sortBy: 'RECENT' | 'POPULAR' = 'RECENT';
   page: number = 1;
   limit: number = 15;

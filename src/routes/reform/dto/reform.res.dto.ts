@@ -66,3 +66,19 @@ export interface ReformRequestResponseDto {
   minBudget: number;
   maxBudget: number;
 }
+
+export interface ReformDetailRequestResponseDto {
+  reformRequestId: UUID;
+  title: string;
+  minBudget: number;
+  maxBudget: number;
+  isOwner: boolean;
+  images: {
+    photo: string;
+    photo_order: number;
+  }[];
+  content: string;
+  dueDate: Date;
+  name: string;
+  profile: string;
+}

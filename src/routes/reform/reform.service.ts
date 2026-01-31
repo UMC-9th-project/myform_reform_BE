@@ -1,15 +1,21 @@
 import { S3 } from '../../config/s3.js';
-import { RequestFilterDto } from './dto/reform.req.dto.js';
+import { ReformFilter } from './dto/reform.req.dto.js';
 import {
   ReformHomeResponse,
+  ReformProposalResponseDto,
   ReformRequestResponseDto
 } from './dto/reform.res.dto.js';
-import { ProposalDetailDto, RequestDetailDto } from './reform.dto.js';
-import { ReformRequestRequest } from './dto/reform.req.dto.js';
 import { ReformError } from './reform.error.js';
-import { ReformProposal, ReformRequest } from './reform.model.js';
+import {
+  ReformRequestFactory,
+  ReformProposalFactory,
+  ReformRequestCreate,
+  ReformDetailRequestResponse,
+  ReformRequestUpdate
+} from './reform.model.js';
 import { ReformRepository } from './reform.repository.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
+import { CustomJwt } from '../../@types/expreees.js';
 
 export class ReformService {
   private reformRepository: ReformRepository;
@@ -25,9 +31,11 @@ export class ReformService {
         this.reformRepository.selectRequestLatest(),
         this.reformRepository.selectProposalLatest()
       ]);
-      const requests = requestData.map((o) => ReformRequest.fromRaw(o).toDto());
+      const requests = requestData.map((o) =>
+        ReformRequestFactory.createFromRaw(o).toDto()
+      );
       const proposals = proposalData.map((o) =>
-        ReformProposal.create(o).toDto()
+        ReformProposalFactory.createFromRaw(o).toDto()
       );
 
       return { requests, proposals };
@@ -38,7 +46,7 @@ export class ReformService {
   }
 
   async getRequest(
-    filter: RequestFilterDto
+    filter: ReformFilter
   ): Promise<ReformRequestResponseDto[] | null> {
     try {
       const categoryId = await this.reformRepository.getCategoryIds(
@@ -49,7 +57,7 @@ export class ReformService {
           filter,
           categoryId
         );
-        const dto = ans.map((o) => ReformRequest.fromRaw(o));
+        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
         return dto.map((o) => o.toDto());
       }
       if (filter.sortBy === 'POPULAR') {
@@ -62,7 +70,7 @@ export class ReformService {
     }
   }
 
-  async addRequest(dto: ReformRequest): Promise<string> {
+  async addRequest(dto: ReformRequestCreate): Promise<string> {
     try {
       const data = dto.toCreateData();
       if (data.title.length > 40)
@@ -100,25 +108,123 @@ export class ReformService {
     }
   }
 
-  async findDetailRequest(id: string): Promise<RequestDetailDto> {
+  async findDetailRequest(
+    payload: CustomJwt,
+    reqeustId: string
+  ): Promise<ReformDetailRequestResponse> {
     try {
-      const ans = await this.reformRepository.findDetailRequest(id);
-      const dto = new RequestDetailDto(ans.body, ans.images);
+      const isOwner = await this.reformRepository.checkRequestOwner(
+        payload.id,
+        reqeustId
+      );
+      const { images, body } =
+        await this.reformRepository.selectDetailRequest(reqeustId);
+      if (body === null || images.length === 0)
+        throw new ReformError('존재하지 않는 아이템입니다.');
+
+      const dto = ReformRequestFactory.createFromDetailRaw(
+        body,
+        images,
+        isOwner
+      );
+
       return dto;
     } catch (err: any) {
       throw new ReformError(err);
     }
   }
-  async findDetailProposal(id: string): Promise<ProposalDetailDto> {
+
+  async modifyRequest(dto: ReformRequestUpdate): Promise<string> {
     try {
-      const ans = await this.reformRepository.findDetailProposal(id);
-      const dto = new ProposalDetailDto(ans.body, ans.images);
-      return dto;
+      const data = dto.toUpdateData();
+
+      // 소유자 확인
+      const isOwner = await this.reformRepository.checkRequestOwner(
+        data.userId,
+        data.requestId
+      );
+      if (!isOwner)
+        throw new ReformError('본인의 요청서만 수정할 수 있습니다.');
+
+      // 유효성 검사
+      if (data.title !== undefined && data.title.length > 40)
+        throw new ReformError('제목은 40자를 넘길 수 없습니다');
+
+      if (data.contents !== undefined && data.contents.length > 1000)
+        throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+      if (data.images !== undefined && data.images.length > 10)
+        throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+      if (data.minBudget !== undefined || data.maxBudget !== undefined) {
+        const minBudget = data.minBudget ?? 0;
+        const maxBudget = data.maxBudget ?? 999999999;
+        if (minBudget < 0 || maxBudget > 999999999)
+          throw new ReformError('예상 예산은 0원~999999999원 까지입니다.');
+        if (minBudget > maxBudget)
+          throw new ReformError('예산 범위가 잘못 설정 되었습니다.');
+      }
+
+      // 카테고리 ID 조회
+      let categoryId: string | undefined;
+      if (data.category !== undefined) {
+        const categoryIds = await this.reformRepository.getCategoryIds(
+          data.category
+        );
+        if (categoryIds.length === 0)
+          throw new ReformError('존재하지 않는 카테고리입니다');
+        categoryId = categoryIds[0];
+      }
+
+      const ans = await this.reformRepository.updateRequest(dto, categoryId);
+
+      await addSearchSyncJob({
+        type: 'REQUEST',
+        id: ans,
+        action: 'UPSERT'
+      });
+
+      return ans;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async getProposal(
+    filter: ReformFilter
+  ): Promise<ReformProposalResponseDto[] | null> {
+    try {
+      const categoryId = await this.reformRepository.getCategoryIds(
+        filter.category
+      );
+      if (filter.sortBy === 'RECENT') {
+        const ans = await this.reformRepository.getProposalByRecent(
+          filter,
+          categoryId
+        );
+        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
+        return dto.map((o) => o.toDto());
+      }
+      if (filter.sortBy === 'POPULAR') {
+      }
+
+      return null;
     } catch (err: any) {
       console.error(err);
-      throw new ReformError(err);
+      throw new ReformError('제안서 조회중 에러가 발생했습니다.');
     }
   }
+
+  // async findDetailProposal(id: string): Promise<ProposalDetailDto> {
+  //   try {
+  //     const ans = await this.reformRepository.findDetailProposal(id);
+  //     const dto = new ProposalDetailDto(ans.body, ans.images);
+  //     return dto;
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     throw new ReformError(err);
+  //   }
+  // }
 
   // async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
   //   try {
