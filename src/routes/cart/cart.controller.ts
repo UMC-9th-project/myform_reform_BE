@@ -35,7 +35,7 @@ export class CartController extends Controller {
    * @returns 삭제된 아이템 수 메시지
    */
   @Delete('/items')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt', ['user'])
   @SuccessResponse('200', '장바구니 아이템 삭제 성공')
   public async removeItemsFromCart(
     @Body() body: DeleteItemsDTO,
@@ -62,7 +62,7 @@ export class CartController extends Controller {
    * @returns 추가된 장바구니 아이템 정보
    */
   @Post('/{itemId}')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt', ['user'])
   @SuccessResponse('201', '장바구니 추가 성공')
   @Example<AddToCartDTO>({
     quantity: 1,
@@ -93,7 +93,7 @@ export class CartController extends Controller {
    * @returns 판매자별로 그룹화된 장바구니 아이템 목록
    */
   @Get('')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt', ['user'])
   @SuccessResponse('200', '장바구니 조회 성공')
   public async getCart(
     @Request() req: ExRequest
