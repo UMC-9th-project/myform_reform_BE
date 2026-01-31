@@ -1,218 +1,133 @@
+import { Prisma } from '@prisma/client';
 import {
-  reform_proposal,
-  reform_proposal_photo,
-  reform_request,
-  reform_request_photo
-} from '@prisma/client';
-import prisma from '../../config/prisma.config.js';
-import { OrderQuoteDto, ReformRequestDto } from './reform.dto.js';
-import { ReformDBError } from './reform.error.js';
-import { addSearchSyncJob } from '../../worker/search.queue.js';
-import { RequestFilterDto } from './dto/reform.req.dto.js';
+  ReformProposalResponseDto,
+  ReformRequestResponseDto
+} from './dto/reform.res.dto.js';
+import { ReformRequestRequest } from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
+import { ImageUrls } from '../common/upload.dto.js';
 
-export class ReformModel {
-  private prisma;
-  constructor() {
-    this.prisma = prisma;
-  }
+export interface ReformRequestCreateData {
+  userId: string;
+  images: string[];
+  contents: string;
+  minBudget: number;
+  maxBudget: number;
+  dueDate: Date;
+  category: Category;
+  title: string;
+}
 
-  async selectRequestLatest() {
-    return this.prisma.reform_request.findMany({
+export type RawRequestLatest = Prisma.reform_requestGetPayload<{
+  select: {
+    reform_request_id: true;
+    title: true;
+    min_budget: true;
+    max_budget: true;
+    reform_request_photo: {
       select: {
-        title: true,
-        min_budget: true,
-        max_budget: true,
-        reform_request_photo: {
-          select: {
-            content: true
-          }
-        }
-      },
-      take: 3,
+        content: true;
+      };
+    };
+  };
+}>;
+
+export type RawProposalLatest = Prisma.reform_proposalGetPayload<{
+  select: {
+    reform_proposal_id: true;
+    title: true;
+    price: true;
+    avg_star: true;
+    review_count: true;
+    reform_proposal_photo: {
+      take: 1;
+      select: {
+        content: true;
+      };
       orderBy: {
-        updated_at: { sort: 'asc' }
-      }
-    });
+        photo_order: { sort: 'asc' };
+      };
+    };
+    owner: {
+      select: { name: true };
+    };
+  };
+}>;
+
+export class ReformRequest {
+  private responseProps?: ReformRequestResponseDto;
+  private createData?: ReformRequestCreateData;
+
+  private constructor(
+    response?: ReformRequestResponseDto,
+    create?: ReformRequestCreateData
+  ) {
+    this.responseProps = response;
+    this.createData = create;
   }
 
-  async selectProposalLatest() {
-    return this.prisma.reform_proposal.findMany({
-      select: {
-        title: true,
-        price: true,
-        avg_star: true,
-        review_count: true,
-        reform_proposal_photo: {
-          take: 1,
-          select: {
-            content: true
-          }
-        },
-        owner: {
-          select: { name: true }
-        }
+  // 조회용: DB 결과 -> 응답 DTO
+  static fromRaw(raw: RawRequestLatest) {
+    return new ReformRequest(
+      {
+        reformRequestId: raw.reform_request_id,
+        thumbnail: raw.reform_request_photo[0]?.content ?? '',
+        title: raw.title ?? '',
+        minBudget: raw.min_budget?.toNumber() ?? 0,
+        maxBudget: raw.max_budget?.toNumber() ?? 0
       },
-      take: 3,
-      orderBy: {
-        updated_at: { sort: 'asc' }
-      }
+      undefined
+    );
+  }
+
+  // 생성용: 요청 DTO -> 저장용 데이터
+  static fromRequest(req: ReformRequestRequest, userId: string) {
+    return new ReformRequest(undefined, {
+      userId,
+      images: req.images,
+      contents: req.contents,
+      minBudget: req.minBudget,
+      maxBudget: req.maxBudget,
+      dueDate: req.dueDate,
+      category: req.category,
+      title: req.title
     });
   }
 
-  async getCategoryIds(category: Category): Promise<string[]> {
-    // 소분류가 있으면 해당 소분류 ID만 반환
-    if (category.sub) {
-      const subCategory = await this.prisma.category.findFirst({
-        where: {
-          name: category.sub
-        },
-        select: { category_id: true }
-      });
-      return subCategory ? [subCategory.category_id] : [];
+  // 응답용 DTO 반환
+  toDto(): ReformRequestResponseDto {
+    if (!this.responseProps) {
+      throw new Error('This ReformRequest instance is not for response');
     }
-
-    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
-    const majorCategory = await this.prisma.category.findFirst({
-      where: {
-        name: category.major,
-        parent_id: null
-      },
-      select: { category_id: true }
-    });
-
-    if (!majorCategory) return [];
-
-    const subCategories = await this.prisma.category.findMany({
-      where: {
-        parent_id: majorCategory.category_id
-      },
-      select: { category_id: true }
-    });
-
-    return [
-      majorCategory.category_id,
-      ...subCategories.map((c) => c.category_id)
-    ];
+    return { ...this.responseProps };
   }
 
-  async getRequestByRecent(filter: RequestFilterDto, categoryId: string[]) {
-    const { page, limit } = filter;
-
-    return await this.prisma.reform_request.findMany({
-      take: limit,
-      skip: (page - 1) * limit,
-      select: {
-        min_budget: true,
-        max_budget: true,
-        title: true,
-        reform_request_photo: {
-          take: 1,
-          select: {
-            content: true
-          }
-        }
-      },
-      where:
-        categoryId.length > 0
-          ? {
-              category_id: {
-                in: categoryId
-              }
-            }
-          : undefined,
-      orderBy: { created_at: 'asc' }
-    });
-  }
-
-  async addRequest(dto: ReformRequestDto): Promise<void> {
-    const { userId, images, category, ...data } = dto;
-    await this.prisma.$transaction(async (tx) => {
-      const categorydata = await tx.category.findFirst({
-        where: { name: category.sub },
-        select: { category_id: true }
-      });
-      const ans = await tx.reform_request.create({
-        data: {
-          user_id: userId,
-          title: data.title,
-          content: data.contents,
-          min_budget: data.minBudget,
-          max_budget: data.maxBudget,
-          due_date: data.dueDate,
-          category_id: categorydata!.category_id
-        }
-      });
-      for (const img of images) {
-        await tx.reform_request_photo.create({
-          data: {
-            reform_request_id: ans.reform_request_id,
-            content: img.content,
-            photo_order: img.photo_order
-          }
-        });
-      }
-      // 큐 등록
-      await addSearchSyncJob({
-        type: 'REQUEST',
-        id: ans.reform_request_id,
-        action: 'UPSERT'
-      });
-    });
-  }
-
-  async findDetailRequest(
-    id: string
-  ): Promise<{ images: reform_request_photo[]; body: reform_request }> {
-    const [images, body] = await Promise.all([
-      this.prisma.reform_request_photo.findMany({
-        where: { reform_request_id: id }
-      }),
-      this.prisma.reform_request.findUnique({
-        where: { reform_request_id: id }
-      })
-    ]);
-
-    //FIXME: 에러로 던지지 말고 빈 배열로 던지도록 바꿔야 할듯
-    if (!body) {
-      throw new ReformDBError('해당 상품이 존재하지 않습니다');
+  // DB 저장용 데이터 반환
+  toCreateData(): ReformRequestCreateData {
+    if (!this.createData) {
+      throw new Error('This ReformRequest instance is not for creation');
     }
-
-    return { images, body };
+    return { ...this.createData };
+  }
+}
+export class ReformProposal {
+  private props: ReformProposalResponseDto;
+  private constructor(props: ReformProposalResponseDto) {
+    this.props = props;
   }
 
-  async findDetailProposal(
-    id: string
-  ): Promise<{ images: reform_proposal_photo[]; body: reform_proposal }> {
-    const [images, body] = await Promise.all([
-      this.prisma.reform_proposal_photo.findMany({
-        where: { reform_proposal_id: id }
-      }),
-      this.prisma.reform_proposal.findUnique({
-        where: { reform_proposal_id: id }
-      })
-    ]);
-
-    if (!body) {
-      throw new ReformDBError('해당 상품이 존재하지 않습니다');
-    }
-
-    return { images, body };
+  static create(raw: RawProposalLatest) {
+    return new ReformProposal({
+      reformProposalId: raw.reform_proposal_id,
+      thumbnail: raw.reform_proposal_photo[0]?.content ?? '',
+      title: raw.title ?? '',
+      price: raw.price?.toNumber() ?? 0,
+      avgStar: raw.avg_star?.toNumber() ?? 0,
+      reviewCount: raw.review_count ?? 0,
+      ownerName: raw.owner.name ?? ''
+    });
   }
-
-  // async addQuoteOrder(dto: OrderQuoteDto) {
-  //   await this.prisma.order.create({
-  //     data: {
-  //       status: dto.status,
-  //       target_type: dto.type,
-  //       target_id: dto.targetId,
-  //       price: dto.price,
-  //       delivery_fee: dto.delivery,
-  //       amount: dto.amount,
-  //       content: dto.content,
-  //       owner_id: dto.ownerId,
-  //       user_id: dto.userId
-  //     }
-  //   });
-  // }
+  toDto() {
+    return { ...this.props };
+  }
 }

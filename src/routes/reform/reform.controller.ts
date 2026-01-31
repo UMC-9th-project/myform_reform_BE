@@ -2,25 +2,22 @@ import {
   Body,
   Controller,
   Example,
-  FormField,
   Get,
   Patch,
   Path,
   Post,
   Query,
+  Request,
   Response,
   Route,
+  Security,
   SuccessResponse,
-  Tags,
-  UploadedFiles
+  Tags
 } from 'tsoa';
 import { ReformService } from './reform.service.js';
 import {
-  Order,
-  OrderQuoteDto,
   ProposalDetail,
   ProposalDetailDto,
-  ReformRequestDto,
   RequestDetail,
   RequestDetailDto
 } from './reform.dto.js';
@@ -29,14 +26,17 @@ import {
   ResponseHandler,
   TsoaResponse
 } from '../../config/tsoaResponse.js';
-import RequestHandler from 'express';
+// import RequestHandler from 'express';
+import { Request as ExRequest } from 'express';
 import {
   AddQuoteReq,
-  ReformRequestReq,
+  ReformRequestRequest,
   RequestFilterDto
 } from './dto/reform.req.dto.js';
 import { ReformHomeResponse } from './dto/reform.res.dto.js';
-import { ReformDBError } from './reform.error.js';
+import { ReformDBError, ReformError } from './reform.error.js';
+import { CustomJwt } from '../../@types/expreees.js';
+import { ReformRequest } from './reform.model.js';
 
 @Tags('Reform Router')
 @Route('reform')
@@ -55,58 +55,8 @@ export class ReformController extends Controller {
    * @return 최신순 요청서 3개, 최신순 제안서 3개
    */
   @Get('/')
-  @Example<ReformHomeResponse>({
-    requests: [
-      {
-        thumbnail: 'testurl',
-        title: 'test 요청서',
-        minBudget: 0,
-        maxBudget: 10
-      },
-      {
-        thumbnail: 'testurl',
-        title: 'test 요청서',
-        minBudget: 0,
-        maxBudget: 10
-      },
-      {
-        thumbnail: 'testurl',
-        title: 'test 요청서',
-        minBudget: 0,
-        maxBudget: 10
-      }
-    ],
-    proposals: [
-      {
-        thumbnail:
-          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/a8d7caeb-776a-475b-af2f-c3a3b08b9dad',
-        title: '맞춤 자켓 제작',
-        price: 150000,
-        avgStar: 0,
-        reviewCount: 0,
-        ownerName: 'test'
-      },
-      {
-        thumbnail:
-          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/79aa3782-69db-4d91-aed0-2a67482e1bb4',
-        title: '맞춤 자켓 제작',
-        price: 150000,
-        avgStar: 0,
-        reviewCount: 0,
-        ownerName: 'test'
-      },
-      {
-        thumbnail:
-          'https://myform-reform.s3.ap-northeast-2.amazonaws.com/f7b43cdf-4512-4720-b5d8-682e0d3a5bd3',
-        title: '맞춤 자켓 제작',
-        price: 150000,
-        avgStar: 0,
-        reviewCount: 0,
-        ownerName: 'test'
-      }
-    ]
-  })
   @SuccessResponse(200, '조회 성공')
+  @Security('jwt')
   @Response<ErrorResponse>(500, '데이터베이스 오류')
   public async findAll(): Promise<TsoaResponse<ReformHomeResponse>> {
     const ans = await this.reformService.selectHomeReform();
@@ -122,6 +72,7 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/request')
+  @Security('jwt')
   async getRequest(
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
@@ -149,17 +100,20 @@ export class ReformController extends Controller {
    * @returns 생성 성공 메시지
    */
   @Post('/request')
+  @Security('jwt')
   @SuccessResponse(200, '생성 성공')
   public async addRequest(
-    @FormField() body: string,
-    @UploadedFiles() images: Express.Multer.File[]
+    @Body() body: ReformRequestRequest,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
-    const userId = '80f80aec-a750-4159-8e17-398a9dc6f14c';
-    const dto = JSON.parse(body) as ReformRequestReq;
-    const reformDto = new ReformRequestDto(dto);
-    reformDto.userId = userId;
-    await this.reformService.addRequest(reformDto, images);
-    return new ResponseHandler('생성 성공');
+    const payload = req.user;
+    if (payload.role !== 'user')
+      throw new ReformError('일반 유저만 요청서를 작성 할 수 있습니다.');
+
+    const userId = req.user.id;
+    const dto = ReformRequest.fromRequest(body, userId);
+    const ans = await this.reformService.addRequest(dto);
+    return new ResponseHandler(ans);
   }
 
   /**
@@ -169,22 +123,22 @@ export class ReformController extends Controller {
    */
   @Get('/request/:id')
   @SuccessResponse(200, '조회 성공')
-  @Example<RequestDetail>({
-    userId: '80f80aec-a750-4159-8e17-398a9dc6f14c',
-    images: [
-      {
-        content: 'http://example.png',
-        photo_order: 0
-      }
-    ],
-    contents:
-      '너무 길어서 기장을 5cm 정도 줄이고 싶습니다. 밑단은 원단 그대로 살려서 작업해주시면 감사하겠습니다.',
-    title: '청바지 기장 수선 요청합니다',
-    min_budget: 15000,
-    max_budget: 30000,
-    due_date: new Date(),
-    created_at: new Date()
-  })
+  // @Example<RequestDetail>({
+  //   userId: '80f80aec-a750-4159-8e17-398a9dc6f14c',
+  //   images: [
+  //     {
+  //       content: 'http://example.png',
+  //       photo_order: 0
+  //     }
+  //   ],
+  //   contents:
+  //     '너무 길어서 기장을 5cm 정도 줄이고 싶습니다. 밑단은 원단 그대로 살려서 작업해주시면 감사하겠습니다.',
+  //   title: '청바지 기장 수선 요청합니다',
+  //   min_budget: 15000,
+  //   max_budget: 30000,
+  //   due_date: new Date(),
+  //   created_at: new Date()
+  // })
   public async findDetailRequest(
     @Path() id: string
   ): Promise<TsoaResponse<RequestDetailDto>> {
