@@ -71,7 +71,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "12345",
    *     "address": "서울시 강남구 테헤란로",
-   *     "address_detail": "123번지"
+   *     "address_detail": "123번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "수원집"
    *   }
    * }
    */
@@ -97,7 +100,10 @@ export class OrdersController extends Controller {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         payment: {
           product_amount: 50000,
@@ -210,7 +216,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "54321",
    *     "address": "서울시 서초구 서초대로",
-   *     "address_detail": "456번지"
+   *     "address_detail": "456번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "내집"
    *   },
    *   "merchant_uid": "481025937412"
    * }
@@ -467,7 +476,10 @@ export class OrdersController extends Controller {
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         first_item: {
           thumbnail: 'https://example.com/thumbnail.jpg',
@@ -636,7 +648,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "12345",
    *     "address": "서울시 강남구 테헤란로",
-   *     "address_detail": "123번지"
+   *     "address_detail": "123번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "수원집"
    *   }
    * }
    */
@@ -662,7 +677,10 @@ export class OrdersController extends Controller {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         payment: {
           product_amount: 50000,
@@ -768,7 +786,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "54321",
    *     "address": "서울시 서초구 서초대로",
-   *     "address_detail": "456번지"
+   *     "address_detail": "456번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "내집"
    *   },
    *   "merchant_uid": "481025937412"
    * }

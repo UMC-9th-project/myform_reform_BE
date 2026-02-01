@@ -390,7 +390,7 @@ export class OrdersRepository {
   }
 
   /**
-   * 배송지 생성
+   * 배송지 생성 (수령인·연락처 필수, 배송지명 선택)
    */
   async createDeliveryAddress(data: {
     user_id: string;
@@ -398,6 +398,9 @@ export class OrdersRepository {
     postal_code: string;
     address: string;
     address_detail: string | null;
+    recipient?: string | null;
+    phone?: string | null;
+    address_name?: string | null;
     is_default: boolean;
   }) {
     return await prisma.delivery_address.create({
@@ -414,7 +417,6 @@ export class OrdersRepository {
     owner_id: string;
     target_type: target_type_enum;
     target_id: string;
-    user_address: string | undefined;
     price: number;
     delivery_fee: number;
     quantity: number;
@@ -442,7 +444,7 @@ export class OrdersRepository {
   }
 
   /**
-   * 영수증 생성
+   * 영수증 생성 (결제 시점 배송지 스냅샷 포함)
    */
   async createReceipt(data: {
     receipt_number: string;
@@ -451,6 +453,12 @@ export class OrdersRepository {
     payment_method: string | null;
     payment_gateway: string;
     transaction: string | null;
+    delivery_postal_code?: string | null;
+    delivery_address?: string | null;
+    delivery_address_detail?: string | null;
+    delivery_recipient_name?: string | null;
+    delivery_phone?: string | null;
+    delivery_address_name?: string | null;
   }) {
     return await prisma.receipt.create({
       data
@@ -564,6 +572,12 @@ export class OrdersRepository {
     payment_method?: string;
     payment_gateway?: string;
     transaction?: string | null;
+    delivery_postal_code?: string | null;
+    delivery_address?: string | null;
+    delivery_address_detail?: string | null;
+    delivery_recipient_name?: string | null;
+    delivery_phone?: string | null;
+    delivery_address_name?: string | null;
   }) {
     return await prisma.receipt.update({
       where: { receipt_id: receiptId },

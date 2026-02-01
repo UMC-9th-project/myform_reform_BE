@@ -13,6 +13,9 @@ export interface GetOrderSheetResponseDto {
     postal_code: string | null;
     address: string | null;
     address_detail: string | null;
+    recipient_name: string | null;
+    phone: string | null;
+    address_name: string | null;
   } | null;
   payment: {
     product_amount: number;
@@ -42,6 +45,9 @@ export interface GetOrderResponseDto {
     postal_code: string | null;
     address: string | null;
     address_detail: string | null;
+    recipient_name: string | null;
+    phone: string | null;
+    address_name: string | null;
   };
   order_items: Array<{
     thumbnail: string;

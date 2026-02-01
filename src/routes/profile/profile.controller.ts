@@ -131,12 +131,42 @@ export class ProfileController extends Controller {
   /**
    * 특정 판매목록 상세 조회
    * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
-   * @param id 판매상품 ID
+   * @param id 판매상품 ID (order_id)
    * @returns 판매상품 상세 정보
    */
   @Get('sales/:id')
   @Security('jwt')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
+  @Response<TsoaResponse<SaleDetailResponseDto>>(
+    200,
+    '특정 판매상품 조회 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        orderId: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
+        targetId: '550e8400-e29b-41d4-a716-446655440000',
+        status: 'PAID',
+        price: 53000,
+        deliveryFee: 3000,
+        userName: '구매자이름',
+        createdAt: new Date('2024-12-01T10:30:00Z'),
+        title: '상품명',
+        thumbnail: 'https://example.com/thumbnail.jpg',
+        phone: '01012345678',
+        delivery_address: {
+          postal_code: '12345',
+          address: '서울시 강남구 테헤란로',
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
+        },
+        billNumber: '',
+        option: '옵션그룹1 옵션1'
+      }
+    }
+  )
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
     @Path() id: string,

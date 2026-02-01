@@ -180,7 +180,6 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         target_type: true,
-        user_address: true,
         user: {
           select: {
             name: true,
@@ -189,7 +188,13 @@ export class ProfileRepository {
         },
         receipt: {
           select: {
-            created_at: true
+            created_at: true,
+            delivery_postal_code: true,
+            delivery_address: true,
+            delivery_address_detail: true,
+            delivery_recipient_name: true,
+            delivery_phone: true,
+            delivery_address_name: true
           }
         },
         quote_photo: {

@@ -12,6 +12,9 @@ export interface DeliveryAddressInfo {
   postal_code: string | null;
   address: string | null;
   address_detail: string | null;
+  recipient_name: string | null;
+  phone: string | null;
+  address_name: string | null;
 }
 
 export interface PaymentSummary {
@@ -36,6 +39,9 @@ export interface CreateOrderRequest {
     postal_code?: string;
     address?: string;
     address_detail?: string;
+    recipient_name?: string;
+    phone?: string;
+    address_name?: string;
   };
 }
 
