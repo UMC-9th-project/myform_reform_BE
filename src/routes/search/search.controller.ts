@@ -5,11 +5,14 @@ import {
   Get,
   Query,
   Tags,
-  Example
+  Example,
+  Security,
+  Request
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler } from '../../config/tsoaResponse.js';
 import { SearchService } from './search.service.js';
-import { SearchListResDTO } from './search.dto.js';
+import { SearchListResDTO } from './search.res.dto.js';
+import { Request as ExRequest } from 'express';
 
 @Route('/search')
 @Tags('Search')
@@ -30,6 +33,7 @@ export class SearchController extends Controller {
    */
   @Get('/')
   @SuccessResponse(200, '검색 완료')
+  @Security('jwt', ['user', 'reformer'])
   @Example({
     type: 'REQUEST',
     query: '유니폼'
@@ -37,10 +41,20 @@ export class SearchController extends Controller {
   public async search(
     @Query() type: 'ITEM' | 'REQUEST' | 'PROPOSAL',
     @Query() query: string,
-    @Query() cursor?: string
+    @Query() cursor?: string,
+    @Request() req?: ExRequest
   ): Promise<TsoaResponse<SearchListResDTO>> {
-    const userId = '0f41af82-2259-4d42-8f1a-ca8771c8d473'; // HACK
-    const result = await this.searchService.search(type, query, userId, cursor);
+    const payload = req!.user;
+    const userId = payload.id;
+    const role = payload.role;
+
+    const result = await this.searchService.search(
+      type,
+      query,
+      userId,
+      role,
+      cursor
+    );
     return new ResponseHandler<SearchListResDTO>(result);
   }
 }

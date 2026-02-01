@@ -19,6 +19,7 @@ import { ChatService } from './chat.service.js';
 import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
+import express from 'express';
 
 @Route('chat')
 @Tags('채팅 기능')
@@ -56,9 +57,10 @@ export class ChatController extends Controller {
     }
   })
   public async createChatRoom(
-    @Body() body: {request: CreateChatRoomDTO}
+    @Request() request: express.Request,
+    @Body() body: {dto: CreateChatRoomDTO}
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const result = await this.chatService.createChatRoom(body.request);
+    const result = await this.chatService.createChatRoom(body.dto, request.user.id);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 
@@ -67,17 +69,17 @@ export class ChatController extends Controller {
    * @description 특정 사용자가 참여중인 채팅방 목록을 조회합니다. 
    * 커서 기반 페이지네이션을 지원하며, 마지막 메시지 시간 기준 최신순으로 정렬됩니다.
    * 
-   * @param myId 채팅방 목록을 조회할 사용자 고유 아이디(테스트용)
    * @param type 채팅방 목록 필터 타입
    * - 없음 : 전체 조회
    * - INQUIRY: 문의 채팅방 (FEED 타입)
    * - ORDER: 주문제작 채팅방 (REQUEST/PROPOSAL 타입)
    * - UNREAD: 안 읽은 메시지가 있는 채팅방
    * @param cursor 커서 기반 페이지네이션을 위한 커서 값, 마지막으로 조회된 채팅방의 ID
-   * @param myType 사용자 유형(테스트용) - owner: 리폼러, requester: 일반 유저
+   * @param limit 페이지네이션을 위한 조회 제한 수 (기본값: 20)
    * @returns 채팅방 목록 배열 및 페이지네이션 정보
   */
-  @Get('/rooms/list/{myId}')
+  @Get('/rooms/list')
+  @Security('jwt')
   @Example<TsoaResponse<ChatRoomListDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -101,14 +103,13 @@ export class ChatController extends Controller {
       }
     }
   })
-  // @Response<InvalidChatRoomFilterError>(400, '유효하지 않은 채팅방 필터입니다.')
   public async getChatRooms(
-    @Path() myId: string,       // 테스트용
+    @Request() request: express.Request,
     @Query() type?: ChatRoomFilter,
     @Query() cursor?: string,
-    @Query() myType?: 'owner' | 'requester'    // 테스트용
+    @Query() limit?: number
   ): Promise<TsoaResponse<ChatRoomListDTO>> {
-    const result = await this.chatService.getChatRooms(myId, myType as 'owner' | 'requester', type, cursor, 3);
+    const result = await this.chatService.getChatRooms(request.user.id, request.user.role as 'owner' | 'requester', type, cursor, limit);
     return new ResponseHandler<ChatRoomListDTO>(result);
   }
 
@@ -134,9 +135,10 @@ export class ChatController extends Controller {
     }
   })
   public async createChatRequest(
-    @Body() request: CreateChatRequestDTO
+    @Request() request: express.Request,
+    @Body() dto: CreateChatRequestDTO
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatRequest(request);
+    const { result, message, receiverInfo } = await this.chatService.createChatRequest(dto, request.user.id, request.user.role as 'owner' | 'requester');
     this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
@@ -150,6 +152,7 @@ export class ChatController extends Controller {
    * @returns 채팅 요청서 상세 정보
    */
   @Get('/request/{requestId}')
+  @Security('jwt')
   @Example<TsoaResponse<ChatRequestResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -172,10 +175,11 @@ export class ChatController extends Controller {
     }
   })
   public async getChatRequest(
+    @Request() request: express.Request,
     @Path() requestId: string
   ): Promise<TsoaResponse<ChatRequestResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.getChatRequest(requestId);
+    const userId = (request.user as any).id;
+    const result = await this.chatService.getChatRequest(requestId, userId, request.user.role as 'owner' | 'requester');
     return new ResponseHandler<ChatRequestResponseDTO>(result);
   }
 
@@ -184,13 +188,15 @@ export class ChatController extends Controller {
    * @description 이미 생성된 채팅 요청서의 내용을 수정합니다. 
    * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
    * 
-   * **수정 가능 필드:** 제목, 내용, 예산 범위, 첨부 이미지
+   * **수정 가능 필드:** 제목, 내용, 예산 범위
+   * !!! 주의 이미지 수정은 현재 지원하지 않습니다 !!!
    * 
    * @param requestId 채팅 요청서의 고유 아이디
    * @param request 수정할 요청서 정보 (부분 수정 지원)
    * @returns 수정된 요청서의 고유 아이디와 수정 일시
    */
   @Patch('/request/{requestId}')
+  @Security('jwt', ['user'])
   @Example<TsoaResponse<SimplePatchResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -200,11 +206,11 @@ export class ChatController extends Controller {
     }
   })
   public async updateChatRequest(
+    @Request() request: express.Request,
     @Path() requestId: string,
-    @Body() request: UpdateChatRequestDTO
+    @Body() dto: UpdateChatRequestDTO
   ): Promise<TsoaResponse<SimplePatchResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.updateChatRequest(requestId, request);
+    const result = await this.chatService.updateChatRequest(requestId, dto, request.user.id);
     return new ResponseHandler<SimplePatchResponseDTO>(result);
   }
 
@@ -221,6 +227,7 @@ export class ChatController extends Controller {
    */
   @Post('/proposal')
   @SuccessResponse('201', 'Created')
+  @Security('jwt', ['reformer'])
   @Example<TsoaResponse<SimplePostResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -230,9 +237,10 @@ export class ChatController extends Controller {
     }
   })
   public async createChatProposal(
-    @Body() request: CreateChatProposalDTO  
+    @Request() request: express.Request,
+    @Body() dto: CreateChatProposalDTO  
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatProposal(request);
+    const { result, message, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, request.user.role as 'owner' | 'requester');
     this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
@@ -246,6 +254,7 @@ export class ChatController extends Controller {
    * @returns 채팅 제안서 상세 정보
    */
   @Get('/proposal/{proposalId}')
+  @Security('jwt')
   @Example<TsoaResponse<ChatProposalResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -267,10 +276,11 @@ export class ChatController extends Controller {
     }
   })
   public async getChatProposal(
-    @Path() proposalId: string
+    @Path() proposalId: string,
+    @Request() request: express.Request
   ): Promise<TsoaResponse<ChatProposalResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.getChatProposal(proposalId);
+    // 권한 검사 필요
+    const result = await this.chatService.getChatProposal(proposalId, request.user.id, request.user.role as 'owner' | 'requester');
     return new ResponseHandler<ChatProposalResponseDTO>(result);
   }
 
@@ -280,7 +290,7 @@ export class ChatController extends Controller {
    * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
    * 
    * **수정 가능 필드:** 제안 가격, 배송비, 예상 작업 일수
-   * 
+   * !!! 주의 이미지 수정은 현재 지원하지 않습니다 !!!
    * **사용 시나리오:** 리폼러가 견적을 재조정하거나 작업 기간을 변경할 때
    * 
    * @param proposalId 채팅 제안서의 고유 아이디
@@ -288,6 +298,7 @@ export class ChatController extends Controller {
    * @returns 수정된 제안서의 고유 아이디와 수정 일시
    */
   @Patch('/proposal/{proposalId}')
+  @Security('jwt', ['reformer'])
   @Example<TsoaResponse<SimplePatchResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -298,10 +309,10 @@ export class ChatController extends Controller {
   })
   public async updateChatProposal(
     @Path() proposalId: string,
-    @Body() request: UpdateChatProposalDTO
+    @Body() dto: UpdateChatProposalDTO,
+    @Request() request: express.Request
   ): Promise<TsoaResponse<SimplePatchResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.updateChatProposal(proposalId, request);
+    const result = await this.chatService.updateChatProposal(proposalId, dto, request.user.id);
     return new ResponseHandler<SimplePatchResponseDTO>(result);
   }
 
@@ -317,6 +328,7 @@ export class ChatController extends Controller {
    * @returns 채팅 메시지 목록 및 페이지네이션 정보
    */
   @Get('/rooms/{roomId}/messages')
+  @Security('jwt')
   @Example<TsoaResponse<ChatMessageListDTO>>({
     resultType: "SUCCESS",
     error: null,
@@ -339,12 +351,12 @@ export class ChatController extends Controller {
     }
   })
   public async getChatMessages(
+    @Request() request: express.Request,
     @Path() roomId: string,
     @Query() cursor?: string,
-    @Query() limit: number = 20
+    @Query() limit: number = 20,
   ): Promise<TsoaResponse<ChatMessageListDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.getChatMessages(roomId, cursor, limit);
+    const result = await this.chatService.getChatMessages(request.user.id, request.user.role as 'owner' | 'requester', roomId, cursor, limit);
     return new ResponseHandler<ChatMessageListDTO>(result);
   }
 }

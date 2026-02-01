@@ -35,6 +35,20 @@ export async function findExistingCartIds(
   return rows.map((r) => r.cart_id);
 }
 
+export async function findCartsByIdsAndUserId(
+  cartIds: string[],
+  userId: string
+): Promise<{ cart_id: string; user_id: string }[]> {
+  if (!cartIds || cartIds.length === 0) return [];
+  return prisma.cart.findMany({
+    where: { 
+      cart_id: { in: cartIds },
+      user_id: userId
+    },
+    select: { cart_id: true, user_id: true }
+  });
+}
+
 export async function findItemById(
   itemId: string
 ): Promise<ItemWithDetails | null> {

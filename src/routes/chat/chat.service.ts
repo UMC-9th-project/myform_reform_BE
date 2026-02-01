@@ -1,7 +1,7 @@
 import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
-import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError } from './chat.error.js';
+import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { v4, v7 } from 'uuid';
 
@@ -13,7 +13,7 @@ export class ChatService {
   ) {}
   
   // 채팅방 생성
-  async createChatRoom(request : CreateChatRoomDTO): Promise<SimplePostResponseDTO> {
+  async createChatRoom(request : CreateChatRoomDTO, id : string): Promise<SimplePostResponseDTO> {
     
     let target : any;
     let ownerId : string;
@@ -25,13 +25,13 @@ export class ChatService {
       if (!target) { throw new CreateTargetNotFoundError('피드를 찾을 수 없습니다.'); }
       // 피드 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
       ownerId = target.owner_id;
-      requesterId  = request.myId; // 테스트용: 요청에서 직접 받음
+      requesterId  = id; // 테스트용: 요청에서 직접 받음
       break;
     case 'REQUEST':
       target = await this.targetRepository.findRequestWithUserById(request.id);
       if (!target) { throw new CreateTargetNotFoundError('요청글을 찾을 수 없습니다.');}
       // 요청글 채팅방 생성 로직(리폼러가 유저에게 채팅방 개설)
-      ownerId = request.myId; // 테스트용: 요청에서 직접 받음
+      ownerId = id; // 테스트용: 요청에서 직접 받음
       requesterId = target.user_id;
       break;
     case 'PROPOSAL':
@@ -39,7 +39,7 @@ export class ChatService {
       if (!target) { throw new CreateTargetNotFoundError('제안서를 찾을 수 없습니다.'); }
       // 제안서 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
       ownerId = target.owner_id;
-      requesterId = request.myId; // 테스트용: 요청에서 직접 받음
+      requesterId = id; // 테스트용: 요청에서 직접 받음
       break;
     default:
       throw new InvalidChatRoomTypeError('유효하지 않은 채팅방 타입입니다.');
@@ -136,13 +136,15 @@ export class ChatService {
   }
   
   // 채팅 요청서 생성
-  async createChatRequest(request: CreateChatRequestDTO): Promise<any> {
+  async createChatRequest(request: CreateChatRequestDTO, userId: string, userType: 'owner' | 'requester'): Promise<any> {
     // 트랜젝션 시작
     return await runInTransaction(async () => {
 
       // fk 의존 관계 때문에 직접 생성
       // 요청서 id 생성 > json필드 생성 > 메세지 생성(요청서 타입) > 요청서 생성 순서
       const requestUuid = v4();
+
+      const senderType = userType === 'owner' ? 'OWNER' : 'USER';
 
       // 채팅 요청서 페이로드 생성
       const payload = ChatMessageFactory.mapToRequestPayload({
@@ -153,11 +155,12 @@ export class ChatService {
             }
           )
 
+      
       // 채팅 메시지 생성(요청서 타입)
       const { receiverInfo, message } = await this.processSendMessage({
           chatRoomId: request.chatRoomId,
-          senderType: request.myType === 'OWNER' ? 'OWNER' : 'USER',
-          senderId: request.myId,
+          senderType: senderType as 'OWNER' | 'USER',
+          senderId: userId,
           messageType: 'request',
           content: payload
          }
@@ -184,12 +187,19 @@ export class ChatService {
 
   // 채팅 요청서 조회
   async getChatRequest(
-    requestId: string
+    requestId: string,
+    userId: string,
+    userType: 'owner' | 'requester'
   ): Promise<ChatRequestResponseDTO> {
     const chatRequest =  await this.chatRepository.getChatRequestById(requestId);
     if(!chatRequest) {
       throw new CreateTargetNotFoundError('채팅 요청서를 찾을 수 없습니다.');
     }
+
+    // if(!await this.checkParticipantInRoom(chatRequest.chat_message.chat_room_id, userId, userType)) {
+    //   throw new ChatRoomAccessDeniedError ('채팅 요청서에 접근 권한이 없습니다.');
+    // }
+
     const requesterInfo = chatRequest.chat_message.chat_room_chat_message_chat_room_idTochat_room.user;
 
     return {
@@ -211,13 +221,15 @@ export class ChatService {
       };
   }
 
-  async createChatProposal(request: CreateChatProposalDTO): Promise<any> {
+  async createChatProposal(request: CreateChatProposalDTO, userId: string, userType: 'owner' | 'requester'): Promise<any> {
     // 트랜젝션 시작
     return await runInTransaction(async () => {
 
       // fk 의존 관계 때문에 직접 생성
       // 제안서 id 생성 > json필드 생성 > 메세지 생성(제안서 타입) > 제안서 생성 순서
       const proposalUuid = v4();
+
+      const senderType = userType === 'owner' ? 'OWNER' : 'USER';
 
       // 채팅 제안서 페이로드 생성
       const payload = ChatMessageFactory.mapToProposalPayload({
@@ -232,8 +244,8 @@ export class ChatService {
       const [sendMessageResult, chatRequest] = await Promise.all([
         this.processSendMessage({
           chatRoomId: request.chatRoomId,
-          senderType: request.myType === 'OWNER' ? 'OWNER' : 'USER',
-          senderId: request.myId,
+          senderType: senderType as 'OWNER' | 'USER',
+          senderId: userId,
           messageType: 'proposal',
           content: payload,
         }),
@@ -262,8 +274,17 @@ export class ChatService {
     });
   }
 
-  async getChatProposal(proposalId: string): Promise<ChatProposalResponseDTO> {
-    const chatProposal =  await this.chatRepository.getChatProposalById(proposalId);
+  async getChatProposal(
+    proposalId: string,
+    userId: string,
+    userType: 'owner' | 'requester'
+  ): Promise<ChatProposalResponseDTO> {
+
+    // if(!await this.checkParticipantInRoom(proposalId, userId, userType)) {
+    //   throw new ChatRoomAccessDeniedError ('채팅 제안서에 접근 권한이 없습니다.');
+    // }
+
+    const chatProposal = await this.chatRepository.getChatProposalById(proposalId);
     if(!chatProposal) {
       throw new CreateTargetNotFoundError('채팅 제안서를 찾을 수 없습니다.');
     }
@@ -290,8 +311,15 @@ export class ChatService {
   // 채팅 요청서 수정
   async updateChatRequest(
     requestId: string,
-    data: UpdateChatRequestDTO
+    data: UpdateChatRequestDTO,
+    userId : string,  
   ): Promise<SimplePatchResponseDTO> {
+
+    // 권한 검사
+    if(!await this.chatRepository.isMyChatRequest(requestId, userId)) {
+      throw new ChatRoomAccessDeniedError ('채팅 요청서에 대한 수정 권한이 없습니다.');
+    }
+
     return await runInTransaction(async () => {
       const updateData: any = {};
       
@@ -334,8 +362,15 @@ export class ChatService {
   // 채팅 제안서 수정
   async updateChatProposal(
     proposalId: string,
-    data: UpdateChatProposalDTO
+    data: UpdateChatProposalDTO,
+    userId: string
   ): Promise<SimplePatchResponseDTO> {
+
+    // 권한 검사
+    if(!await this.chatRepository.isMyChatProposal(proposalId, userId)) {
+      throw new ChatRoomAccessDeniedError ('채팅 제안서에 대한 수정 권한이 없습니다.');
+    }
+
     return await runInTransaction(async () => {
       const updateData: any = {};
       
@@ -375,10 +410,24 @@ export class ChatService {
 
 
   async getChatMessages(
+    userId: string,
+    type: 'owner' | 'requester',
     roomId: string,
     cursor?: string,
     limit: number = 20
   ): Promise<ChatMessageListDTO> {
+
+
+    if(type === 'owner') {
+      if(!await this.checkParticipantInRoom(roomId, userId, 'owner')) {
+        throw new ChatRoomAccessDeniedError ('채팅방 메시지에 대한 접근 권한이 없습니다.');
+      }
+    } else {
+      if(!await this.checkParticipantInRoom(roomId, userId, 'requester')) {
+        throw new ChatRoomAccessDeniedError ('채팅방 메시지에 대한 접근 권한이 없습니다.');
+      }
+    }
+
     // limit + 1개를 조회하여 다음 페이지 존재 여부 확인
     const messages = await this.chatRepository.getChatMessagesByRoomId(roomId, cursor, limit);
 
@@ -401,5 +450,15 @@ export class ChatService {
         hasMore
       }
     };
+  }
+
+  async checkParticipantInRoom(
+    roomId: string,
+    userId: string,
+    userType: 'owner' | 'requester'
+  ): Promise<boolean> {
+    const isOwner = userType === 'owner';
+    const isParticipant = await this.chatRepository.isUserInChatRoom(roomId, userId, userType === 'owner');
+    return isParticipant;
   }
 }

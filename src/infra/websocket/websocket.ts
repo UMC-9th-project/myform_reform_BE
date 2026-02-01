@@ -1,6 +1,8 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { ChatEventHandler } from './eventHandler.js';
+import { ChatWebSocketAuthError } from '../../routes/chat/chat.error.js';
+import jwt from 'jsonwebtoken';
 
 // 싱글톤 웹소켓 서버 클래스
 export class WebSocketServer {
@@ -32,20 +34,27 @@ export class WebSocketServer {
 
     this.chatEventHandler = new ChatEventHandler(this.io);
 
-    // 핸드 셰이크 미들웨어로 인증 처리(테스트용)
+    // JWT 토큰 기반 인증 미들웨어
     this.io.use((socket, next) => {
-      const userId = socket.handshake.query.userId as string;
-      const authType = socket.handshake.query.authType as 'OWNER' | 'USER';
+      const token = socket.handshake.headers['auth'] as string;
+      const jwtSecret = process.env.JWT_SECRET || '';
 
-      if (userId && authType) {
-        socket.data.userId = userId; 
-        socket.data.type = authType;
-        next();
-      } else {
-        const err = new Error('인증 실패: userId와 authType이 필요합니다.');
-        next(err);
+      if (!token) {
+        return next(new ChatWebSocketAuthError('인증 토큰이 필요합니다.'));
       }
 
+      try {
+        // JWT 검증
+        const decoded = jwt.verify(token, jwtSecret) as any;
+        
+        // socket.data에 사용자 정보 저장
+        socket.data.userId = decoded.id;
+        socket.data.type = decoded.role === 'reformer' ? 'OWNER' : 'USER';
+        
+        next();
+      } catch (error) {
+        next(new ChatWebSocketAuthError('유효하지 않은 토큰입니다.'));
+      }
     });
 
     this.io.on('connection', (socket: Socket) => {
@@ -68,5 +77,5 @@ export class WebSocketServer {
     throw new Error('웹소켓 핸들러가 초기화되지 않았습니다.');
   }
   return this.chatEventHandler;
-}
+  }
 }
