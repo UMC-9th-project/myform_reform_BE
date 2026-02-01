@@ -9,6 +9,7 @@ import {
   Request,
   Response,
   Route,
+  Security,
   SuccessResponse,
   Tags
 } from 'tsoa';
@@ -33,6 +34,7 @@ import { validateDto } from '../../middleware/validator.js';
 
 @Route('orders')
 @Tags('Orders')
+@Security('jwt')
 export class OrdersController extends Controller {
   private ordersService: OrdersService;
 
@@ -55,7 +57,6 @@ export class OrdersController extends Controller {
    * 주문서 정보 조회
    * @summary 주문서 정보를 조회하고 주문 번호(order_number)를 미리 생성하여 반환합니다
    * @param requestBody 주문서 정보 조회 요청
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 주문서 정보 조회 결과 (order_number 포함)
    * @description 반환된 order_number는 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
    *              결제 완료 후 POST /orders/ API 호출 시에도 같은 order_number를 merchant_uid로 전달해야 합니다.
@@ -75,6 +76,7 @@ export class OrdersController extends Controller {
    *   }
    * }
    */
+  @Security('jwt')
   @Post('/sheet')
   @SuccessResponse(200, '주문서 정보 조회 성공')
   @Response<TsoaResponse<GetOrderSheetResponseDto>>(
@@ -166,8 +168,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getOrderSheet(
     @Body() requestBody: GetOrderSheetRequestDto,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<GetOrderSheetResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(GetOrderSheetRequestDto, requestBody);
 
@@ -191,7 +194,6 @@ export class OrdersController extends Controller {
    * 주문 생성
    * @summary 주문을 PENDING 상태로 생성합니다 (결제 전)
    * @param requestBody 주문 생성 요청 (merchant_uid 필수)
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 주문 생성 결과 (결제 상태는 'pending')
    * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet)에서 받은 order_number와 동일한 값이어야 합니다.
    *              프론트엔드에서 주문 시트 조회 시 받은 order_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
@@ -319,8 +321,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async createOrder(
     @Body() requestBody: CreateOrderRequestDto,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<CreateOrderResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(CreateOrderRequestDto, requestBody);
 
@@ -345,7 +348,6 @@ export class OrdersController extends Controller {
    * 결제 검증
    * @summary 포트원 결제 완료 후 결제를 검증하고 주문 상태를 업데이트합니다
    * @param requestBody 결제 검증 요청 (order_id, imp_uid)
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 결제 검증 결과
    * @description 프론트엔드에서 포트원 결제 완료 콜백에서 호출합니다.
    *              포트원 API로 결제 정보를 검증하고 주문 상태를 PAID로 업데이트합니다.
@@ -426,8 +428,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async verifyPayment(
     @Body() requestBody: VerifyPaymentRequestDto,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<VerifyPaymentResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(VerifyPaymentRequestDto, requestBody);
 
@@ -446,7 +449,6 @@ export class OrdersController extends Controller {
    * 주문 조회 (결제 완료 정보)
    * @summary 주문 정보를 조회합니다
    * @param orderId 주문 ID (UUID 또는 receipt_number 12자리 숫자)
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 주문 조회 결과
    * @description orderId는 UUID 형식 또는 receipt_number(12자리 숫자) 형식을 모두 지원합니다.
    * @example orderId "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe"
@@ -533,8 +535,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getOrder(
     @Path() orderId: string,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<GetOrderResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
 
     const result = await this.ordersService.getOrder(orderId, validUserId);
@@ -624,7 +627,6 @@ export class OrdersController extends Controller {
    * 장바구니에서 주문서 정보 조회
    * @summary 장바구니 항목들로 주문서 정보를 조회하고 주문 번호(receipt_number)를 미리 생성하여 반환합니다
    * @param requestBody 장바구니 주문서 정보 조회 요청
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 주문서 정보 조회 결과 (order_number 포함)
    * @description 반환된 order_number는 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
    *              결제 완료 후 POST /orders/from-cart API 호출 시에도 같은 order_number를 merchant_uid로 전달해야 합니다.
@@ -730,8 +732,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getOrderSheetFromCart(
     @Body() requestBody: GetOrderSheetFromCartRequestDto,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<GetOrderSheetResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(GetOrderSheetFromCartRequestDto, requestBody);
 
@@ -753,7 +756,6 @@ export class OrdersController extends Controller {
    * 장바구니에서 주문 생성
    * @summary 장바구니 항목들로 주문을 PENDING 상태로 생성합니다 (결제 전)
    * @param requestBody 장바구니 주문 생성 요청 (merchant_uid 필수)
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 주문 생성 결과 (결제 상태는 'pending')
    * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet/from-cart)에서 받은 order_number와 동일한 값이어야 합니다.
    *              프론트엔드에서 주문 시트 조회 시 받은 order_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
@@ -876,8 +878,9 @@ export class OrdersController extends Controller {
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async createOrderFromCart(
     @Body() requestBody: CreateOrderFromCartRequestDto,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest
   ): Promise<TsoaResponse<CreateOrderResponseDto>> {
+    const userId = req.user?.id;
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(CreateOrderFromCartRequestDto, requestBody);
 

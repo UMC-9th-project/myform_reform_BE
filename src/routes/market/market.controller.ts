@@ -7,8 +7,10 @@ import {
   Query,
   Response,
   Route,
+  Security,
   SuccessResponse,
-  Tags
+  Tags,
+  Request
 } from 'tsoa';
 import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
 import { MarketService } from './market.service.js';
@@ -18,6 +20,7 @@ import {
   GetItemReviewPhotosRequestDto,
   GetReviewDetailRequestDto
 } from './dto/market.req.dto.js';
+import type { Request as ExpressRequest } from 'express';
 import type {
   GetItemListResponseDto,
   GetItemDetailResponseDto,
@@ -45,7 +48,6 @@ export class MarketController extends Controller {
    * @param sort 정렬 기준 (popular/latest, 기본: popular)
    * @param page 페이지 번호 (기본: 1)
    * @param limit 페이지당 개수 (기본: 15)
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 상품 목록 조회 결과
    */
   @Get('/')
@@ -82,6 +84,7 @@ export class MarketController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Security('jwt', [])
   @Example<TsoaResponse<GetItemListResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
@@ -104,11 +107,11 @@ export class MarketController extends Controller {
     }
   })
   public async getItemList(
+    @Request() req: ExpressRequest,
     @Query() categoryId?: string,
     @Query() sort: 'popular' | 'latest' = 'popular',
     @Query() page: number = 1,
-    @Query() limit: number = 15,
-    @Header('x-user-id') userId?: string
+    @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemListResponseDto>> {
     const dto = await validateDto(GetItemListRequestDto, {
       category_id: categoryId,
@@ -117,6 +120,7 @@ export class MarketController extends Controller {
       limit
     });
 
+    const userId = req.user?.id;
     const result = await this.marketService.getItemList(
       categoryId,
       sort,
@@ -136,7 +140,6 @@ export class MarketController extends Controller {
    * 상품 상세 조회
    * @summary 상품 상세 정보를 조회합니다
    * @param itemId 상품 ID
-   * @param userId 사용자 ID (임시, 헤더에서 추출) - TODO: JWT 구현 후 변경
    * @returns 상품 상세 조회 결과
    */
   @Get('/{itemId}')
@@ -168,6 +171,7 @@ export class MarketController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Security('jwt', [])
   @Example<TsoaResponse<GetItemDetailResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
@@ -229,9 +233,10 @@ export class MarketController extends Controller {
     }
   })
   public async getItemDetail(
-    @Path() itemId: string,
-    @Header('x-user-id') userId?: string
+    @Request() req: ExpressRequest,
+    @Path() itemId: string
   ): Promise<TsoaResponse<GetItemDetailResponseDto>> {
+    const userId = req.user?.id;
     const result = await this.marketService.getItemDetail(itemId, userId);
 
     return {
