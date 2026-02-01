@@ -5,11 +5,12 @@ import {
   Delete,
   SuccessResponse,
   Body,
-  Response,
-  Example,
+  Security,
   Get,
   Query,
-  Tags
+  Tags,
+  Request,
+  Example
 } from 'tsoa';
 import {
   TsoaResponse,
@@ -17,13 +18,13 @@ import {
   ErrorResponse
 } from '../../config/tsoaResponse.js';
 import { WishService } from './wish.service.js';
+import { WishReqDTO, WishType } from './dto/wish.req.dto.js';
 import {
   WishResDTO,
   WishListResDTO,
-  DeleteWishResDTO,
-  WishReqDTO,
-  WishType
-} from './wish.dto.js';
+  DeleteWishResDTO
+} from './dto/wish.res.dto.js';
+import { Request as ExRequest } from 'express';
 
 @Route('/wish')
 @Tags('Wish')
@@ -42,10 +43,20 @@ export class WishController extends Controller {
    */
   @SuccessResponse(201, '위시 아이템 생성 완료')
   @Post('/')
+  @Security('jwt', ['user', 'reformer'])
+  @Example<WishReqDTO>({
+    type: 'ITEM',
+    itemId: '3df18a91-ef85-4dab-b984-2534bbc4ebe1'
+  })
   public async createWish(
-    @Body() body: WishReqDTO
+    @Body() body: WishReqDTO,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<WishResDTO>> {
-    const result = await this.wishService.createWish(body);
+    const payload = req.user;
+    const userId = payload.id;
+    const role = payload.role;
+
+    const result = await this.wishService.createWish(body, userId, role);
     return new ResponseHandler<WishResDTO>(result);
   }
 
@@ -56,10 +67,20 @@ export class WishController extends Controller {
    */
   @SuccessResponse(200, '위시 아이템 삭제 완료')
   @Delete('/')
+  @Security('jwt', ['user', 'reformer'])
+  @Example<WishReqDTO>({
+    type: 'ITEM',
+    itemId: '3df18a91-ef85-4dab-b984-2534bbc4ebe1'
+  })
   public async deleteWish(
-    @Body() body: WishReqDTO
+    @Body() body: WishReqDTO,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<DeleteWishResDTO>> {
-    const result = await this.wishService.deleteWish(body);
+    const payload = req.user;
+    const userId = payload.id;
+    const role = payload.role;
+
+    const result = await this.wishService.deleteWish(body, userId, role);
     return new ResponseHandler<DeleteWishResDTO>(result);
   }
 
@@ -73,10 +94,16 @@ export class WishController extends Controller {
    */
   @SuccessResponse(200, '위시 내역 조회 완료')
   @Get('/')
+  @Security('jwt', ['user', 'reformer'])
   public async getWishList(
-    @Query() type: WishType
+    @Query() type: WishType,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<WishListResDTO>> {
-    const result = await this.wishService.getWishList(type);
+    const payload = req.user;
+    const userId = payload.id;
+    const role = payload.role;
+
+    const result = await this.wishService.getWishList(type, userId, role);
     return new ResponseHandler<WishListResDTO>(result);
   }
 }

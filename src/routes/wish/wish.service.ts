@@ -1,13 +1,12 @@
 import {
-  WishReqDTO,
   WishResDTO,
   DeleteWishResDTO,
-  WishListResDTO,
-  WishType
-} from './wish.dto.js';
+  WishListResDTO
+} from './dto/wish.res.dto.js';
+import { WishReqDTO, WishType } from './dto/wish.req.dto.js';
 import {
   UserReqForbiddenError,
-  OwnerReqForbiddenError,
+  ReformerReqForbiddenError,
   UnknownRoleError,
   WishNotFoundError
 } from './wish.error.js';
@@ -20,36 +19,38 @@ import {
   getOwnerWishList
 } from './wish.model.js';
 import type { UserAllowedTarget } from './wish.model.js';
-
-type Role = 'USER' | 'OWNER';
+import { Role } from '../auth/auth.dto.js';
 
 export class WishService {
   constructor() {}
 
   private validateRoleAccess(role: Role, type: WishType) {
-    if (role === 'USER' && type === 'REQUEST')
+    if (role === 'user' && type === 'REQUEST')
       throw new UserReqForbiddenError();
-    if (role === 'OWNER' && type !== 'REQUEST')
-      throw new OwnerReqForbiddenError();
+    if (role === 'reformer' && type !== 'REQUEST')
+      throw new ReformerReqForbiddenError();
   }
 
-  async createWish(req: WishReqDTO): Promise<WishResDTO> {
-    const mockUser = {
-      id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as Role
-    };
-
-    this.validateRoleAccess(mockUser.role, req.type);
+  async createWish(
+    req: WishReqDTO,
+    userId: string,
+    role: Role
+  ): Promise<WishResDTO> {
+    this.validateRoleAccess(role, req.type);
 
     // 사용자 유형에 따른 처리
-    if (mockUser.role === 'USER') {
-      const created = await createUserWish(mockUser.id, req.type as UserAllowedTarget, req.itemId);
+    if (role === 'user') {
+      const created = await createUserWish(
+        userId,
+        req.type as UserAllowedTarget,
+        req.itemId
+      );
       const wishId = (created as { wish_id: string }).wish_id;
       return { wishId, createdAt: new Date() } as WishResDTO;
     }
 
-    if (mockUser.role === 'OWNER') {
-      const created = await createOwnerWish(mockUser.id, req.itemId);
+    if (role === 'reformer') {
+      const created = await createOwnerWish(userId, req.itemId);
       const wishId = (created as { wish_id: string }).wish_id;
       return { wishId, createdAt: new Date() } as WishResDTO;
     }
@@ -57,16 +58,19 @@ export class WishService {
     throw new UnknownRoleError();
   }
 
-  async deleteWish(req: WishReqDTO): Promise<DeleteWishResDTO> {
-    const mockUser = {
-      id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as Role
-    };
+  async deleteWish(
+    req: WishReqDTO,
+    userId: string,
+    role: Role
+  ): Promise<DeleteWishResDTO> {
+    this.validateRoleAccess(role, req.type);
 
-    this.validateRoleAccess(mockUser.role, req.type);
-
-    if (mockUser.role === 'USER') {
-      const deleted = await deleteUserWish(mockUser.id, req.type as UserAllowedTarget, req.itemId);
+    if (role === 'user') {
+      const deleted = await deleteUserWish(
+        userId,
+        req.type as UserAllowedTarget,
+        req.itemId
+      );
       if (!deleted) throw new WishNotFoundError();
       return {
         wishId: deleted.wish_id,
@@ -74,8 +78,8 @@ export class WishService {
       } as DeleteWishResDTO;
     }
 
-    if (mockUser.role === 'OWNER') {
-      const deleted = await deleteOwnerWish(mockUser.id, req.itemId);
+    if (role === 'reformer') {
+      const deleted = await deleteOwnerWish(userId, req.itemId);
       if (!deleted) throw new WishNotFoundError();
       return {
         wishId: deleted.wish_id,
@@ -86,21 +90,20 @@ export class WishService {
     throw new UnknownRoleError();
   }
 
-  async getWishList(type: WishType): Promise<WishListResDTO> {
-    const mockUser = {
-      id: '0f41af82-2259-4d42-8f1a-ca8771c8d473',
-      role: 'USER' as Role
-    };
+  async getWishList(
+    type: WishType,
+    userId: string,
+    role: Role
+  ): Promise<WishListResDTO> {
+    this.validateRoleAccess(role, type);
 
-    this.validateRoleAccess(mockUser.role, type);
-
-    if (mockUser.role === 'USER') {
-      const list = await getUserWishList(mockUser.id, type as UserAllowedTarget);
+    if (role === 'user') {
+      const list = await getUserWishList(userId, type as UserAllowedTarget);
       return { list } as WishListResDTO;
     }
 
-    if (mockUser.role === 'OWNER') {
-      const list = await getOwnerWishList(mockUser.id);
+    if (role === 'reformer') {
+      const list = await getOwnerWishList(userId);
       return { list } as WishListResDTO;
     }
 
