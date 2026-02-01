@@ -78,8 +78,10 @@ export class ChatEventHandler {
     // 상대방이 접속해 있는 경우에만 발송
     if (userRoom && userRoom.size > 0) {
       const messageResponse = {
+        messageId: message['props'].message_id,
         chatRoomId: message['props'].chat_room_id,
         senderId: message['props'].sender_id,
+        senderType: message['props'].sender_type,
         messageType: message['props'].message_type,
         textContent: message['props'].text_content,
         payload: message['props'].payload,
@@ -87,7 +89,9 @@ export class ChatEventHandler {
       };
 
       this.io.to(receiverId).emit('newMessage', messageResponse);
-      console.log(`[실시간 알림] 수신자 ${receiverId}에게 메시지 전달 완료`);
+      console.log(`[실시간 알림] 수신자 ${receiverId}에게 메시지 전달 완료`, messageResponse);
+    } else {
+      console.log(`[실시간 알림 실패] 수신자 ${receiverId}가 오프라인 상태`);
     }
   }
 

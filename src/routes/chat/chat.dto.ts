@@ -91,11 +91,6 @@ export interface CreateChatRoomDTO{
      * @example "FEED"
      */
     type : 'REQUEST' | 'PROPOSAL' | 'FEED';
-    /**
-     * 채팅방을 생성하는 사용자 ID (테스트용 - 로그인 구현 전까지 사용)
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
-    myId : UUID;
 }
 
 /**
@@ -176,16 +171,6 @@ export interface CreateChatRequestDTO {
      */
     chatRoomId: UUID;
     /**
-     * 요청서를 생성하는 사용자 ID (테스트용)
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
-    myId: UUID;
-    /**
-     * 사용자 유형 (테스트용)
-     * @example "REQUESTER"
-     */
-    myType: 'OWNER' | 'REQUESTER';
-    /**
      * 첨부 이미지 URL 배열
      * @example ["https://s3.example.com/image1.jpg", "https://s3.example.com/image2.jpg"]
      */
@@ -222,11 +207,6 @@ export interface CreateChatRequestDTO {
  * 채팅 요청서 수정 DTO
  */
 export interface UpdateChatRequestDTO {
-    /**
-     * 수정하는 사용자 ID (테스트용)
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
-    myId: UUID;
     /**
      * 첨부 이미지 URL 배열 (선택)
      * @example ["https://s3.example.com/updated-image.jpg"]
@@ -343,16 +323,6 @@ export interface CreateChatProposalDTO {
      */
     chatRoomId: UUID;
     /**
-     * 제안서를 생성하는 사용자 ID (테스트용)
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
-    myId: UUID;
-    /**
-     * 사용자 유형 (테스트용)
-     * @example "OWNER"
-     */
-    myType: 'OWNER' | 'REQUESTER';
-    /**
      * 제안 가격 (원)
      * @example 45000
      * @minimum 0
@@ -376,11 +346,7 @@ export interface CreateChatProposalDTO {
  * 채팅 제안서 수정 DTO
  */
 export interface UpdateChatProposalDTO {
-    /**
-     * 수정하는 사용자 ID (테스트용)
-     * @example "123e4567-e89b-12d3-a456-426614174000"
-     */
-    myId: UUID;
+
     /**
      * 제안 가격 (원, 선택)
      * @example 50000
