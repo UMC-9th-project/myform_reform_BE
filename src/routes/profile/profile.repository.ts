@@ -96,7 +96,6 @@ export class ProfileRepository {
   async getOrder(dto: SaleRequestDto): Promise<RawSaleData[]> {
     const { ownerId, type, page, limit } = dto;
 
-    // 1. order 기본 정보 조회
     const orders = await prisma.order.findMany({
       where: {
         owner_id: ownerId,
@@ -164,6 +163,85 @@ export class ProfileRepository {
     });
   }
 
+  async getItemTitle(itemId: string) {
+    return await this.prisma.item.findFirst({
+      where: { item_id: itemId },
+      select: { title: true }
+    });
+  }
+
+  async getItemInfo(itemId: string) {
+    const item = await this.prisma.item.findFirst({
+      where: { item_id: itemId },
+      select: {
+        title: true,
+        price: true,
+        item_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    if (!item) return null;
+    return {
+      title: item.title,
+      price: item.price !== null ? Number(item.price) : null,
+      photo: item.item_photo[0]?.content ?? null
+    };
+  }
+
+  async getProposalInfo(proposalId: string) {
+    const proposal = await this.prisma.reform_proposal.findFirst({
+      where: { reform_proposal_id: proposalId },
+      select: {
+        title: true,
+        price: true,
+        reform_proposal_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    if (!proposal) return null;
+    return {
+      title: proposal.title,
+      price: proposal.price !== null ? Number(proposal.price) : null,
+      photo: proposal.reform_proposal_photo[0]?.content ?? null
+    };
+  }
+
+  async getItemInfos(itemIds: string[]) {
+    if (itemIds.length === 0) return [];
+    const items = await this.prisma.item.findMany({
+      where: { item_id: { in: itemIds } },
+      select: {
+        item_id: true,
+        title: true,
+        price: true,
+        item_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    return items.map((item: (typeof items)[number]) => ({
+      item_id: item.item_id,
+      title: item.title,
+      price: item.price !== null ? Number(item.price) : null,
+      photo: item.item_photo[0]?.content ?? null
+    }));
+  }
+
+  async getProposalInfos(proposalIds: string[]) {
+    if (proposalIds.length === 0) return [];
+    const proposals = await this.prisma.reform_proposal.findMany({
+      where: { reform_proposal_id: { in: proposalIds } },
+      select: {
+        reform_proposal_id: true,
+        title: true,
+        price: true,
+        reform_proposal_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    return proposals.map((p: (typeof proposals)[number]) => ({
+      reform_proposal_id: p.reform_proposal_id,
+      title: p.title,
+      price: p.price !== null ? Number(p.price) : null,
+      photo: p.reform_proposal_photo[0]?.content ?? null
+    }));
+  }
+
   async getOrderDetail(
     ownerId: string,
     orderId: string
@@ -215,6 +293,163 @@ export class ProfileRepository {
             extra_price: true
           }
         }
+      }
+    });
+  }
+
+  async findUserWishTargetIds(userId: string, targetType: 'ITEM' | 'PROPOSAL', targetIds: string[]) {
+    if (targetIds.length === 0) return [];
+    const rows = await this.prisma.user_wish.findMany({
+      where: {
+        user_id: userId,
+        target_type: targetType,
+        target_id: { in: targetIds }
+      },
+      select: { target_id: true }
+    });
+    return rows
+      .map((r: { target_id: string | null }) => r.target_id)
+      .filter((id: string | null): id is string => id !== null);
+  }
+
+  async findReviewStatsByOwnerId(ownerId: string) {
+    return await this.prisma.review.aggregate({
+      where: { owner_id: ownerId },
+      _avg: { star: true },
+      _count: { review_id: true }
+    });
+  }
+
+  async findOwnerById(ownerId: string) {
+    return await this.prisma.owner.findUnique({
+      where: { owner_id: ownerId },
+      select: {
+        profile_photo: true,
+        nickname: true,
+        avg_star: true,
+        review_count: true,
+        keywords: true,
+        bio: true
+      }
+    });
+  }
+
+  async countSaleByOwnerId(ownerId: string): Promise<number> {
+    const [itemCount, proposalCount] = await Promise.all([
+      this.prisma.item.count({ where: { owner_id: ownerId } }),
+      this.prisma.reform_proposal.count({ where: { owner_id: ownerId } })
+    ]);
+    return itemCount + proposalCount;
+  }
+
+  async findFeedsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+    const whereCondition: { owner_id: string; OR?: unknown[]; feed_id?: { lt: string } } = {
+      owner_id: ownerId
+    };
+
+    if (cursor) {
+      const cursorFeed = await this.prisma.feed.findUnique({
+        where: { feed_id: cursor },
+        select: { is_pinned: true, created_at: true }
+      });
+
+      if (!cursorFeed) {
+        return [];
+      }
+
+      if (cursorFeed.created_at) {
+        whereCondition.OR = [
+          { is_pinned: false },
+          {
+            is_pinned: cursorFeed.is_pinned ?? false,
+            created_at: { lt: cursorFeed.created_at }
+          }
+        ];
+      } else {
+        whereCondition.feed_id = { lt: cursor };
+      }
+    }
+
+    return await this.prisma.feed.findMany({
+      where: whereCondition,
+      take: take + 1,
+      orderBy: [{ is_pinned: 'desc' }, { created_at: 'desc' }],
+      include: {
+        feed_photo: {
+          orderBy: { photo_order: 'asc' }
+        }
+      }
+    });
+  }
+
+  async findItemsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+    const where = cursor
+      ? { owner_id: ownerId, item_id: { lt: cursor } }
+      : { owner_id: ownerId };
+
+    return await this.prisma.item.findMany({
+      where,
+      take: take + 1,
+      orderBy: { created_at: 'desc' },
+      include: {
+        item_photo: {
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
+      }
+    });
+  }
+
+  async findProposalsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+    const where = cursor
+      ? { owner_id: ownerId, reform_proposal_id: { lt: cursor } }
+      : { owner_id: ownerId };
+
+    return await this.prisma.reform_proposal.findMany({
+      where,
+      take: take + 1,
+      orderBy: { created_at: 'desc' },
+      include: {
+        reform_proposal_photo: {
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
+      }
+    });
+  }
+
+  async findReviewsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+    const where = cursor
+      ? { owner_id: ownerId, review_id: { lt: cursor } }
+      : { owner_id: ownerId };
+
+    return await this.prisma.review.findMany({
+      where,
+      take: take + 1,
+      orderBy: { created_at: 'desc' },
+      include: {
+        review_photo: {
+          orderBy: { photo_order: 'asc' }
+        },
+        order: {
+          select: {
+            target_type: true,
+            target_id: true
+          }
+        }
+      }
+    });
+  }
+
+  async findUsersByIds(userIds: string[]) {
+    if (userIds.length === 0) return [];
+    return this.prisma.user.findMany({
+      where: { user_id: { in: userIds } },
+      select: {
+        user_id: true,
+        name: true,
+        nickname: true,
+        profile_photo: true
       }
     });
   }
