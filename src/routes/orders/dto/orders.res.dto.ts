@@ -1,5 +1,5 @@
 export interface GetOrderSheetResponseDto {
-  order_number: string;
+  receipt_number: string;
   order_item: {
     reformer_nickname: string;
     thumbnail: string;
@@ -39,7 +39,7 @@ export interface VerifyPaymentResponseDto {
 
 export interface GetOrderResponseDto {
   order_id: string;
-  order_number: string;
+  receipt_number: string;
   status: string | null;
   delivery_address: {
     postal_code: string | null;

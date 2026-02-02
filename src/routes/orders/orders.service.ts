@@ -547,7 +547,7 @@ export class OrdersService {
       const receiptNumber = await this.generateReceiptNumber();
 
       return {
-        order_number: receiptNumber,
+        receipt_number: receiptNumber,
         order_item: {
           reformer_nickname: item.owner.nickname || '',
           thumbnail: item.item_photo[0]?.content || '',
@@ -613,7 +613,7 @@ export class OrdersService {
       if (!merchantUid) {
         throw new OrderError(
           '주문 번호가 필요합니다.',
-          'merchant_uid(order_number)는 필수입니다.'
+          'merchant_uid(receipt_number)는 필수입니다.'
         );
       }
 
@@ -926,7 +926,7 @@ export class OrdersService {
 
       return {
         order_id: firstOrder.order_id,
-        order_number: receipt.receipt_number || firstOrder.order_id,
+        receipt_number: receipt.receipt_number || firstOrder.order_id,
         status: firstOrder.status || null,
         delivery_address: deliveryAddress,
         first_item: firstItem,
@@ -1633,7 +1633,7 @@ export class OrdersService {
         : null;
 
       return {
-        order_number: receiptNumber,
+        receipt_number: receiptNumber,
         order_item: orderItems[0], // 첫 번째 상품 정보
         delivery_address: normalizedDeliveryAddress,
         payment: {

@@ -24,7 +24,7 @@ export interface PaymentSummary {
 }
 
 export interface OrderSheetResponse {
-  order_number: string;
+  receipt_number: string;
   order_item: OrderItemInfo;
   delivery_address: DeliveryAddressInfo | null;
   payment: PaymentSummary;
@@ -73,7 +73,7 @@ export interface PaymentInfo {
 
 export interface OrderResponse {
   order_id: string;
-  order_number: string;
+  receipt_number: string;
   status: string | null;
   delivery_address: DeliveryAddressInfo;
   first_item: OrderItemSummary | null;
