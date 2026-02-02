@@ -12,6 +12,7 @@ import {
   Security,
   Request
 } from 'tsoa';
+import type { Request as ExpressRequest } from 'express';
 import { ProfileService } from './profile.service.js';
 import {
   ErrorResponse,
@@ -26,7 +27,12 @@ import {
 } from './dto/profile.req.dto.js';
 import {
   SaleDetailResponseDto,
-  SaleResponseDto
+  SaleResponseDto,
+  ProfileInfoResponse,
+  FeedListResponse,
+  MarketListResponse,
+  ProposalListResponse,
+  ReviewListResponse
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -151,5 +157,192 @@ export class ProfileController extends Controller {
     const data = await this.profileService.getSaleDetail(ownerId, id);
 
     return new ResponseHandler(data.toResponse());
+  }
+
+  /**
+   * 프로필 기본 정보 조회
+   * @summary owner ID로 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다
+   * @param id owner UUID
+   * @returns 프로필 정보
+   */
+  @Get('{id}')
+  @SuccessResponse(200, '프로필 정보 조회 성공')
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: 'Owner ID: {id}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getProfileInfo(
+    @Path() id: string
+  ): Promise<TsoaResponse<ProfileInfoResponse>> {
+    const result = await this.profileService.getProfileInfo(id);
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * 프로필 피드 목록 조회 (cursor 기반)
+   * @summary owner의 피드 목록을 조회합니다 (공개)
+   * @param id owner UUID
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @returns 피드 목록
+   */
+  @Get('{id}/feed')
+  @SuccessResponse(200, '피드 목록 조회 성공')
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: 'Owner ID: {id}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getProfileFeed(
+    @Path() id: string,
+    @Query() cursor?: string,
+    @Query() limit?: number
+  ): Promise<TsoaResponse<FeedListResponse>> {
+    const limitValue = limit && limit > 0 ? limit : 20;
+    const result = await this.profileService.getProfileFeed(
+      id,
+      cursor,
+      limitValue
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * 프로필 판매 상품 목록 조회 (cursor 기반)
+   * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
+   * @param id owner UUID
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @returns 판매 상품 목록
+   */
+  @Get('{id}/item')
+  @SuccessResponse(200, '판매 상품 목록 조회 성공')
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: 'Owner ID: {id}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getProfileItems(
+    @Path() id: string,
+    @Request() req: ExpressRequest,
+    @Query() cursor?: string,
+    @Query() limit?: number
+  ): Promise<TsoaResponse<MarketListResponse>> {
+    const limitValue = limit && limit > 0 ? limit : 20;
+    const userId = req.user?.id;
+    const result = await this.profileService.getProfileItems(
+      id,
+      cursor,
+      limitValue,
+      userId
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * 프로필 주문제작 목록 조회 (cursor 기반)
+   * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
+   * @param id owner UUID
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @returns 주문제작 목록
+   */
+  @Get('{id}/proposal')
+  @SuccessResponse(200, '주문제작 목록 조회 성공')
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: 'Owner ID: {id}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getProfileProposals(
+    @Path() id: string,
+    @Request() req: ExpressRequest,
+    @Query() cursor?: string,
+    @Query() limit?: number
+  ): Promise<TsoaResponse<ProposalListResponse>> {
+    const limitValue = limit && limit > 0 ? limit : 20;
+    const userId = req.user?.id;
+    const result = await this.profileService.getProfileProposals(
+      id,
+      cursor,
+      limitValue,
+      userId
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * 프로필 리뷰 목록 조회 (cursor 기반)
+   * @summary owner에 대한 리뷰 목록을 조회합니다 (공개)
+   * @param id owner UUID
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @returns 리뷰 목록
+   */
+  @Get('{id}/review')
+  @SuccessResponse(200, '리뷰 목록 조회 성공')
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: 'Owner ID: {id}'
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getProfileReviews(
+    @Path() id: string,
+    @Query() cursor?: string,
+    @Query() limit?: number
+  ): Promise<TsoaResponse<ReviewListResponse>> {
+    const limitValue = limit && limit > 0 ? limit : 20;
+    const result = await this.profileService.getProfileReviews(
+      id,
+      cursor,
+      limitValue
+    );
+    return new ResponseHandler(result);
   }
 }
