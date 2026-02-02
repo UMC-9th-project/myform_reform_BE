@@ -129,19 +129,7 @@ export class OrdersService {
           '연락처는 필수 입력 항목입니다.'
         );
       }
-
-      const newDeliveryAddress = await this.repository.createDeliveryAddress({
-        user_id: userId,
-        owner_id: ownerId,
-        postal_code: newAddress.postal_code.trim(),
-        address: newAddress.address.trim(),
-        address_detail: newAddress.address_detail?.trim() || null,
-        recipient: newAddress.recipient_name.trim(),
-        phone: newAddress.phone.trim(),
-        address_name: newAddress.address_name?.trim() || null,
-        is_default: false
-      });
-      return newDeliveryAddress.delivery_address_id;
+      return undefined;
     } else {
       const defaultAddress =
         await this.repository.findDefaultDeliveryAddress(userId);
