@@ -10,18 +10,21 @@ import {
 } from './dto/cart.res.dto.js';
 import {
   CartNotFoundError,
-  PartialCartNotFoundError,
   ItemNotFoundError,
   PartialOptionItemNotFoundError,
-  IncompleteOptionSelectionError
+  IncompleteOptionSelectionError,
+  UnauthorizedCartAccessError
 } from '../../routes/cart/cart.error.js';
 
 export class CartService {
   constructor() {}
 
-  async removeItemsFromCart(req: DeleteItemsDTO): Promise<number> {
+  async removeItemsFromCart(
+    req: DeleteItemsDTO,
+    userId: string
+  ): Promise<number> {
     const cartIds = req.cartIds || [];
-    await this.validateExistingCartIds(cartIds);
+    await this.validateUserCartOwnership(cartIds, userId);
 
     const result = await cartModel.deleteByCartIds(cartIds);
     return result.count;
@@ -57,14 +60,22 @@ export class CartService {
   }
 
   // Private Helper Methods
-  private async validateExistingCartIds(cartIds: string[]): Promise<void> {
+  private async validateUserCartOwnership(
+    cartIds: string[],
+    userId: string
+  ): Promise<void> {
     if (cartIds.length === 0) return;
 
-    const existingIds = await cartModel.findExistingCartIds(cartIds);
+    const existingCarts = await cartModel.findCartsByIdsAndUserId(
+      cartIds,
+      userId
+    );
+    const existingIds = existingCarts.map((c) => c.cart_id);
+
     if (existingIds.length === 0) throw new CartNotFoundError();
     if (existingIds.length !== cartIds.length) {
       const missing = cartIds.filter((id) => !existingIds.includes(id));
-      throw new PartialCartNotFoundError(missing);
+      throw new UnauthorizedCartAccessError(missing);
     }
   }
 
