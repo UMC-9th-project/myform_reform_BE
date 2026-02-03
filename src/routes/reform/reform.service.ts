@@ -1,5 +1,5 @@
 import { S3 } from '../../config/s3.js';
-import { ReformFilter } from './dto/reform.req.dto.js';
+import { ReformFilter, ReformQuoteRequest } from './dto/reform.req.dto.js';
 import {
   ReformHomeResponse,
   ReformProposalResponseDto,
@@ -13,11 +13,14 @@ import {
   ReformDetailRequestResponse,
   ReformDetailProposalResponse,
   ReformRequestUpdate,
-  ReformProposalUpdate
+  ReformProposalUpdate,
+  ReformQuoteFactory
 } from './reform.model.js';
 import { ReformRepository } from './reform.repository.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { CustomJwt } from '../../@types/expreees.js';
+import { runInThisContext } from 'vm';
+import { runInTransaction } from '../../config/prisma.config.js';
 
 export class ReformService {
   private reformRepository: ReformRepository;
@@ -320,25 +323,51 @@ export class ReformService {
     }
   }
 
-  // async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
-  //   try {
-  //     const image: {
-  //       content: string;
-  //       photo_order: number;
-  //     }[] = [];
-  //     for (let i = 0; i < images.length; i++) {
-  //       const ans = await this.s3.uploadToS3(images[i]);
-  //       const obj = {
-  //         content: ans,
-  //         photo_order: i + 1
-  //       };
-  //       image.push(obj);
-  //     }
+  async addReformQuote(data: ReformQuoteRequest, ownerId: string) {
+    try {
+      return await runInTransaction(async () => {
+        const check = await this.reformRepository.selectReformRequestUser(
+          data.targetId
+        );
 
-  //     dto.images = image;
-  //     await this.refromModel.addQuoteOrder(dto);
-  //   } catch (err: any) {
-  //     throw new ReformError(err);
-  //   }
-  // }
+        if (check === null)
+          throw new ReformError('요청서가 존재하지 않습니다.');
+
+        if (data.contents !== undefined && data.contents.length > 1000)
+          throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+        if (data.images !== undefined && data.images.length > 10)
+          throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+        if (
+          data.price !== undefined &&
+          (data.price < 0 || data.price > 999999999)
+        )
+          throw new ReformError('가격은 0원~999999999원 까지입니다.');
+
+        if (
+          data.delivery !== undefined &&
+          (data.delivery < 0 || data.delivery > 999999999)
+        )
+          throw new ReformError('배송비는 0원~999999999원 까지입니다.');
+
+        if (
+          data.expectedWorking !== undefined &&
+          (data.expectedWorking < 0 || data.expectedWorking > 365)
+        )
+          throw new ReformError('예상 작업일은 0일~365일 까지입니다.');
+
+        const userId = check.user_id;
+        const dto = ReformQuoteFactory.create(data, userId, ownerId);
+        const ans = await this.reformRepository.insertReformQuote(dto);
+
+        if (ans === null) throw new ReformError('생성중 오류가 발생했습니다.');
+        await this.reformRepository.insertReformQuotePhoto(dto, ans.order_id);
+
+        return ans;
+      });
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
 }

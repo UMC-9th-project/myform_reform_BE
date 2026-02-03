@@ -27,7 +27,8 @@ import {
   ModifyProposalRequest,
   ModifyRequestRequest,
   ReformRequestRequest,
-  ReformFilter
+  ReformFilter,
+  ReformQuoteRequest
 } from './dto/reform.req.dto.js';
 import {
   ReformDetailProposalResponseDto,
@@ -257,21 +258,25 @@ export class ReformController extends Controller {
     return new ResponseHandler(ans);
   }
 
-  // /**
-  //  * @summary 요청서를 바탕으로 새로운 견적서를 생성합니다.
-  //  * @param body JSON stringify된 객체 {"userId":"80f80aec-a750-4159-8e17-398a9dc6f14c","reform_request_id":"03719d41-d021-4171-bdac-f26b511bb423","price":10000,"delivery":1000,"content":"상세 제안 내용 텍스트 샘플입니다","expected_working":5}
-  //  * @param images 견적에 첨부할 이미지 파일 배열
-  //  * @returns 생성된 견적 정보
-  //  */
-  // @Post('/quote')
-  // @SuccessResponse(200, '생성 성공')
-  // public async addQuote(
-  //   @FormField() body: string,
-  //   @UploadedFiles() images: Express.Multer.File[]
-  // ) {
-  //   const ownerId = 'a209454d-5e95-4ffb-ba6f-beeabef34b50'; // ownerId는 reformer만 보내니까 JWT로 인증하도록
-  //   const dto = JSON.parse(body) as AddQuoteReq;
-  //   const orderDto = new OrderQuoteDto(dto, ownerId);
-  //   await this.reformService.addQuoteOrder(orderDto, images);
-  // }
+  /**
+   * @summary 요청서를 바탕으로 새로운 견적서를 생성합니다.
+   * @param body 견적서
+   * @returns 생성된 견적서 UUID
+   */
+  @Post('/quote')
+  @Security('jwt')
+  @SuccessResponse(200, '생성 성공')
+  public async addQuote(
+    @Request() req: ExRequest,
+    @Body() body: ReformQuoteRequest
+  ): Promise<TsoaResponse<{ order_id: string }>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer')
+      throw new ReformError('리폼러만 견적서를 작성 할 수 있습니다');
+
+    const ownerId = req.user.id;
+
+    const ans = await this.reformService.addReformQuote(body, ownerId);
+    return new ResponseHandler(ans);
+  }
 }
