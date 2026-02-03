@@ -148,7 +148,10 @@ export class ChatMessageFactory {
     if (messageType === 'text') {
       textContent = content as string;
       payload = undefined; // 텍스트 메시지는 페이로드가 없어야 함
-    } else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+    } else if (messageType === 'image') {
+      payload = this.mapToImagePayload(content as string[]) as ChatMessagePayload;
+      textContent = undefined; // 이미지 타입은 텍스트 내용이 없어야 함 
+    }else if (this.PAYLOAD_TYPES.includes(messageType!)) {
       payload = content as ChatMessagePayload;
       textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
     } else {
