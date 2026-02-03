@@ -15,6 +15,37 @@ interface RepoParams {
 export class ChatRepository {
   constructor() {}
 
+  // 채팅방 중복 확인
+  async findChatRoom(
+    ownerId: string,
+    requesterId: string,
+    type: string,
+    targetId?: string
+  ): Promise<any | null> {
+    try {
+      const where: any = {
+        owner_id: ownerId,
+        requester_id: requesterId,
+        type: type,
+        is_active: true
+      };
+
+      // FEED가 아니면 targetId도 확인 (REQUEST/PROPOSAL은 특정 게시물에 대한 채팅방)
+      if (targetId && type !== 'FEED') {
+        where.target_payload = {
+          path: ['id'],
+          equals: targetId
+        };
+      }
+
+      return await prisma.chat_room.findFirst({
+        where
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
   // 채팅방 생성
   async createChatRoom(ChatRoomInstance: ChatRoom): Promise<ChatRoom> {
     try {
@@ -137,8 +168,8 @@ export class ChatRepository {
           chat_message_chat_room_last_message_idTochat_message: true
         },
         orderBy: [
-          { last_message_id: { sort: 'desc', nulls: 'last' } },
-          { chat_room_id: 'desc' }
+          { chat_message_chat_room_last_message_idTochat_message: { created_at: { sort: 'desc', nulls: 'last' } } },
+          { created_at: 'desc' }
         ],
         take: limit + 1
       });

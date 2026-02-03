@@ -57,6 +57,30 @@ export interface SimplePostResponseDTO{
 }
 
 /**
+ * 채팅방 생성 응답 DTO
+ */
+export interface CreateChatRoomResponseDTO {
+    /**
+     * 생성 또는 반환된 채팅방의 고유 아이디
+     * @format uuid
+     * @example "550e8400-e29b-41d4-a716-446655440000"
+     */
+    id: UUID;
+    /**
+     * 채팅방 생성 일시
+     * @example "2024-01-15T10:30:00.000Z"
+     */
+    createdAt: Date;
+    /**
+     * 새로 생성된 채팅방인지 여부
+     * - true: 새로 생성됨
+     * - false: 이미 존재하는 채팅방 반환
+     * @example true
+     */
+    isNew: boolean;
+}
+
+/**
  * 리소스 수정 성공 시 반환되는 기본 응답 객체
  */
 export interface SimplePatchResponseDTO{
