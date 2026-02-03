@@ -50,7 +50,16 @@ export class ProfileRepository {
         content: dto.content,
         price: dto.price,
         delivery: dto.delivery,
-        category_id: categoryId
+        category_id: categoryId,
+        item_photo:
+          dto.images.length > 0
+            ? {
+                create: dto.images.map((img) => ({
+                  content: img.content,
+                  photo_order: img.photo_order
+                }))
+              }
+            : undefined
       }
     });
   }
@@ -89,7 +98,16 @@ export class ProfileRepository {
         price: dto.price,
         delivery: dto.delivery,
         expected_working: dto.expectedWorking,
-        category_id: categoryId
+        category_id: categoryId,
+        reform_proposal_photo:
+          dto.images.length > 0
+            ? {
+                create: dto.images.map((img) => ({
+                  content: img.content,
+                  photo_order: img.photo_order
+                }))
+              }
+            : undefined
       }
     });
   }
@@ -259,7 +277,6 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         target_type: true,
-        user_address: true,
         user: {
           select: {
             name: true,
@@ -268,7 +285,13 @@ export class ProfileRepository {
         },
         receipt: {
           select: {
-            created_at: true
+            created_at: true,
+            delivery_postal_code: true,
+            delivery_address: true,
+            delivery_address_detail: true,
+            delivery_recipient_name: true,
+            delivery_phone: true,
+            delivery_address_name: true
           }
         },
         quote_photo: {
@@ -380,6 +403,28 @@ export class ProfileRepository {
           orderBy: { photo_order: 'asc' }
         }
       }
+    });
+  }
+
+  async createFeed(ownerId: string, isPinned: boolean): Promise<{ feed_id: string }> {
+    const feed = await this.prisma.feed.create({
+      data: {
+        owner_id: ownerId,
+        is_pinned: isPinned
+      },
+      select: { feed_id: true }
+    });
+    return feed;
+  }
+
+  async createFeedPhotos(feedId: string, imageUrls: string[]): Promise<void> {
+    if (imageUrls.length === 0) return;
+    await this.prisma.feed_photo.createMany({
+      data: imageUrls.map((content, index) => ({
+        feed_id: feedId,
+        content,
+        photo_order: index + 1
+      }))
     });
   }
 

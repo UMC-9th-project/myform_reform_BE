@@ -14,6 +14,9 @@ export class ReviewsRepository {
         user_id: userId
       },
       take: limit + 1,
+      orderBy: {
+        created_at: 'desc'
+      },
       ...(cursor && {
         cursor: { review_id: cursor },
         skip: 1
@@ -60,7 +63,7 @@ export class ReviewsRepository {
     });
 
     return items.map((item: RawItemInfo) => ({
-      item_id: item.item_id,
+      product_id: item.item_id,
       title: item.title,
       thumbnail: item.item_photo[0]?.content ?? ''
     }));
@@ -86,7 +89,7 @@ export class ReviewsRepository {
       }
     });
     return requests.map((request: RawRequestInfo) => ({
-      request_id: request.reform_request_id,
+      product_id: request.reform_request_id,
       title: request.title,
       thumbnail: request.reform_request_photo[0]?.content ?? ''
     }));
@@ -112,7 +115,7 @@ export class ReviewsRepository {
       }
     });
     return proposals.map((proposal: RawProposalInfo) => ({
-      proposal_id: proposal.reform_proposal_id,
+      product_id: proposal.reform_proposal_id,
       title: proposal.title,
       thumbnail: proposal.reform_proposal_photo[0]?.content ?? ''
     }));

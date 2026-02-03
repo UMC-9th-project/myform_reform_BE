@@ -30,7 +30,7 @@ export class ReviewsService {
         ...new Set(actualReviews
         .filter((r) => r.order.target_type === 'PROPOSAL')
         .map((r) => r.order.target_id))];
-    
+        
     const [items, requests, proposals] = await Promise.all([
       this.reviewsRepository.getItemInfos(
         ItemIds.filter((id): id is string => id !== null)

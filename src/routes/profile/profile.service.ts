@@ -5,7 +5,7 @@ import {
   OrderItemError,
   OwnerNotFound
 } from './profile.error.js';
-import { SaleRequestDto } from './dto/profile.req.dto.js';
+import { AddFeedRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -15,6 +15,7 @@ import {
   SaleDetail
 } from './profile.model.js';
 import type {
+  AddFeedResponseDto,
   ProfileInfoResponse,
   FeedListResponse,
   MarketListResponse,
@@ -59,6 +60,25 @@ export class ProfileService {
       }
     } catch (err: unknown) {
       if (err instanceof CategoryNotExist) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      throw new ItemAddError(message);
+    }
+  }
+
+  async addFeed(ownerId: string, dto: AddFeedRequestDto): Promise<AddFeedResponseDto> {
+    const urls = Array.isArray(dto.imageUrls) ? dto.imageUrls : [];
+    const trimmed = urls.map((u) => (typeof u === 'string' ? u.trim() : '')).filter(Boolean);
+    if (trimmed.length === 0) {
+      throw new ItemAddError('이미지 URL을 1개 이상 입력해 주세요.');
+    }
+    try {
+      const feed = await this.profileRepository.createFeed(
+        ownerId,
+        dto.isPinned === true
+      );
+      await this.profileRepository.createFeedPhotos(feed.feed_id, trimmed);
+      return { feedId: feed.feed_id };
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       throw new ItemAddError(message);
     }

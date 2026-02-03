@@ -2,17 +2,29 @@ import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, Valida
 import { Type } from 'class-transformer';
 
 export class NewAddressDto {
-  @IsOptional()
   @IsString()
-  postal_code?: string;
+  @IsNotEmpty()
+  postal_code!: string;
 
-  @IsOptional()
   @IsString()
-  address?: string;
+  @IsNotEmpty()
+  address!: string;
 
   @IsOptional()
   @IsString()
   address_detail?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  recipient_name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+
+  @IsOptional()
+  @IsString()
+  address_name?: string;
 }
 
 export class GetOrderSheetRequestDto {

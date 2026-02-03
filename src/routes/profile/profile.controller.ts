@@ -21,11 +21,13 @@ import {
   commonError
 } from '../../config/tsoaResponse.js';
 import {
+  AddFeedRequestDto,
   AddItemRequestDto,
   AddReformRequestDto,
   SaleRequestDto
 } from './dto/profile.req.dto.js';
 import {
+  AddFeedResponseDto,
   SaleDetailResponseDto,
   SaleResponseDto,
   ProfileInfoResponse,
@@ -102,6 +104,68 @@ export class ProfileController extends Controller {
   }
 
   /**
+   * 프로필 피드 사진 등록
+   * @summary 본인(리폼러) 프로필에 피드 사진을 등록합니다. 이미지는 /upload 또는 /upload/many로 먼저 업로드한 뒤 받은 URL을 imageUrls에 넣어 보냅니다.
+   * @param body imageUrls(1개 이상), isPinned(고정 여부, 선택)
+   * @returns 생성된 feedId
+   */
+  @Post('feed')
+  @Security('jwt')
+  @SuccessResponse(201, '피드 등록 성공')
+  @Response<TsoaResponse<AddFeedResponseDto>>(
+    201,
+    '피드 등록 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        feedId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+      }
+    }
+  )
+  @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
+  @Response<ErrorResponse>(
+    400,
+    '판매자(리폼러)만 등록할 수 있습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ERR-FEED-NOT-REFORMER',
+        reason: '판매자(리폼러)만 등록할 수 있습니다.',
+        data: null
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    400,
+    '이미지 URL을 1개 이상 입력해 주세요.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ERR-FEED-VALIDATION',
+        reason: '이미지 URL을 1개 이상 입력해 주세요.',
+        data: null
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async addFeed(
+    @Body() body: AddFeedRequestDto,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<AddFeedResponseDto>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자(리폼러)만 등록할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const result = await this.profileService.addFeed(ownerId, body);
+    this.setStatus(201);
+    return new ResponseHandler(result);
+  }
+
+  /**
    * 판매관리 목록 조회
    * @summary 사용자의 전체 판매 상품 목록을 조회합니다
    * @returns 판매관리 목록
@@ -137,12 +201,42 @@ export class ProfileController extends Controller {
   /**
    * 특정 판매목록 상세 조회
    * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
-   * @param id 판매상품 ID
+   * @param id 판매상품 ID (order_id)
    * @returns 판매상품 상세 정보
    */
   @Get('sales/:id')
   @Security('jwt')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
+  @Response<TsoaResponse<SaleDetailResponseDto>>(
+    200,
+    '특정 판매상품 조회 성공',
+    {
+      resultType: 'SUCCESS',
+      error: null,
+      success: {
+        orderId: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
+        targetId: '550e8400-e29b-41d4-a716-446655440000',
+        status: 'PAID',
+        price: 53000,
+        deliveryFee: 3000,
+        userName: '구매자이름',
+        createdAt: new Date('2024-12-01T10:30:00Z'),
+        title: '상품명',
+        thumbnail: 'https://example.com/thumbnail.jpg',
+        phone: '01012345678',
+        delivery_address: {
+          postal_code: '12345',
+          address: '서울시 강남구 테헤란로',
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
+        },
+        billNumber: '',
+        option: '옵션그룹1 옵션1'
+      }
+    }
+  )
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
     @Path() id: string,
@@ -157,6 +251,54 @@ export class ProfileController extends Controller {
     const data = await this.profileService.getSaleDetail(ownerId, id);
 
     return new ResponseHandler(data.toResponse());
+  }
+
+  /**
+   * 내 프로필 정보 조회 (리폼러 전용)
+   * @summary 로그인한 리폼러가 본인 프로필 정보를 조회합니다
+   * @returns 프로필 정보
+   */
+  @Get()
+  @Security('jwt')
+  @SuccessResponse(200, '내 프로필 조회 성공')
+  @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
+  @Response<ErrorResponse>(
+    400,
+    '판매자(리폼러)만 조회할 수 있습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'ERR-PROFILE-NOT-REFORMER',
+        reason: '판매자(리폼러)만 조회할 수 있습니다.',
+        data: null
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(
+    404,
+    '프로필을 찾을 수 없습니다.',
+    {
+      resultType: 'FAIL',
+      error: {
+        errorCode: 'OWNER-NOT-FOUND',
+        reason: '프로필을 찾을 수 없습니다.',
+        data: null
+      },
+      success: null
+    }
+  )
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getMyProfile(
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<ProfileInfoResponse>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자(리폼러)만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const result = await this.profileService.getProfileInfo(ownerId);
+    return new ResponseHandler(result);
   }
 
   /**

@@ -1,6 +1,11 @@
 import { order_status_enum } from '@prisma/client';
 import { UUID } from '../../../@types/common.js';
 
+/** 프로필 피드 등록 성공 응답 DTO */
+export interface AddFeedResponseDto {
+  feedId: UUID;
+}
+
 export interface SaleResponseDto {
   orderId: UUID;
   targetId: UUID;
@@ -15,7 +20,14 @@ export interface SaleResponseDto {
 
 export interface SaleDetailResponseDto extends SaleResponseDto {
   phone: string;
-  address: string;
+  delivery_address: {
+    postal_code: string | null;
+    address: string | null;
+    address_detail: string | null;
+    recipient_name: string | null;
+    phone: string | null;
+    address_name: string | null;
+  };
   billNumber: string;
   option: string;
 }
