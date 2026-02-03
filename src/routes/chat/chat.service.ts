@@ -24,17 +24,15 @@ export class ChatService {
 
     switch (request.type) {
     case 'FEED':
-      target = await this.targetRepository.findFeedWithOwnerById(request.id);
-      if (!target) { throw new CreateTargetNotFoundError('피드를 찾을 수 없습니다.'); }
       // 피드 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
-      ownerId = target.owner_id;
-      requesterId  = id; // 테스트용: 요청에서 직접 받음
+      ownerId = request.id;
+      requesterId  = id; 
       break;
     case 'REQUEST':
       target = await this.targetRepository.findRequestWithUserById(request.id);
       if (!target) { throw new CreateTargetNotFoundError('요청글을 찾을 수 없습니다.');}
       // 요청글 채팅방 생성 로직(리폼러가 유저에게 채팅방 개설)
-      ownerId = id; // 테스트용: 요청에서 직접 받음
+      ownerId = id;
       requesterId = target.user_id;
       break;
     case 'PROPOSAL':
@@ -42,7 +40,7 @@ export class ChatService {
       if (!target) { throw new CreateTargetNotFoundError('제안서를 찾을 수 없습니다.'); }
       // 제안서 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
       ownerId = target.owner_id;
-      requesterId = id; // 테스트용: 요청에서 직접 받음
+      requesterId = id; 
       break;
     default:
       throw new InvalidChatRoomTypeError('유효하지 않은 채팅방 타입입니다.');
@@ -65,7 +63,7 @@ export class ChatService {
     myType: 'owner' | 'requester',
     filter?: ChatRoomFilter,
     cursor?: string,
-    limit: number = 20
+    limit: number = 50
   ): Promise<ChatRoomListDTO> {
     const params = { 
       myId, 

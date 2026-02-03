@@ -9,7 +9,7 @@ export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' 
 export type ChatRoomPayload = 
     | { id: string, title: string, price : number, image: string }                          // 제안서로 접근
     | { id: string, title: string, minBudget : number, maxBudget : number, image: string }  // 요청서로 접근
-    | { id: string };                                                                        // 피드로 접근
+    | null;                                                                                 // 피드로 접근
 
 // 채팅메시지 payload에 담길 타입 정의
 export type ChatMessagePayload = 
@@ -17,7 +17,7 @@ export type ChatMessagePayload =
     | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
     | {urls: string[]}                                                        //이미지
     | {price: number, delivery: number, expected_working: Date }              //결제정보
-    | undefined;                                                              //텍스트
+    | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
 export interface CreateMessageParams {
@@ -59,9 +59,7 @@ export class ChatRoomFactory {
         image: target.reform_proposal_photo?.[0]?.content
       };
     case 'FEED':
-      return {  
-        id: target.feed_id
-      };
+      return null; // 피드 채팅방은 payload 없음
     case 'REQUEST':
       return {
         id: target.reform_request_id,
