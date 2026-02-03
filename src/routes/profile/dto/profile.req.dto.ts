@@ -54,6 +54,12 @@ export class AddReformRequestDto {
   imageUrls!: string[];
 }
 
+/** 프로필 피드 사진 등록 요청 DTO */
+export class AddFeedRequestDto {
+  imageUrls!: string[];
+  isPinned?: boolean;
+}
+
 // 판매 상품 내부 전달 DTO (Service → Repository)
 // export class ItemDto {
 //   ownerId: string;
