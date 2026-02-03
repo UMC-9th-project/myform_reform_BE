@@ -144,8 +144,12 @@ export class ChatService {
     chatRoomId: string,
     readerType: 'OWNER' | 'USER',
     readerId: string
-  ): Promise<void> {
-    await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+  ): Promise<{ receiverId: string; lastReadMessageId: string | null; readerId: string }> {
+    const result = await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+    return {
+      ...result,
+      readerId
+    };
   }
 
   // 메세지 처리
