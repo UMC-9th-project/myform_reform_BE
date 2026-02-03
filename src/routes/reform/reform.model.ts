@@ -9,6 +9,7 @@ import {
   ModifyProposalRequest,
   ModifyRequestRequest,
   ReformProposalRequest,
+  ReformQuoteRequest,
   ReformRequestRequest
 } from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
@@ -57,6 +58,17 @@ export interface ReformProposalUpdateData {
   expectedWorking?: number;
   category?: Category;
   title?: string;
+}
+
+export interface ReformQutoteCreateData {
+  ownerId: string;
+  userId: string;
+  target_id: string;
+  images: string[];
+  contents: string;
+  price: number;
+  delivery: number;
+  expectedWorking: number;
 }
 
 export type RawRequestLatest = Prisma.reform_requestGetPayload<{
@@ -378,6 +390,37 @@ export class ReformProposalFactory {
       expectedWorking: req.expectedWorking,
       category: req.category,
       title: req.title
+    });
+  }
+}
+
+export class ReformQuote {
+  private readonly props: ReformQutoteCreateData;
+
+  constructor(props: ReformQutoteCreateData) {
+    this.props = props;
+  }
+
+  toDto(): ReformQutoteCreateData {
+    return { ...this.props };
+  }
+}
+
+export class ReformQuoteFactory {
+  static create(
+    raw: ReformQuoteRequest,
+    userId: string,
+    ownerId: string
+  ): ReformQuote {
+    return new ReformQuote({
+      ownerId: ownerId,
+      userId: userId,
+      target_id: raw.targetId,
+      images: raw.images,
+      contents: raw.contents,
+      price: raw.price,
+      delivery: raw.delivery,
+      expectedWorking: raw.expectedWorking
     });
   }
 }

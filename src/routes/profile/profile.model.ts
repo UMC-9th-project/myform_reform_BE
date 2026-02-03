@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, order_status_enum } from '@prisma/client';
 import { UUID } from '../../@types/common.js';
 import {
   SaleDetailResponseDto,
@@ -9,6 +9,18 @@ import {
   AddReformRequestDto
 } from './dto/profile.req.dto.js';
 import { Category, OptionGroup } from '../../@types/item.js';
+
+const ORDER_STATUS_LABELS: Record<order_status_enum, string> = {
+  PENDING: '결제 대기',
+  PAID: '결제 완료',
+  SENT: '발송 완료',
+  WORKING: '작업 중',
+  DELIVERY: '배송 중',
+  COMPLETE: '거래 완료',
+  SETTLEMENT: '정산 완료',
+  CANCELLED: '취소됨',
+  REFUNDED: '환불됨'
+};
 
 export type RawSaleData = Prisma.orderGetPayload<{
   select: {
@@ -120,7 +132,7 @@ export class Sale {
     return new Sale({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
-      status: raw.status!,
+      status: ORDER_STATUS_LABELS[raw.status!],
       price: raw.price!.toNumber(),
       deliveryFee: raw.delivery_fee!.toNumber(),
       userName: raw.user.name ?? '',
@@ -155,7 +167,7 @@ export class SaleDetail {
     return new SaleDetail({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
-      status: raw.status!,
+      status: ORDER_STATUS_LABELS[raw.status!],
       price: raw.price!.toNumber(),
       deliveryFee: raw.delivery_fee!.toNumber(),
       userName: raw.user.name ?? '',
