@@ -95,6 +95,25 @@ export class ChatEventHandler {
     }
   }
 
+  // 읽음 상태 전송 메서드
+  public notifyReadStatus(receiverId: string, readInfo: { chatRoomId: string; readerId: string; lastReadMessageId: string }) {
+    const userRoom = this.io.sockets.adapter.rooms.get(receiverId);
+    
+    // 상대방이 접속해 있는 경우에만 발송
+    if (userRoom && userRoom.size > 0) {
+      const readStatusResponse = {
+        chatRoomId: readInfo.chatRoomId,
+        readerId: readInfo.readerId,
+        lastReadMessageId: readInfo.lastReadMessageId
+      };
+
+      this.io.to(receiverId).emit('readStatus', readStatusResponse);
+      console.log(`[읽음 상태 알림] 수신자 ${receiverId}에게 읽음 상태 전달 완료`, readStatusResponse);
+    } else {
+      console.log(`[읽음 상태 알림 실패] 수신자 ${receiverId}가 오프라인 상태`);
+    }
+  }
+
 
   // 읽음 처리
   private async handleReadChatRoom(socket: Socket, data: ReadChatRoomData): Promise<void> {
@@ -102,11 +121,21 @@ export class ChatEventHandler {
 
     console.log(`[읽음 처리] ${userId} -> 방 ${data.chatRoomId}`);
     try {
-      await this.chatService.readChatRoomEvent(
+      const { receiverId, lastReadMessageId, readerId } = await this.chatService.readChatRoomEvent(
         data.chatRoomId,
         authType,
         userId
       );
+
+      // 상대방에게 읽음 상태 전송
+      if (receiverId && lastReadMessageId) {
+        this.notifyReadStatus(receiverId, {
+          chatRoomId: data.chatRoomId,
+          readerId: readerId,
+          lastReadMessageId: lastReadMessageId
+        });
+        console.log(`[읽음 알림] ${readerId}가 ${receiverId}에게 읽음 상태 전송 - 마지막 읽은 메시지: ${lastReadMessageId}`);
+      }
     } catch (error) {
       socket.emit('error', { message: '읽음 처리 실패' });
       console.error('읽음 처리 에러:', error);

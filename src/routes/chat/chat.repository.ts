@@ -316,36 +316,50 @@ export class ChatRepository {
     chatRoomId: string,
     readerType: 'OWNER' | 'USER',
     readerId: string
-  ): Promise<void> {
+  ): Promise<{ receiverId: string; lastReadMessageId: string | null }> {
     try {
       const isOwnerReader = readerType === 'OWNER';
 
-      // 유저의 안읽은 메세지 카운트 초기화
-      // 그리고 마지막 읽은 메세지 ID 업데이트
-      // 한 쿼리로 초기화하기위해 Raw 쿼리 사용
+      // UPDATE와 동시에 필요한 데이터를 RETURNING으로 가져오기
+      let result: any[];
       if (isOwnerReader) {
-        await prisma.$executeRaw`
+        result = await prisma.$queryRaw`
           UPDATE chat_room 
           SET owner_last_read_id = last_message_id,
               owner_unread_count = 0
           WHERE chat_room_id = ${chatRoomId}::uuid
             AND owner_id = ${readerId}::uuid
             AND is_active = true
-            AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
-            AND (owner_last_read_id IS NULL OR owner_last_read_id != last_message_id) -- 업데이트가 필요할 때만
+            AND last_message_id IS NOT NULL
+            AND (owner_last_read_id IS NULL OR owner_last_read_id != last_message_id)
+          RETURNING requester_id, last_message_id
         `;
       } else {
-        await prisma.$executeRaw`
+        result = await prisma.$queryRaw`
           UPDATE chat_room 
           SET requester_last_read_id = last_message_id,
               requester_unread_count = 0
           WHERE chat_room_id = ${chatRoomId}::uuid
             AND requester_id = ${readerId}::uuid
             AND is_active = true
-            AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
-            AND (requester_last_read_id IS NULL OR requester_last_read_id != last_message_id) -- 업데이트가 필요할 때만
+            AND last_message_id IS NOT NULL
+            AND (requester_last_read_id IS NULL OR requester_last_read_id != last_message_id)
+          RETURNING owner_id, last_message_id
         `;
       }
+
+      // 업데이트된 행이 없으면 빈 값 반환
+      if (!result || result.length === 0) {
+        return { receiverId: '', lastReadMessageId: null };
+      }
+
+      const receiverId = isOwnerReader ? result[0].requester_id : result[0].owner_id;
+      const lastReadMessageId = result[0].last_message_id;
+
+      return { 
+        receiverId, 
+        lastReadMessageId 
+      };
     } catch (error) {
       throw handleDbError(error);
     }
