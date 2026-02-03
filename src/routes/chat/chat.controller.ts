@@ -35,18 +35,18 @@ export class ChatController extends Controller {
   /**
    * @summary 채팅방 생성
    * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다. 
-   * 중복 채팅방 생성은 자동으로 방지됩니다.
    * 
    * **채팅방 타입별 생성 규칙:**
    * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설
    * - PROPOSAL: 유저가 리폼러의 제안서를 보고 채팅방 개설
    * - FEED: 유저가 리폼러의 피드를 보고 문의 채팅방 개설
+   * 각 대상의 id를 입력, feed의 경우 ownerId 입력
    * 
    * @param body 채팅방 생성 요청 데이터
    * @returns 생성된 채팅방의 고유 아이디와 생성 일시
    */
   @Post('/rooms')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt')
   @SuccessResponse('201', 'Created')
   @Example<TsoaResponse<SimplePostResponseDTO>>({
     resultType: "SUCCESS",
@@ -68,6 +68,8 @@ export class ChatController extends Controller {
    * @summary 채팅방 목록 조회
    * @description 특정 사용자가 참여중인 채팅방 목록을 조회합니다. 
    * 커서 기반 페이지네이션을 지원하며, 마지막 메시지 시간 기준 최신순으로 정렬됩니다.
+   * (주의사항) 페이지네이션으로 개발 하였지만 로딩되지 않은 채팅방에서 메시지가 도착할 경우
+   * 문제가 될 수 있어 일단 널널하게 50개를 기본값으로 설정해두었습니다.
    * 
    * @param type 채팅방 목록 필터 타입
    * - 없음 : 전체 조회
@@ -75,7 +77,7 @@ export class ChatController extends Controller {
    * - ORDER: 주문제작 채팅방 (REQUEST/PROPOSAL 타입)
    * - UNREAD: 안 읽은 메시지가 있는 채팅방
    * @param cursor 커서 기반 페이지네이션을 위한 커서 값, 마지막으로 조회된 채팅방의 ID
-   * @param limit 페이지네이션을 위한 조회 제한 수 (기본값: 20)
+   * @param limit 페이지네이션을 위한 조회 제한 수 (기본값: 50)
    * @returns 채팅방 목록 배열 및 페이지네이션 정보
   */
   @Get('/rooms/list')
@@ -118,7 +120,6 @@ export class ChatController extends Controller {
    * @description 채팅방 내에서 리폼 요청서를 생성합니다. 
    * 요청서는 메시지 형태로 저장되며, 수신자에게 실시간 알림이 전송됩니다.
    * 
-   * **사용 시나리오:** 유저가 리폼러와의 채팅에서 구체적인 리폼 요청 사항을 정리하여 전달
    * 
    * @param request 채팅 요청서 생성 데이터
    * @returns 생성된 채팅 요청의 고유 아이디와 생성 일시
@@ -188,8 +189,7 @@ export class ChatController extends Controller {
    * @description 이미 생성된 채팅 요청서의 내용을 수정합니다. 
    * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
    * 
-   * **수정 가능 필드:** 제목, 내용, 예산 범위
-   * !!! 주의 이미지 수정은 현재 지원하지 않습니다 !!!
+   * **수정 가능 필드:** 제목, 내용, 예산 범위, 첨부 이미지
    * 
    * @param requestId 채팅 요청서의 고유 아이디
    * @param request 수정할 요청서 정보 (부분 수정 지원)
@@ -270,7 +270,8 @@ export class ChatController extends Controller {
         title: "청바지 리폼 의뢰합니다",
         price: 45000,
         delivery: 3000,
-        expectedWorking: 7
+        expectedWorking: 7,
+        images: ["https://s3.example.com/proposal-image1.jpg"]
       },
       createdAt: new Date()
     }

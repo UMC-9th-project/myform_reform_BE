@@ -211,7 +211,7 @@ export class ChatRepository {
           sender_id: data.sender_id,
           sender_type: data.sender_type,
           message_type: data.message_type as any, // 임시
-          text_content: data.text_content?.toLowerCase(),
+          text_content: data.text_content,
           payload: data.payload as unknown as Prisma.InputJsonValue
         }
       });
@@ -407,7 +407,8 @@ export class ChatRepository {
     price: number,
     delivery: number,
     expected_working: number,
-    messageId: string
+    messageId: string,
+    image?: string[]
   ) {
     try {
       return await prisma.chat_proposal.create({
@@ -417,7 +418,8 @@ export class ChatRepository {
           price,
           delivery,
           expected_working,
-          message_id: messageId
+          message_id: messageId,
+          image: image || []
         }
       });
     } catch (error) {
@@ -439,6 +441,7 @@ export class ChatRepository {
           delivery: true,
           expected_working: true,
           created_at: true,
+          image: true,
           // 관계 추적: chat_proposal -> chat_message -> chat_room -> owner
           // 차후 db 설계 변경시 수정 예정
           chat_message: {
@@ -504,6 +507,7 @@ export class ChatRepository {
       price?: number;
       delivery?: number;
       expectedWorking?: number;
+      image?: string[] | null;
     }
   ) {
     try {
@@ -511,6 +515,7 @@ export class ChatRepository {
       if (updateData.price !== undefined) data.price = updateData.price;
       if (updateData.delivery !== undefined) data.delivery = updateData.delivery;
       if (updateData.expectedWorking !== undefined) data.expected_working = updateData.expectedWorking;
+      if (updateData.image !== undefined) data.image = updateData.image;
 
       return await prisma.chat_proposal.update({
         where: {
