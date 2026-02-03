@@ -16,6 +16,7 @@ export type ChatMessagePayload =
     | {id: string, price: number, delivery: number, expected_working: Date }  //제안서
     | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
     | {urls: string[]}                                                        //이미지
+    | {price: number, delivery: number, expected_working: Date }              //결제정보
     | undefined;                                                              //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
@@ -151,7 +152,11 @@ export class ChatMessageFactory {
     } else if (messageType === 'image') {
       payload = this.mapToImagePayload(content as string[]) as ChatMessagePayload;
       textContent = undefined; // 이미지 타입은 텍스트 내용이 없어야 함 
-    }else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+    }else if ( messageType === 'payment'){
+      payload = this.mapToPaymentPayload(content) as ChatMessagePayload;
+      textContent = undefined;  // 결제 정보 타입은 텍스트 내용이 없어야 함
+    }
+    else if (this.PAYLOAD_TYPES.includes(messageType!)) {
       payload = content as ChatMessagePayload;
       textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
     } else {
@@ -191,7 +196,15 @@ export class ChatMessageFactory {
     return {
       urls: target
     };
+  }  
+  static mapToPaymentPayload(target: any): ChatMessagePayload {
+    return {
+      price : target.price,
+      delivery : target.delivery,
+      expected_working : target.expected_working
+    };
   }
+
 
   // 타입별 payload 변환로직 필요시 구현
   // private static mapToPayload(target: any, type: string): ChatMessagePayload {

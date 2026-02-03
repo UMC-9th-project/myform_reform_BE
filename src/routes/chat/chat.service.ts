@@ -239,7 +239,7 @@ export class ChatService {
               chatProposalId : proposalUuid,
               price : request.price,
               delivery : request.delivery,
-              expected_working : request.expectedWorking
+              expectedWorking : request.expectedWorking
             }
           )
           
