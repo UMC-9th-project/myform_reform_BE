@@ -12,6 +12,9 @@ export interface DeliveryAddressInfo {
   postal_code: string | null;
   address: string | null;
   address_detail: string | null;
+  recipient_name: string | null;
+  phone: string | null;
+  address_name: string | null;
 }
 
 export interface PaymentSummary {
@@ -21,7 +24,7 @@ export interface PaymentSummary {
 }
 
 export interface OrderSheetResponse {
-  order_number: string;
+  receipt_number: string;
   order_item: OrderItemInfo;
   delivery_address: DeliveryAddressInfo | null;
   payment: PaymentSummary;
@@ -36,6 +39,9 @@ export interface CreateOrderRequest {
     postal_code?: string;
     address?: string;
     address_detail?: string;
+    recipient_name?: string;
+    phone?: string;
+    address_name?: string;
   };
 }
 
@@ -67,7 +73,7 @@ export interface PaymentInfo {
 
 export interface OrderResponse {
   order_id: string;
-  order_number: string;
+  receipt_number: string;
   status: string | null;
   delivery_address: DeliveryAddressInfo;
   first_item: OrderItemSummary | null;

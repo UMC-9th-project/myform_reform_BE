@@ -55,11 +55,11 @@ export class OrdersController extends Controller {
 
   /**
    * 주문서 정보 조회
-   * @summary 주문서 정보를 조회하고 주문 번호(order_number)를 미리 생성하여 반환합니다
+   * @summary 주문서 정보를 조회하고 주문 번호(receipt_number)를 미리 생성하여 반환합니다
    * @param requestBody 주문서 정보 조회 요청
-   * @returns 주문서 정보 조회 결과 (order_number 포함)
-   * @description 반환된 order_number는 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
-   *              결제 완료 후 POST /orders/ API 호출 시에도 같은 order_number를 merchant_uid로 전달해야 합니다.
+   * @returns 주문서 정보 조회 결과 (receipt_number 포함)
+   * @description 반환된 receipt_number 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
+   *              결제 완료 후 POST /orders/ API 호출 시에도 같은 receipt_number merchant_uid로 전달해야 합니다.
    * @example requestBody {
    *   "item_id": "550e8400-e29b-41d4-a716-446655440000",
    *   "option_item_ids": ["660e8400-e29b-41d4-a716-446655440001"],
@@ -72,7 +72,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "12345",
    *     "address": "서울시 강남구 테헤란로",
-   *     "address_detail": "123번지"
+   *     "address_detail": "123번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "수원집"
    *   }
    * }
    */
@@ -86,7 +89,7 @@ export class OrdersController extends Controller {
       resultType: 'SUCCESS',
       error: null,
       success: {
-        order_number: '20241201-00001',
+        receipt_number: '481025937412',
         order_item: {
           reformer_nickname: '리포머닉네임',
           thumbnail: 'https://example.com/thumbnail.jpg',
@@ -99,7 +102,10 @@ export class OrdersController extends Controller {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         payment: {
           product_amount: 50000,
@@ -195,8 +201,8 @@ export class OrdersController extends Controller {
    * @summary 주문을 PENDING 상태로 생성합니다 (결제 전)
    * @param requestBody 주문 생성 요청 (merchant_uid 필수)
    * @returns 주문 생성 결과 (결제 상태는 'pending')
-   * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet)에서 받은 order_number와 동일한 값이어야 합니다.
-   *              프론트엔드에서 주문 시트 조회 시 받은 order_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
+   * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet)에서 받은 receipt_number와 동일한 값이어야 합니다.
+   *              프론트엔드에서 주문 시트 조회 시 받은 receipt_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
    *              결제 진행 전에 이 API를 호출하여 주문을 생성합니다. 결제 완료는 POST /orders/verify 또는 웹훅에서 처리됩니다.
    * @example requestBody {
    *   "item_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
@@ -212,7 +218,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "54321",
    *     "address": "서울시 서초구 서초대로",
-   *     "address_detail": "456번지"
+   *     "address_detail": "456번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "내집"
    *   },
    *   "merchant_uid": "481025937412"
    * }
@@ -464,12 +473,15 @@ export class OrdersController extends Controller {
       error: null,
       success: {
         order_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
-        order_number: '20241201-00001',
+        receipt_number: '481025937412',
         status: 'PAID',
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         first_item: {
           thumbnail: 'https://example.com/thumbnail.jpg',
@@ -627,9 +639,9 @@ export class OrdersController extends Controller {
    * 장바구니에서 주문서 정보 조회
    * @summary 장바구니 항목들로 주문서 정보를 조회하고 주문 번호(receipt_number)를 미리 생성하여 반환합니다
    * @param requestBody 장바구니 주문서 정보 조회 요청
-   * @returns 주문서 정보 조회 결과 (order_number 포함)
-   * @description 반환된 order_number는 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
-   *              결제 완료 후 POST /orders/from-cart API 호출 시에도 같은 order_number를 merchant_uid로 전달해야 합니다.
+   * @returns 주문서 정보 조회 결과 (receipt_number 포함)
+   * @description 반환된 receipt_number는 프론트엔드에서 포트원 결제 시 merchant_uid로 사용해야 합니다.
+   *              결제 완료 후 POST /orders/from-cart API 호출 시에도 같은 receipt_number를 merchant_uid로 전달해야 합니다.
    * @example requestBody {
    *   "cart_ids": ["550e8400-e29b-41d4-a716-446655440000", "660e8400-e29b-41d4-a716-446655440001"]
    * }
@@ -638,7 +650,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "12345",
    *     "address": "서울시 강남구 테헤란로",
-   *     "address_detail": "123번지"
+   *     "address_detail": "123번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "수원집"
    *   }
    * }
    */
@@ -651,7 +666,7 @@ export class OrdersController extends Controller {
       resultType: 'SUCCESS',
       error: null,
       success: {
-        order_number: '20241201-00001',
+        receipt_number: '481025937412',
         order_item: {
           reformer_nickname: '리포머닉네임',
           thumbnail: 'https://example.com/thumbnail.jpg',
@@ -664,7 +679,10 @@ export class OrdersController extends Controller {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
-          address_detail: '123번지'
+          address_detail: '123번지',
+          recipient_name: '홍길동',
+          phone: '01012345678',
+          address_name: '수원집'
         },
         payment: {
           product_amount: 50000,
@@ -757,8 +775,8 @@ export class OrdersController extends Controller {
    * @summary 장바구니 항목들로 주문을 PENDING 상태로 생성합니다 (결제 전)
    * @param requestBody 장바구니 주문 생성 요청 (merchant_uid 필수)
    * @returns 주문 생성 결과 (결제 상태는 'pending')
-   * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet/from-cart)에서 받은 order_number와 동일한 값이어야 합니다.
-   *              프론트엔드에서 주문 시트 조회 시 받은 order_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
+   * @description merchant_uid는 주문 시트 조회 API(POST /orders/sheet/from-cart)에서 받은 receipt_number와 동일한 값이어야 합니다.
+   *              프론트엔드에서 주문 시트 조회 시 받은 receipt_number를 merchant_uid로 사용하여 포트원 결제를 진행하고,
    *              결제 진행 전에 이 API를 호출하여 주문을 생성합니다. 결제 완료는 POST /orders/verify 또는 웹훅에서 처리됩니다.
    * @example requestBody {
    *   "cart_ids": ["550e8400-e29b-41d4-a716-446655440000", "660e8400-e29b-41d4-a716-446655440001"],
@@ -770,7 +788,10 @@ export class OrdersController extends Controller {
    *   "new_address": {
    *     "postal_code": "54321",
    *     "address": "서울시 서초구 서초대로",
-   *     "address_detail": "456번지"
+   *     "address_detail": "456번지",
+   *     "recipient_name": "홍길동",
+   *     "phone": "01012345678",
+   *     "address_name": "내집"
    *   },
    *   "merchant_uid": "481025937412"
    * }

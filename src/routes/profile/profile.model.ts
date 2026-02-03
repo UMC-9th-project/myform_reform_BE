@@ -48,7 +48,6 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
     price: true;
     delivery_fee: true;
     target_type: true;
-    user_address: true;
     user: {
       select: {
         name: true;
@@ -58,6 +57,12 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
     receipt: {
       select: {
         created_at: true;
+        delivery_postal_code: true;
+        delivery_address: true;
+        delivery_address_detail: true;
+        delivery_recipient_name: true;
+        delivery_phone: true;
+        delivery_address_name: true;
       };
     };
     quote_photo: {
@@ -146,6 +151,7 @@ export class SaleDetail {
     option: RawOption | null,
     title: string
   ) {
+    const receipt = raw.receipt;
     return new SaleDetail({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
@@ -157,7 +163,14 @@ export class SaleDetail {
       title: title,
       thumbnail: raw.quote_photo[0]?.content ?? '',
       phone: raw.user.phone ?? '',
-      address: raw.user_address ?? '',
+      delivery_address: {
+        postal_code: receipt.delivery_postal_code ?? null,
+        address: receipt.delivery_address ?? null,
+        address_detail: receipt.delivery_address_detail ?? null,
+        recipient_name: receipt.delivery_recipient_name ?? null,
+        phone: receipt.delivery_phone ?? null,
+        address_name: receipt.delivery_address_name ?? null
+      },
       //FIXME: option, 운송장번호 어떻게 구현할지 논의 해야함
       option: option?.option_item?.name ?? '',
       billNumber: ''

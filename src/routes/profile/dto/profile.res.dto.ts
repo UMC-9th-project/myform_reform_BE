@@ -20,7 +20,14 @@ export interface SaleResponseDto {
 
 export interface SaleDetailResponseDto extends SaleResponseDto {
   phone: string;
-  address: string;
+  delivery_address: {
+    postal_code: string | null;
+    address: string | null;
+    address_detail: string | null;
+    recipient_name: string | null;
+    phone: string | null;
+    address_name: string | null;
+  };
   billNumber: string;
   option: string;
 }

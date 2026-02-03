@@ -93,6 +93,9 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     }
   ): Promise<string | undefined> {
     if (deliveryAddressId) {
@@ -108,22 +111,25 @@ export class OrdersService {
       }
       return deliveryAddressId;
     } else if (newAddress) {
-      if (!newAddress.postal_code || !newAddress.address) {
+      if (!newAddress.postal_code?.trim() || !newAddress.address?.trim()) {
         throw new OrderError(
           '배송지 정보가 올바르지 않습니다.',
           '우편번호와 주소는 필수 입력 항목입니다.'
         );
       }
-
-      const newDeliveryAddress = await this.repository.createDeliveryAddress({
-        user_id: userId,
-        owner_id: ownerId,
-        postal_code: newAddress.postal_code,
-        address: newAddress.address,
-        address_detail: newAddress.address_detail || null,
-        is_default: false
-      });
-      return newDeliveryAddress.delivery_address_id;
+      if (!newAddress.recipient_name?.trim()) {
+        throw new OrderError(
+          '배송지 정보가 올바르지 않습니다.',
+          '수령인은 필수 입력 항목입니다.'
+        );
+      }
+      if (!newAddress.phone?.trim()) {
+        throw new OrderError(
+          '배송지 정보가 올바르지 않습니다.',
+          '연락처는 필수 입력 항목입니다.'
+        );
+      }
+      return undefined;
     } else {
       const defaultAddress =
         await this.repository.findDefaultDeliveryAddress(userId);
@@ -132,7 +138,7 @@ export class OrdersService {
   }
 
   /**
-   * 배송지 정보 조회 (주문서용, 생성하지 않음)
+   * 배송지 정보 조회
    */
   private async getDeliveryAddressInfo(
     userId: string,
@@ -141,12 +147,18 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     }
   ): Promise<{
     delivery_address_id?: string;
     postal_code: string | null;
     address: string | null;
     address_detail: string | null;
+    recipient_name: string | null;
+    phone: string | null;
+    address_name: string | null;
   } | null> {
     if (deliveryAddressId) {
       const address = await this.repository.findDeliveryAddressById(
@@ -158,14 +170,20 @@ export class OrdersService {
           delivery_address_id: address.delivery_address_id,
           postal_code: address.postal_code,
           address: address.address,
-          address_detail: address.address_detail
+          address_detail: address.address_detail,
+          recipient_name: address.recipient ?? null,
+          phone: address.phone ?? null,
+          address_name: address.address_name ?? null
         };
       }
     } else if (newAddress) {
       return {
-        postal_code: newAddress.postal_code || null,
-        address: newAddress.address || null,
-        address_detail: newAddress.address_detail || null
+        postal_code: newAddress.postal_code ?? null,
+        address: newAddress.address ?? null,
+        address_detail: newAddress.address_detail ?? null,
+        recipient_name: newAddress.recipient_name ?? null,
+        phone: newAddress.phone ?? null,
+        address_name: newAddress.address_name ?? null
       };
     } else {
       const defaultAddress =
@@ -175,11 +193,53 @@ export class OrdersService {
           delivery_address_id: defaultAddress.delivery_address_id,
           postal_code: defaultAddress.postal_code,
           address: defaultAddress.address,
-          address_detail: defaultAddress.address_detail
+          address_detail: defaultAddress.address_detail,
+          recipient_name: defaultAddress.recipient ?? null,
+          phone: defaultAddress.phone ?? null,
+          address_name: defaultAddress.address_name ?? null
         };
       }
     }
     return null;
+  }
+
+  /**
+   * receipt에 저장할 결제 시점 배송지 스냅샷
+   */
+  private async getDeliverySnapshotForReceipt(
+    userId: string,
+    _ownerId: string,
+    deliveryAddressId?: string,
+    newAddress?: {
+      postal_code?: string;
+      address?: string;
+      address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
+    }
+  ): Promise<{
+    delivery_postal_code: string | null;
+    delivery_address: string | null;
+    delivery_address_detail: string | null;
+    delivery_recipient_name: string | null;
+    delivery_phone: string | null;
+    delivery_address_name: string | null;
+  } | null> {
+    const info = await this.getDeliveryAddressInfo(
+      userId,
+      deliveryAddressId,
+      newAddress
+    );
+    if (!info) return null;
+    return {
+      delivery_postal_code: info.postal_code,
+      delivery_address: info.address,
+      delivery_address_detail: info.address_detail,
+      delivery_recipient_name: info.recipient_name,
+      delivery_phone: info.phone,
+      delivery_address_name: info.address_name ?? null
+    };
   }
 
   /**
@@ -393,9 +453,34 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     }
   ): Promise<OrderSheetResponse> {
     try {
+      // 새 배송지 시: 수령인·배송지·연락처 필수, 배송지명 선택
+      if (newAddress) {
+        if (!newAddress.postal_code?.trim() || !newAddress.address?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '우편번호와 주소는 필수 입력 항목입니다.'
+          );
+        }
+        if (!newAddress.recipient_name?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '수령인은 필수 입력 항목입니다.'
+          );
+        }
+        if (!newAddress.phone?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '연락처는 필수 입력 항목입니다.'
+          );
+        }
+      }
+
       const item = await this.repository.findItemWithOptionGroups(
         itemId,
         optionItemIds
@@ -442,43 +527,27 @@ export class OrdersService {
       const deliveryFee = item.delivery ? Number(item.delivery) : 0;
       const totalAmount = productAmount + deliveryFee;
 
-      let deliveryAddress = null;
-      if (deliveryAddressId) {
-        const address = await this.repository.findDeliveryAddressById(
-          deliveryAddressId,
-          userId
-        );
-        if (address) {
-          deliveryAddress = {
-            delivery_address_id: address.delivery_address_id,
-            postal_code: address.postal_code,
-            address: address.address,
-            address_detail: address.address_detail
-          };
-        }
-      } else if (newAddress) {
-        deliveryAddress = {
-          postal_code: newAddress.postal_code || null,
-          address: newAddress.address || null,
-          address_detail: newAddress.address_detail || null
-        };
-      } else {
-        const defaultAddress =
-          await this.repository.findDefaultDeliveryAddress(userId);
-        if (defaultAddress) {
-          deliveryAddress = {
-            delivery_address_id: defaultAddress.delivery_address_id,
-            postal_code: defaultAddress.postal_code,
-            address: defaultAddress.address,
-            address_detail: defaultAddress.address_detail
-          };
-        }
-      }
+      const deliveryInfo = await this.getDeliveryAddressInfo(
+        userId,
+        deliveryAddressId,
+        newAddress
+      );
+      const deliveryAddress = deliveryInfo
+        ? {
+            delivery_address_id: deliveryInfo.delivery_address_id,
+            postal_code: deliveryInfo.postal_code ?? null,
+            address: deliveryInfo.address ?? null,
+            address_detail: deliveryInfo.address_detail ?? null,
+            recipient_name: deliveryInfo.recipient_name ?? null,
+            phone: deliveryInfo.phone ?? null,
+            address_name: deliveryInfo.address_name ?? null
+          }
+        : null;
 
       const receiptNumber = await this.generateReceiptNumber();
 
       return {
-        order_number: receiptNumber,
+        receipt_number: receiptNumber,
         order_item: {
           reformer_nickname: item.owner.nickname || '',
           thumbnail: item.item_photo[0]?.content || '',
@@ -534,6 +603,9 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     },
     merchantUid?: string
   ): Promise<CreateOrderResponse> {
@@ -541,7 +613,7 @@ export class OrdersService {
       if (!merchantUid) {
         throw new OrderError(
           '주문 번호가 필요합니다.',
-          'merchant_uid(order_number)는 필수입니다.'
+          'merchant_uid(receipt_number)는 필수입니다.'
         );
       }
 
@@ -621,6 +693,13 @@ export class OrdersService {
           newAddress
         );
 
+        const deliverySnapshot = await this.getDeliverySnapshotForReceipt(
+          userId,
+          item.owner_id,
+          deliveryAddressId,
+          newAddress
+        );
+
         const basePrice = item.price ? Number(item.price) : 0;
         const productAmount = (basePrice + extraPriceSum) * quantity;
         const deliveryFee = item.delivery ? Number(item.delivery) : 0;
@@ -637,13 +716,31 @@ export class OrdersService {
             payment_status: 'pending',
             payment_method: null,
             payment_gateway: 'portone',
-            transaction: null
+            transaction: null,
+            ...(deliverySnapshot && {
+              delivery_postal_code: deliverySnapshot.delivery_postal_code,
+              delivery_address: deliverySnapshot.delivery_address,
+              delivery_address_detail: deliverySnapshot.delivery_address_detail,
+              delivery_recipient_name: deliverySnapshot.delivery_recipient_name,
+              delivery_phone: deliverySnapshot.delivery_phone,
+              delivery_address_name: deliverySnapshot.delivery_address_name
+            })
           });
         } else {
           await this.repository.updateReceiptTotalAmount(
             receipt.receipt_id,
             totalAmount
           );
+          if (deliverySnapshot) {
+            await this.repository.updateReceipt(receipt.receipt_id, {
+              delivery_postal_code: deliverySnapshot.delivery_postal_code,
+              delivery_address: deliverySnapshot.delivery_address,
+              delivery_address_detail: deliverySnapshot.delivery_address_detail,
+              delivery_recipient_name: deliverySnapshot.delivery_recipient_name,
+              delivery_phone: deliverySnapshot.delivery_phone,
+              delivery_address_name: deliverySnapshot.delivery_address_name
+            });
+          }
         }
 
         const initialOrderStatus =
@@ -656,7 +753,6 @@ export class OrdersService {
           owner_id: item.owner_id,
           target_type: target_type_enum.ITEM,
           target_id: itemId,
-          user_address: finalDeliveryAddressId,
           price: productAmount,
           delivery_fee: deliveryFee,
           quantity: quantity,
@@ -750,24 +846,14 @@ export class OrdersService {
         throw new OrderNotFoundError(orderIdOrNumber);
       }
 
-      // 모든 order의 배송지 정보는 첫 번째 order의 배송지 사용
-      let deliveryAddress = {
-        postal_code: null as string | null,
-        address: null as string | null,
-        address_detail: null as string | null
+      const deliveryAddress = {
+        postal_code: receipt.delivery_postal_code ?? null,
+        address: receipt.delivery_address ?? null,
+        address_detail: receipt.delivery_address_detail ?? null,
+        recipient_name: receipt.delivery_recipient_name ?? null,
+        phone: receipt.delivery_phone ?? null,
+        address_name: receipt.delivery_address_name ?? null
       };
-      if (firstOrder.user_address) {
-        const address = await this.repository.findDeliveryAddressByIdDetailed(
-          firstOrder.user_address
-        );
-        if (address) {
-          deliveryAddress = {
-            postal_code: address.postal_code,
-            address: address.address,
-            address_detail: address.address_detail
-          };
-        }
-      }
 
       const orderItems = receipt.order.flatMap(
         (order: {
@@ -840,7 +926,7 @@ export class OrdersService {
 
       return {
         order_id: firstOrder.order_id,
-        order_number: receipt.receipt_number || firstOrder.order_id,
+        receipt_number: receipt.receipt_number || firstOrder.order_id,
         status: firstOrder.status || null,
         delivery_address: deliveryAddress,
         first_item: firstItem,
@@ -1390,6 +1476,9 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     }
   ): Promise<OrderSheetResponse> {
     try {
@@ -1398,6 +1487,28 @@ export class OrdersService {
           '장바구니가 비어있습니다.',
           '주문할 상품을 선택해주세요.'
         );
+      }
+
+      // 새 배송지 시: 수령인·배송지·연락처 필수, 배송지명 선택
+      if (newAddress) {
+        if (!newAddress.postal_code?.trim() || !newAddress.address?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '우편번호와 주소는 필수 입력 항목입니다.'
+          );
+        }
+        if (!newAddress.recipient_name?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '수령인은 필수 입력 항목입니다.'
+          );
+        }
+        if (!newAddress.phone?.trim()) {
+          throw new OrderError(
+            '배송지 정보가 올바르지 않습니다.',
+            '연락처는 필수 입력 항목입니다.'
+          );
+        }
       }
 
       const carts = await this.repository.findCartsByIds(cartIds, userId);
@@ -1509,10 +1620,22 @@ export class OrdersService {
         });
       }
 
+      const normalizedDeliveryAddress = deliveryAddress
+        ? {
+            delivery_address_id: deliveryAddress.delivery_address_id,
+            postal_code: deliveryAddress.postal_code ?? null,
+            address: deliveryAddress.address ?? null,
+            address_detail: deliveryAddress.address_detail ?? null,
+            recipient_name: deliveryAddress.recipient_name ?? null,
+            phone: deliveryAddress.phone ?? null,
+            address_name: deliveryAddress.address_name ?? null
+          }
+        : null;
+
       return {
-        order_number: receiptNumber,
+        receipt_number: receiptNumber,
         order_item: orderItems[0], // 첫 번째 상품 정보
-        delivery_address: deliveryAddress,
+        delivery_address: normalizedDeliveryAddress,
         payment: {
           product_amount: totalProductAmount,
           delivery_fee: maxDeliveryFee,
@@ -1556,6 +1679,9 @@ export class OrdersService {
       postal_code?: string;
       address?: string;
       address_detail?: string;
+      recipient_name?: string;
+      phone?: string;
+      address_name?: string;
     },
     merchantUid?: string
   ): Promise<CreateOrderResponse> {
@@ -1679,6 +1805,14 @@ export class OrdersService {
           );
         }
 
+        const firstOwnerId = ownerIds[0];
+        const deliverySnapshot = await this.getDeliverySnapshotForReceipt(
+          userId,
+          firstOwnerId,
+          deliveryAddressId,
+          newAddress
+        );
+
         const totalAmount = totalProductAmount + maxDeliveryFee;
         let receipt =
           await this.repository.findReceiptByReceiptNumber(merchantUid);
@@ -1690,13 +1824,31 @@ export class OrdersService {
             payment_status: 'pending',
             payment_method: null,
             payment_gateway: 'portone',
-            transaction: null
+            transaction: null,
+            ...(deliverySnapshot && {
+              delivery_postal_code: deliverySnapshot.delivery_postal_code,
+              delivery_address: deliverySnapshot.delivery_address,
+              delivery_address_detail: deliverySnapshot.delivery_address_detail,
+              delivery_recipient_name: deliverySnapshot.delivery_recipient_name,
+              delivery_phone: deliverySnapshot.delivery_phone,
+              delivery_address_name: deliverySnapshot.delivery_address_name
+            })
           });
         } else {
           await this.repository.updateReceiptTotalAmount(
             receipt.receipt_id,
             totalAmount
           );
+          if (deliverySnapshot) {
+            await this.repository.updateReceipt(receipt.receipt_id, {
+              delivery_postal_code: deliverySnapshot.delivery_postal_code,
+              delivery_address: deliverySnapshot.delivery_address,
+              delivery_address_detail: deliverySnapshot.delivery_address_detail,
+              delivery_recipient_name: deliverySnapshot.delivery_recipient_name,
+              delivery_phone: deliverySnapshot.delivery_phone,
+              delivery_address_name: deliverySnapshot.delivery_address_name
+            });
+          }
         }
 
         const initialOrderStatus =
@@ -1766,7 +1918,6 @@ export class OrdersService {
             owner_id: item.owner_id,
             target_type: target_type_enum.ITEM,
             target_id: cart.item_id!,
-            user_address: deliveryAddressId,
             price: productAmount,
             delivery_fee: deliveryFee,
             quantity: cart.quantity,
