@@ -1,12 +1,10 @@
 import { ReviewsRepository } from './reviews.repository.js';
 import { ProfileRepository } from '../profile/profile.repository.js';
-import { RawItemInfo, RawProposalInfo, RawRequestInfo, ReviewDto, ReviewResponseDto, UnifiedProductInfo } from './reviews.model.js';
-
+import { ReviewDto, ReviewResponseDto, UnifiedProductInfo } from './reviews.model.js';
+import { ReviewNotFoundError } from './reviews.error.js';
 export class ReviewsService {
-  private profileRepository: ProfileRepository;
   private reviewsRepository: ReviewsRepository;
   constructor() {
-    this.profileRepository = new ProfileRepository();
     this.reviewsRepository = new ReviewsRepository();
   }
 
@@ -78,5 +76,13 @@ export class ReviewsService {
       cursor: nextCursor ?? null,
       hasNext: hasNext
     };
+  }
+
+  async deleteReview(userId: string, reviewId: string): Promise<string> {
+    const deletedCount = await this.reviewsRepository.deleteReview(userId, reviewId);
+    if (deletedCount === 0) {
+      throw new ReviewNotFoundError('리뷰를 찾을 수 없습니다.');
+    }
+    return '리뷰 삭제가 완료되었습니다.';
   }
 }

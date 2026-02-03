@@ -134,5 +134,17 @@ export class ReviewsRepository {
       }
     });
   }
+
+  async deleteReview(userId: string, reviewId: string): Promise<number>{
+    const result = await this.prisma.review.deleteMany({
+      where: {
+        user_id: userId,
+        review_id: reviewId
+      }
+    });
+    return result.count;
+  }
 }
+
+
 

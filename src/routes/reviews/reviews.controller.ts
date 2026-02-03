@@ -10,7 +10,8 @@ import {
   Body,
   Query,
   Security,
-  Request
+  Request,
+  Delete
 } from 'tsoa';
 import type { Request as ExRequest } from 'express';
 import { ReviewsService } from './reviews.service.js';
@@ -54,6 +55,23 @@ export class ReviewsController extends Controller {
       limit,
       cursor
     );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * @summary 리뷰를 삭제합니다.
+   * @returns 리뷰 삭제 성공 여부
+   * @param reviewId 삭제할 리뷰 ID
+   */
+  @Delete('/{reviewId}')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '리뷰 삭제가 완료되었습니다.')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async deleteReview(
+    @Request() req: ExRequest,
+    @Path() reviewId: string): Promise<TsoaResponse<string>> {
+    const userId = req.user?.id;
+    const result = await this.reviewService.deleteReview(userId, reviewId);
     return new ResponseHandler(result);
   }
 }
