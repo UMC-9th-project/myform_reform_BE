@@ -46,7 +46,7 @@ export class ChatController extends Controller {
    * @returns 생성된 채팅방의 고유 아이디와 생성 일시
    */
   @Post('/rooms')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt')
   @SuccessResponse('201', 'Created')
   @Example<TsoaResponse<SimplePostResponseDTO>>({
     resultType: "SUCCESS",
@@ -270,7 +270,8 @@ export class ChatController extends Controller {
         title: "청바지 리폼 의뢰합니다",
         price: 45000,
         delivery: 3000,
-        expectedWorking: 7
+        expectedWorking: 7,
+        images: ["https://s3.example.com/proposal-image1.jpg"]
       },
       createdAt: new Date()
     }

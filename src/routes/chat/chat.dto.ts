@@ -340,6 +340,11 @@ export interface CreateChatProposalDTO {
      * @minimum 1
      */
     expectedWorking: number;
+    /**
+     * 제안서 이미지 URL 목록
+     * @example ["https://s3.example.com/proposal1.jpg", "https://s3.example.com/proposal2.jpg"]
+     */
+    image: string[];
 }
 
 /**
@@ -365,6 +370,11 @@ export interface UpdateChatProposalDTO {
      * @minimum 1
      */
     expectedWorking?: number;
+    /**
+     * 제안서 이미지 URL 목록 (선택)
+     * @example ["https://s3.example.com/proposal1.jpg"]
+     */
+    image?: string[];
 }
 
 /**
@@ -425,6 +435,11 @@ export interface ChatProposalResponseDTO {
          * @example 7
          */
         expectedWorking : number;
+        /**
+         * 제안서 이미지 URL 목록
+         * @example ["https://s3.example.com/proposal1.jpg"]
+         */
+        images : string[];
     },
     /**
      * 생성 일시

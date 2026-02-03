@@ -4,12 +4,15 @@ import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, Create
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { v4, v7 } from 'uuid';
+import { UploadService } from '../common/upload.service.js';
+import { ImageUrls } from '../common/upload.dto.js';
 
 export class ChatService {
   
   constructor(
     private chatRepository = new ChatRepository(),
-    private targetRepository = new TargetRepository()
+    private targetRepository = new TargetRepository(),
+    private uploadService = new UploadService()
   ) {}
   
   // 채팅방 생성
@@ -263,7 +266,8 @@ export class ChatService {
         request.price,
         request.delivery,
         request.expectedWorking,
-        message['props'].message_id as string
+        message['props'].message_id as string,
+        request.image
       );
       const result = {
         id: chatProposal.chat_proposal_id,
@@ -303,6 +307,7 @@ export class ChatService {
           price: chatProposal.price ? Number(chatProposal.price) : null,
           delivery: chatProposal.delivery as number,
           expectedWorking: chatProposal.expected_working as number,
+          images: chatProposal.image as string[],
         },
         createdAt: chatProposal.created_at as Date,
       };
@@ -320,14 +325,30 @@ export class ChatService {
       throw new ChatRoomAccessDeniedError ('채팅 요청서에 대한 수정 권한이 없습니다.');
     }
 
-    return await runInTransaction(async () => {
+    // 이미지 삭제 목록 (트랜잭션 밖에서 처리하기 위해 미리 수집)
+    let imagesToDelete: string[] = [];
+
+    // 트랜잭션 내에서 DB 업데이트
+    const result = await runInTransaction(async () => {
       const updateData: any = {};
       
       if (data.title !== undefined) updateData.title = data.title;
       if (data.content !== undefined) updateData.content = data.content;
       if (data.minBudget !== undefined) updateData.min_budget = data.minBudget;
       if (data.maxBudget !== undefined) updateData.max_budget = data.maxBudget;
-      if (data.image !== undefined) updateData.image = data.image;
+      
+      // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
+      if (data.image !== undefined) {
+        const existingRequest = await this.chatRepository.getChatRequestById(requestId);
+        if (existingRequest && existingRequest.image) {
+          const oldImages = existingRequest.image as string[];
+          const newImages = data.image;
+          
+          // 삭제할 이미지 목록 저장 (트랜잭션 후 삭제를 위해)
+          imagesToDelete = await this.imageListDiff(oldImages, newImages as string[]);
+        }
+        updateData.image = data.image;
+      }
 
       const updated = await this.chatRepository.updateChatRequest(requestId, updateData);
 
@@ -357,6 +378,18 @@ export class ChatService {
         updatedAt: updated.updated_at!
       };
     });
+
+    // 트랜잭션 성공 후 S3에서 이미지 삭제
+    if (imagesToDelete.length > 0) {
+      try {
+        await this.uploadService.deleteImage({url: imagesToDelete} as ImageUrls);
+      } catch (error) {
+        // S3 삭제 실패는 로깅만 하고 에러를 던지지 않음 (DB는 이미 업데이트됨)
+        console.error('S3 이미지 삭제 실패 (orphan 파일 발생):', error);
+      }
+    }
+
+    return result;
   }
 
   // 채팅 제안서 수정
@@ -371,12 +404,29 @@ export class ChatService {
       throw new ChatRoomAccessDeniedError ('채팅 제안서에 대한 수정 권한이 없습니다.');
     }
 
-    return await runInTransaction(async () => {
+    // 이미지 삭제 목록 (트랜잭션 밖에서 처리하기 위해 미리 수집)
+    let imagesToDelete: string[] = [];
+
+    // 트랜잭션 내에서 DB 업데이트
+    const result = await runInTransaction(async () => {
       const updateData: any = {};
       
       if (data.price !== undefined) updateData.price = data.price;
       if (data.delivery !== undefined) updateData.delivery = data.delivery;
       if (data.expectedWorking !== undefined) updateData.expected_working = data.expectedWorking;
+      
+      // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
+      if (data.image !== undefined) {
+        const existingProposal = await this.chatRepository.getChatProposalById(proposalId);
+        if (existingProposal && existingProposal.image) {
+          const oldImages = existingProposal.image as string[];
+          const newImages = data.image;
+          
+          // 삭제할 이미지 목록 저장 (트랜잭션 후 삭제를 위해)
+          imagesToDelete = await this.imageListDiff(oldImages, newImages as string[]);
+        }
+        updateData.image = data.image;
+      }
 
       const updated = await this.chatRepository.updateChatProposal(proposalId, updateData);
 
@@ -406,6 +456,18 @@ export class ChatService {
         updatedAt: updated.updated_at!
       };
     });
+
+    // 트랜잭션 성공 후 S3에서 이미지 삭제 (필요시 사용)
+    if (imagesToDelete.length > 0) {
+      try {
+        await this.uploadService.deleteImage({url: imagesToDelete} as ImageUrls);
+      } catch (error) {
+        // S3 삭제 실패는 로깅만 하고 에러를 던지지 않음 (DB는 이미 업데이트됨)
+        console.error('S3 이미지 삭제 실패 (orphan 파일 발생):', error);
+      }
+    }
+
+    return result;
   }
 
 
@@ -461,4 +523,14 @@ export class ChatService {
     const isParticipant = await this.chatRepository.isUserInChatRoom(roomId, userId, userType === 'owner');
     return isParticipant;
   }
+
+  async imageListDiff(
+    oldImages: string[],
+    newImages: string[]
+  ): Promise<string[]> {
+    // 기존 이미지 중에서 새로운 리스트에 없는 이미지를 찾아 반환
+    const imagesToDelete = oldImages.filter(oldImage => !newImages.includes(oldImage));
+    return imagesToDelete;
+  }
+
 }

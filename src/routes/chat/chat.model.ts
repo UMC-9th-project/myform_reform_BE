@@ -1,4 +1,3 @@
-import { text } from 'express';
 import { InvalidChatRoomTypeError, InvalidChatMessageTypeError } from './chat.error.js';
 import { chat_message } from '@prisma/client';
 
@@ -8,14 +7,15 @@ export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' 
 
 // 채팅방 payload에 담길 타입 정의
 export type ChatRoomPayload = 
-    | { id: string, title: string, price : number, image: string }
-    | { id: string, title: string, minBudget : number, maxBudget : number, image: string }
-    | { id: string };
+    | { id: string, title: string, price : number, image: string }                          // 제안서로 접근
+    | { id: string, title: string, minBudget : number, maxBudget : number, image: string }  // 요청서로 접근
+    | { id: string };                                                                        // 피드로 접근
 
 // 채팅메시지 payload에 담길 타입 정의
 export type ChatMessagePayload = 
     | {id: string, price: number, delivery: number, expected_working: Date }  //제안서
-    | {id: string, title: string, minBudget: number, maxBudget: number}              //요청서
+    | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
+    | {urls: string[]}                                                        //이미지
     | undefined;                                                              //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
@@ -119,7 +119,7 @@ export class ChatRoom {
 
 export class ChatMessageFactory {
 
-  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result'];
+  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result', 'image'];
 
   private static assemble(
     chatRoomId : string, 
@@ -148,7 +148,10 @@ export class ChatMessageFactory {
     if (messageType === 'text') {
       textContent = content as string;
       payload = undefined; // 텍스트 메시지는 페이로드가 없어야 함
-    } else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+    } else if (messageType === 'image') {
+      payload = this.mapToImagePayload(content as string[]) as ChatMessagePayload;
+      textContent = undefined; // 이미지 타입은 텍스트 내용이 없어야 함 
+    }else if (this.PAYLOAD_TYPES.includes(messageType!)) {
       payload = content as ChatMessagePayload;
       textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
     } else {
@@ -184,7 +187,11 @@ export class ChatMessageFactory {
     };
   }
 
-
+  static mapToImagePayload(target : string[]): ChatMessagePayload {
+    return {
+      urls: target
+    };
+  }
 
   // 타입별 payload 변환로직 필요시 구현
   // private static mapToPayload(target: any, type: string): ChatMessagePayload {

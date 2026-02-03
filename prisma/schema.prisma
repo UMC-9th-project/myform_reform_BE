@@ -220,6 +220,7 @@ model order {
   user_id          String             @db.Uuid
   receipt_id       String             @db.Uuid
   quantity         Int?               @default(1)
+  tracking_number  String?            @db.VarChar(50)
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
   receipt          receipt            @relation(fields: [receipt_id], references: [receipt_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_receipt_to_order_1")
