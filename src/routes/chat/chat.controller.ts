@@ -16,7 +16,7 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 import express from 'express';
@@ -35,7 +35,6 @@ export class ChatController extends Controller {
   /**
    * @summary 채팅방 생성
    * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다. 
-   * 
    * **채팅방 타입별 생성 규칙:**
    * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설
    * - PROPOSAL: 유저가 리폼러의 제안서를 보고 채팅방 개설
@@ -48,20 +47,21 @@ export class ChatController extends Controller {
   @Post('/rooms')
   @Security('jwt')
   @SuccessResponse('201', 'Created')
-  @Example<TsoaResponse<SimplePostResponseDTO>>({
+  @Example<TsoaResponse<CreateChatRoomResponseDTO>>({
     resultType: "SUCCESS",
     error: null,
     success: {
       id: "550e8400-e29b-41d4-a716-446655440000",
-      createdAt: new Date()
+      createdAt: new Date(),
+      isNew: true
     }
   })
   public async createChatRoom(
     @Request() request: express.Request,
     @Body() body: {dto: CreateChatRoomDTO}
-  ): Promise<TsoaResponse<SimplePostResponseDTO>> {
+  ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
     const result = await this.chatService.createChatRoom(body.dto, request.user.id);
-    return new ResponseHandler<SimplePostResponseDTO>(result);
+    return new ResponseHandler<CreateChatRoomResponseDTO>(result);
   }
 
   /**
@@ -111,7 +111,8 @@ export class ChatController extends Controller {
     @Query() cursor?: string,
     @Query() limit?: number
   ): Promise<TsoaResponse<ChatRoomListDTO>> {
-    const result = await this.chatService.getChatRooms(request.user.id, request.user.role as 'owner' | 'requester', type, cursor, limit);
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatRooms(request.user.id, userType, type, cursor, limit);
     return new ResponseHandler<ChatRoomListDTO>(result);
   }
 
@@ -139,7 +140,8 @@ export class ChatController extends Controller {
     @Request() request: express.Request,
     @Body() dto: CreateChatRequestDTO
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatRequest(dto, request.user.id, request.user.role as 'owner' | 'requester');
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const { result, message, receiverInfo } = await this.chatService.createChatRequest(dto, request.user.id, userType);
     this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
@@ -180,7 +182,8 @@ export class ChatController extends Controller {
     @Path() requestId: string
   ): Promise<TsoaResponse<ChatRequestResponseDTO>> {
     const userId = (request.user as any).id;
-    const result = await this.chatService.getChatRequest(requestId, userId, request.user.role as 'owner' | 'requester');
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatRequest(requestId, userId, userType);
     return new ResponseHandler<ChatRequestResponseDTO>(result);
   }
 
@@ -240,7 +243,8 @@ export class ChatController extends Controller {
     @Request() request: express.Request,
     @Body() dto: CreateChatProposalDTO  
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, request.user.role as 'owner' | 'requester');
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const { result, message, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, userType);
     this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
@@ -281,7 +285,8 @@ export class ChatController extends Controller {
     @Request() request: express.Request
   ): Promise<TsoaResponse<ChatProposalResponseDTO>> {
     // 권한 검사 필요
-    const result = await this.chatService.getChatProposal(proposalId, request.user.id, request.user.role as 'owner' | 'requester');
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatProposal(proposalId, request.user.id, userType);
     return new ResponseHandler<ChatProposalResponseDTO>(result);
   }
 
@@ -357,7 +362,8 @@ export class ChatController extends Controller {
     @Query() cursor?: string,
     @Query() limit: number = 20,
   ): Promise<TsoaResponse<ChatMessageListDTO>> {
-    const result = await this.chatService.getChatMessages(request.user.id, request.user.role as 'owner' | 'requester', roomId, cursor, limit);
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatMessages(request.user.id, userType, roomId, cursor, limit);
     return new ResponseHandler<ChatMessageListDTO>(result);
   }
 }
