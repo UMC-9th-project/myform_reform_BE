@@ -1,13 +1,22 @@
+export interface OrderSheetItemDto {
+  reformer_nickname: string;
+  thumbnail: string;
+  title: string;
+  selected_options: string[];
+  quantity: number;
+  price: number;
+}
+
+export interface SellerGroupDto {
+  owner_id: string;
+  reformer_nickname: string;
+  items: OrderSheetItemDto[];
+  delivery_fee: number;
+}
+
 export interface GetOrderSheetResponseDto {
   receipt_number: string;
-  order_item: {
-    reformer_nickname: string;
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    quantity: number;
-    price: number;
-  };
+  delivery_fee: number;
   delivery_address: {
     delivery_address_id?: string;
     postal_code: string | null;
@@ -22,6 +31,7 @@ export interface GetOrderSheetResponseDto {
     delivery_fee: number;
     total_amount: number;
   };
+  seller_groups: SellerGroupDto[];
 }
 
 export interface CreateOrderResponseDto {
@@ -37,6 +47,15 @@ export interface VerifyPaymentResponseDto {
   success: boolean;
 }
 
+export interface GetOrderItemDto {
+  thumbnail: string;
+  title: string;
+  selected_options: string[];
+  reformer_nickname: string;
+  quantity: number;
+  price: number;
+}
+
 export interface GetOrderResponseDto {
   order_id: string;
   receipt_number: string;
@@ -49,12 +68,7 @@ export interface GetOrderResponseDto {
     phone: string | null;
     address_name: string | null;
   };
-  order_items: Array<{
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    reformer_nickname: string;
-  }>;
+  order_items: GetOrderItemDto[];
   payment: {
     amount: number;
     payment_method: string | null;
@@ -63,13 +77,9 @@ export interface GetOrderResponseDto {
     card_info: string | null;
     approved_at: Date | null;
   };
-  first_item: {
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    reformer_nickname: string;
-  } | null;
+  first_item: GetOrderItemDto | null;
   remaining_items_count: number;
   total_amount: number;
+  product_amount: number;
   delivery_fee: number;
 }

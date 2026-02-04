@@ -441,12 +441,12 @@ export class OrdersService {
   }
 
   /**
-   * 주문서 정보 조회
+   * 주문서 정보 조회 (단일 상품, 조합 1개 또는 여러 개)
+   * @param lines 조합별 { option_item_ids, quantity } (1개면 기존 단일, 2개 이상이면 여러 줄)
    */
   async getOrderSheet(
     itemId: string,
-    optionItemIds: string[],
-    quantity: number,
+    lines: Array<{ option_item_ids: string[]; quantity: number }>,
     userId: string,
     deliveryAddressId?: string,
     newAddress?: {
@@ -459,7 +459,13 @@ export class OrdersService {
     }
   ): Promise<OrderSheetResponse> {
     try {
-      // 새 배송지 시: 수령인·배송지·연락처 필수, 배송지명 선택
+      if (!lines || lines.length === 0) {
+        throw new OrderError(
+          '주문 정보가 올바르지 않습니다.',
+          'option_item_ids·quantity 또는 items가 필요합니다.'
+        );
+      }
+
       if (newAddress) {
         if (!newAddress.postal_code?.trim() || !newAddress.address?.trim()) {
           throw new OrderError(
@@ -481,51 +487,72 @@ export class OrdersService {
         }
       }
 
+      const firstLine = lines[0];
       const item = await this.repository.findItemWithOptionGroups(
         itemId,
-        optionItemIds
+        firstLine.option_item_ids
       );
 
       if (!item) {
         throw new ItemNotFoundError(itemId);
       }
 
-      const optionItems =
-        await this.repository.findOptionItemsByIds(optionItemIds);
+      const orderItems: OrderItemInfo[] = [];
+      let totalProductAmount = 0;
+      let deliveryFee = item.delivery ? Number(item.delivery) : 0;
 
-      if (optionItems.length !== optionItemIds.length) {
-        throw new ItemNotFoundError('존재하지 않는 옵션이 포함되어 있습니다.');
+      for (const line of lines) {
+        const optionItems =
+          await this.repository.findOptionItemsByIds(line.option_item_ids);
+
+        if (optionItems.length !== line.option_item_ids.length) {
+          throw new ItemNotFoundError(
+            '존재하지 않는 옵션이 포함되어 있습니다.'
+          );
+        }
+
+        this.validateOptions(optionItems, itemId);
+        this.validateStock(optionItems, line.quantity);
+
+        const extraPriceSum = optionItems.reduce(
+          (sum: number, oi: { extra_price: number | null }) =>
+            sum + (oi.extra_price || 0),
+          0
+        );
+
+        const selectedOptions = optionItems.map(
+          (oi: {
+            extra_price: number | null;
+            option_group: { name: string | null };
+            name: string | null;
+          }) => {
+            const extraPrice = oi.extra_price || 0;
+            const priceText =
+              extraPrice > 0 ? ` (+${extraPrice.toLocaleString()}원)` : '';
+            return `${oi.option_group.name || ''} ${oi.name || ''}${priceText}`;
+          }
+        );
+
+        const basePrice = item.price ? Number(item.price) : 0;
+        const productAmount =
+          (basePrice + extraPriceSum) * line.quantity;
+        totalProductAmount += productAmount;
+
+        const lineDelivery = item.delivery ? Number(item.delivery) : 0;
+        if (lineDelivery > deliveryFee) deliveryFee = lineDelivery;
+
+        orderItems.push({
+          reformer_nickname: item.owner?.nickname || '',
+          thumbnail:
+            item.item_photo?.find((p) => p.photo_order === 1)?.content || '',
+          title: item.title || '',
+          selected_options: selectedOptions,
+          quantity: line.quantity,
+          price: productAmount
+        });
       }
 
-      // 옵션 검증
-      this.validateOptions(optionItems, itemId);
-
-      // 재고 확인 (조합별 수량만큼 확인)
-      this.validateStock(optionItems, quantity);
-
-      const extraPriceSum = optionItems.reduce(
-        (sum: number, item: { extra_price: number | null }) =>
-          sum + (item.extra_price || 0),
-        0
-      );
-
-      const selectedOptions = optionItems.map(
-        (item: {
-          extra_price: number | null;
-          option_group: { name: string | null };
-          name: string | null;
-        }) => {
-          const extraPrice = item.extra_price || 0;
-          const priceText =
-            extraPrice > 0 ? ` (+${extraPrice.toLocaleString()}원)` : '';
-          return `${item.option_group.name || ''} ${item.name || ''}${priceText}`;
-        }
-      );
-
-      const basePrice = item.price ? Number(item.price) : 0;
-      const productAmount = (basePrice + extraPriceSum) * quantity;
-      const deliveryFee = item.delivery ? Number(item.delivery) : 0;
-      const totalAmount = productAmount + deliveryFee;
+      const totalAmount = totalProductAmount + deliveryFee;
 
       const deliveryInfo = await this.getDeliveryAddressInfo(
         userId,
@@ -548,20 +575,21 @@ export class OrdersService {
 
       return {
         receipt_number: receiptNumber,
-        order_item: {
-          reformer_nickname: item.owner.nickname || '',
-          thumbnail: item.item_photo[0]?.content || '',
-          title: item.title || '',
-          selected_options: selectedOptions,
-          quantity,
-          price: productAmount
-        },
+        delivery_fee: deliveryFee,
         delivery_address: deliveryAddress,
         payment: {
-          product_amount: productAmount,
+          product_amount: totalProductAmount,
           delivery_fee: deliveryFee,
           total_amount: totalAmount
-        }
+        },
+        seller_groups: [
+          {
+            owner_id: item.owner_id,
+            reformer_nickname: item.owner?.nickname || '',
+            items: orderItems,
+            delivery_fee: deliveryFee
+          }
+        ]
       };
     } catch (error) {
       if (
@@ -590,13 +618,12 @@ export class OrdersService {
   }
 
   /**
-   * 주문 생성 (PENDING 상태)
-   * 결제 검증은 웹훅이나 verify 엔드포인트에서 수행
+   * 주문 생성 (PENDING 상태) — 단일 상품, 조합 1개 또는 여러 개
+   * @param lines 조합별 { option_item_ids, quantity }
    */
   async createOrder(
     itemId: string,
-    optionItemIds: string[],
-    quantity: number,
+    lines: Array<{ option_item_ids: string[]; quantity: number }>,
     userId: string,
     deliveryAddressId?: string,
     newAddress?: {
@@ -617,6 +644,13 @@ export class OrdersService {
         );
       }
 
+      if (!lines || lines.length === 0) {
+        throw new OrderError(
+          '주문 정보가 올바르지 않습니다.',
+          'option_item_ids·quantity 또는 items가 필요합니다.'
+        );
+      }
+
       const item = await this.repository.findItemById(itemId);
 
       if (!item) {
@@ -624,69 +658,94 @@ export class OrdersService {
       }
 
       const result = await runInTransaction(async () => {
-        const optionItems =
-          await this.repository.findOptionItemsByIds(optionItemIds);
+        let totalProductAmount = 0;
+        let deliveryFee = item.delivery ? Number(item.delivery) : 0;
+        const orderDataList: Array<{
+          optionItemIds: string[];
+          quantity: number;
+          productAmount: number;
+          deliveryFee: number;
+        }> = [];
 
-        if (optionItems.length !== optionItemIds.length) {
-          throw new ItemNotFoundError(
-            '존재하지 않는 옵션이 포함되어 있습니다.'
-          );
-        }
+        for (const line of lines) {
+          const optionItems =
+            await this.repository.findOptionItemsByIds(line.option_item_ids);
 
-        // 옵션 검증
-        this.validateOptions(optionItems, itemId);
+          if (optionItems.length !== line.option_item_ids.length) {
+            throw new ItemNotFoundError(
+              '존재하지 않는 옵션이 포함되어 있습니다.'
+            );
+          }
 
-        const optionItemIdsWithQuantity = optionItems
-          .filter((item) => item.quantity !== null)
-          .map((item) => item.option_item_id);
+          this.validateOptions(optionItems, itemId);
 
-        if (optionItemIdsWithQuantity.length > 0) {
-          // 각 옵션 아이템마다 조합별 수량만큼 차감
-          for (const optionItemId of optionItemIdsWithQuantity) {
-            const updateResult =
-              await this.repository.updateOptionItemQuantities(
-                [optionItemId],
-                quantity
-              );
+          const optionItemIdsWithQuantity = optionItems
+            .filter((oi) => oi.quantity !== null)
+            .map((oi) => oi.option_item_id);
 
-            if (updateResult !== 1) {
-              const updatedItem = await this.repository.findUpdatedOptionItems([
-                optionItemId
-              ]);
-              const optionItem = optionItems.find(
-                (item) => item.option_item_id === optionItemId
-              );
+          if (optionItemIdsWithQuantity.length > 0) {
+            for (const optionItemId of optionItemIdsWithQuantity) {
+              const updateResult =
+                await this.repository.updateOptionItemQuantities(
+                  [optionItemId],
+                  line.quantity
+                );
 
-              if (!updatedItem || updatedItem.length === 0) {
+              if (updateResult !== 1) {
+                const updatedItem =
+                  await this.repository.findUpdatedOptionItems([optionItemId]);
+                const optionItem = optionItems.find(
+                  (oi) => oi.option_item_id === optionItemId
+                );
+
+                if (!updatedItem || updatedItem.length === 0) {
+                  throw new InsufficientStockError(
+                    optionItem?.name || '옵션',
+                    '옵션 아이템을 찾을 수 없습니다.'
+                  );
+                }
+
+                const currentQuantity = updatedItem[0].quantity;
+                if (currentQuantity === null) {
+                  throw new InsufficientStockError(
+                    optionItem?.name || '옵션',
+                    '재고 정보가 없습니다.'
+                  );
+                }
+
                 throw new InsufficientStockError(
                   optionItem?.name || '옵션',
-                  '옵션 아이템을 찾을 수 없습니다.'
+                  `재고가 부족합니다. 현재 재고: ${currentQuantity}, 요청 수량: ${line.quantity}`
                 );
               }
-
-              const currentQuantity = updatedItem[0].quantity;
-              if (currentQuantity === null) {
-                throw new InsufficientStockError(
-                  optionItem?.name || '옵션',
-                  '재고 정보가 없습니다.'
-                );
-              }
-
-              throw new InsufficientStockError(
-                optionItem?.name || '옵션',
-                `재고가 부족합니다. 현재 재고: ${currentQuantity}, 요청 수량: ${quantity}`
-              );
             }
           }
+
+          const extraPriceSum = optionItems.reduce(
+            (sum: number, oi: { extra_price: number | null }) =>
+              sum + (oi.extra_price || 0),
+            0
+          );
+
+          const basePrice = item.price ? Number(item.price) : 0;
+          const productAmount =
+            (basePrice + extraPriceSum) * line.quantity;
+          totalProductAmount += productAmount;
+
+          const lineDelivery = item.delivery ? Number(item.delivery) : 0;
+          if (lineDelivery > deliveryFee) deliveryFee = lineDelivery;
+
+          orderDataList.push({
+            optionItemIds: line.option_item_ids,
+            quantity: line.quantity,
+            productAmount,
+            deliveryFee: lineDelivery
+          });
         }
 
-        const extraPriceSum = optionItems.reduce(
-          (sum: number, optionItem: { extra_price: number | null }) =>
-            sum + (optionItem.extra_price || 0),
-          0
-        );
+        const totalAmount = totalProductAmount + deliveryFee;
 
-        const finalDeliveryAddressId = await this.processDeliveryAddress(
+        await this.processDeliveryAddress(
           userId,
           item.owner_id,
           deliveryAddressId,
@@ -699,11 +758,6 @@ export class OrdersService {
           deliveryAddressId,
           newAddress
         );
-
-        const basePrice = item.price ? Number(item.price) : 0;
-        const productAmount = (basePrice + extraPriceSum) * quantity;
-        const deliveryFee = item.delivery ? Number(item.delivery) : 0;
-        const totalAmount = productAmount + deliveryFee;
 
         const receiptNumber = merchantUid;
         let receipt =
@@ -747,24 +801,34 @@ export class OrdersService {
           receipt.payment_status === 'paid'
             ? order_status_enum.PAID
             : order_status_enum.PENDING;
-        const order = await this.repository.createOrder({
-          receipt_id: receipt.receipt_id,
-          user_id: userId,
-          owner_id: item.owner_id,
-          target_type: target_type_enum.ITEM,
-          target_id: itemId,
-          price: productAmount,
-          delivery_fee: deliveryFee,
-          quantity: quantity,
-          status: initialOrderStatus
-        });
 
-        await this.repository.createOrderOptions(order.order_id, optionItemIds);
+        let firstOrderId: string | null = null;
+
+        for (const od of orderDataList) {
+          const order = await this.repository.createOrder({
+            receipt_id: receipt.receipt_id,
+            user_id: userId,
+            owner_id: item.owner_id,
+            target_type: target_type_enum.ITEM,
+            target_id: itemId,
+            price: od.productAmount,
+            delivery_fee: od.deliveryFee,
+            quantity: od.quantity,
+            status: initialOrderStatus
+          });
+
+          if (!firstOrderId) firstOrderId = order.order_id;
+
+          await this.repository.createOrderOptions(
+            order.order_id,
+            od.optionItemIds
+          );
+        }
 
         await this.repository.deleteCartItems(userId, itemId);
 
         return {
-          order_id: order.order_id,
+          order_id: firstOrderId!,
           receipt_id: receipt.receipt_id,
           total_amount: totalAmount
         };
@@ -855,13 +919,12 @@ export class OrdersService {
         address_name: receipt.delivery_address_name ?? null
       };
 
-      const orderItems = receipt.order.flatMap(
+      const orderItems = receipt.order.map(
         (order: {
           order_id: string;
-          status: order_status_enum | null;
-          owner: {
-            nickname: string | null;
-          };
+          quantity: number | null;
+          price: Decimal | null;
+          owner: { nickname: string | null };
           order_option: Array<{
             option_item: {
               option_group: {
@@ -875,32 +938,26 @@ export class OrdersService {
             };
           }>;
         }) => {
-          return order.order_option.map(
-            (orderOption: {
+          const firstOption = order.order_option?.[0];
+          const item = firstOption?.option_item?.option_group?.item;
+          const selectedOptions = (order.order_option || []).map(
+            (oo: {
               option_item: {
-                option_group: {
-                  name: string | null;
-                  item: {
-                    item_photo: Array<{ content: string | null }>;
-                    title: string | null;
-                  };
-                };
+                option_group: { name: string | null };
                 name: string | null;
               };
-            }) => {
-              const item = orderOption.option_item.option_group.item;
-              const selectedOptions = [
-                `${orderOption.option_item.option_group.name || ''} ${orderOption.option_item.name || ''}`
-              ];
-
-              return {
-                thumbnail: item.item_photo[0]?.content || '',
-                title: item.title || '',
-                selected_options: selectedOptions,
-                reformer_nickname: order.owner.nickname || ''
-              };
-            }
+            }) =>
+              `${oo.option_item?.option_group?.name || ''} ${oo.option_item?.name || ''}`.trim()
           );
+
+          return {
+            thumbnail: item?.item_photo?.[0]?.content || '',
+            title: item?.title || '',
+            selected_options: selectedOptions,
+            reformer_nickname: order.owner?.nickname || '',
+            quantity: order.quantity ?? 0,
+            price: order.price ? Number(order.price) : 0
+          };
         }
       );
 
@@ -917,12 +974,20 @@ export class OrdersService {
       const firstItem = orderItems.length > 0 ? orderItems[0] : null;
       const remainingItemsCount = Math.max(0, orderItems.length - 1);
 
-      // 총 배송비는 각 order의 delivery_fee 중 최대값
-      const maxDeliveryFee = Math.max(
-        ...receipt.order.map((o: { delivery_fee: Decimal | null }) =>
-          o.delivery_fee ? Number(o.delivery_fee) : 0
-        )
+      const maxDeliveryFeeByOwner = new Map<string, number>();
+      for (const o of receipt.order) {
+        const ownerId = (o as { owner_id: string }).owner_id;
+        const fee = o.delivery_fee ? Number(o.delivery_fee) : 0;
+        const current = maxDeliveryFeeByOwner.get(ownerId) ?? 0;
+        maxDeliveryFeeByOwner.set(ownerId, Math.max(current, fee));
+      }
+      const totalDeliveryFee = [...maxDeliveryFeeByOwner.values()].reduce(
+        (sum, fee) => sum + fee,
+        0
       );
+
+      const totalAmount = receipt.total_amount ? Number(receipt.total_amount) : 0;
+      const product_amount = totalAmount - totalDeliveryFee;
 
       return {
         order_id: firstOrder.order_id,
@@ -933,8 +998,9 @@ export class OrdersService {
         remaining_items_count: remainingItemsCount,
         order_items: orderItems,
         payment: paymentInfo,
-        total_amount: receipt.total_amount ? Number(receipt.total_amount) : 0,
-        delivery_fee: maxDeliveryFee
+        total_amount: totalAmount,
+        product_amount,
+        delivery_fee: totalDeliveryFee
       };
     } catch (error) {
       if (error instanceof OrderNotFoundError || error instanceof OrderError) {
@@ -1538,8 +1604,12 @@ export class OrdersService {
       const itemsMap = new Map(items.map((item) => [item.item_id, item]));
 
       const orderItems: OrderItemInfo[] = [];
+      const sellerGroupsMap = new Map<
+        string,
+        { reformer_nickname: string; items: OrderItemInfo[]; maxDeliveryFee: number }
+      >();
       let totalProductAmount = 0;
-      let maxDeliveryFee = 0;
+      const maxDeliveryFeeByOwner = new Map<string, number>();
 
       for (const cart of carts) {
         if (!cart.item_id) continue;
@@ -1576,7 +1646,10 @@ export class OrdersService {
         totalProductAmount += productAmount;
 
         const deliveryFee = item.delivery ? Number(item.delivery) : 0;
-        maxDeliveryFee = Math.max(maxDeliveryFee, deliveryFee);
+        const ownerId = item.owner_id;
+        const currentMax = maxDeliveryFeeByOwner.get(ownerId) ?? 0;
+        const newMax = Math.max(currentMax, deliveryFee);
+        maxDeliveryFeeByOwner.set(ownerId, newMax);
 
         const selectedOptions = optionItems.map((oi) => {
           const extraPrice = oi.extra_price || 0;
@@ -1586,7 +1659,7 @@ export class OrdersService {
           return `${groupName} ${oi.name || ''}${priceText}`;
         });
 
-        orderItems.push({
+        const orderItem: OrderItemInfo = {
           reformer_nickname: item.owner?.nickname || '',
           thumbnail:
             item.item_photo.find((p) => p.photo_order === 1)?.content || '',
@@ -1594,10 +1667,21 @@ export class OrdersService {
           selected_options: selectedOptions,
           quantity: cart.quantity,
           price: productAmount
-        });
+        };
+        orderItems.push(orderItem);
+
+        if (!sellerGroupsMap.has(ownerId)) {
+          sellerGroupsMap.set(ownerId, {
+            reformer_nickname: item.owner?.nickname || '',
+            items: [],
+            maxDeliveryFee: 0
+          });
+        }
+        const group = sellerGroupsMap.get(ownerId)!;
+        group.items.push(orderItem);
+        group.maxDeliveryFee = newMax;
       }
 
-      // 배송지 정보 (주문서용, 생성하지 않음)
       const deliveryAddress = await this.getDeliveryAddressInfo(
         userId,
         deliveryAddressId,
@@ -1605,7 +1689,11 @@ export class OrdersService {
       );
 
       const receiptNumber = await this.generateReceiptNumber();
-      const totalAmount = totalProductAmount + maxDeliveryFee;
+      const totalDeliveryFee = [...maxDeliveryFeeByOwner.values()].reduce(
+        (sum, fee) => sum + fee,
+        0
+      );
+      const totalAmount = totalProductAmount + totalDeliveryFee;
 
       let receipt =
         await this.repository.findReceiptByReceiptNumber(receiptNumber);
@@ -1632,15 +1720,25 @@ export class OrdersService {
           }
         : null;
 
+      const seller_groups = [...sellerGroupsMap.entries()].map(
+        ([owner_id, g]) => ({
+          owner_id,
+          reformer_nickname: g.reformer_nickname,
+          items: g.items,
+          delivery_fee: g.maxDeliveryFee
+        })
+      );
+
       return {
         receipt_number: receiptNumber,
-        order_item: orderItems[0], // 첫 번째 상품 정보
+        delivery_fee: totalDeliveryFee,
         delivery_address: normalizedDeliveryAddress,
         payment: {
           product_amount: totalProductAmount,
-          delivery_fee: maxDeliveryFee,
+          delivery_fee: totalDeliveryFee,
           total_amount: totalAmount
-        }
+        },
+        seller_groups
       };
     } catch (error) {
       if (
@@ -1730,7 +1828,7 @@ export class OrdersService {
 
         // 총액 계산 (먼저 계산하여 receipt 생성)
         let totalProductAmount = 0;
-        let maxDeliveryFee = 0;
+        const maxDeliveryFeeByOwner = new Map<string, number>();
         const orderDataList: Array<{
           cart: (typeof carts)[0];
           item: (typeof items)[0];
@@ -1773,7 +1871,9 @@ export class OrdersService {
           totalProductAmount += productAmount;
 
           const deliveryFee = item.delivery ? Number(item.delivery) : 0;
-          maxDeliveryFee = Math.max(maxDeliveryFee, deliveryFee);
+          const ownerId = item.owner_id;
+          const currentMax = maxDeliveryFeeByOwner.get(ownerId) ?? 0;
+          maxDeliveryFeeByOwner.set(ownerId, Math.max(currentMax, deliveryFee));
 
           orderDataList.push({
             cart,
@@ -1813,7 +1913,11 @@ export class OrdersService {
           newAddress
         );
 
-        const totalAmount = totalProductAmount + maxDeliveryFee;
+        const totalDeliveryFee = [...maxDeliveryFeeByOwner.values()].reduce(
+          (sum, fee) => sum + fee,
+          0
+        );
+        const totalAmount = totalProductAmount + totalDeliveryFee;
         let receipt =
           await this.repository.findReceiptByReceiptNumber(merchantUid);
 
