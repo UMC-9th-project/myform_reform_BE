@@ -636,6 +636,33 @@ export class ChatRepository {
     }
   }
 
+  async getChatRoomById(roomId: string) {
+    try {
+      const chatRoom = await prisma.chat_room.findUnique({
+        where: {
+          chat_room_id: roomId
+        },
+        include: {
+          owner: {
+            select: {
+              nickname: true,
+              profile_photo: true
+            }
+          },
+          user: {
+            select: {
+              nickname: true,
+              profile_photo: true
+            }
+          }
+        }
+      });
+      return chatRoom;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
   async isUserInChatRoom(
     roomId: string,
     userId: string,
@@ -712,7 +739,8 @@ export class TargetRepository {
         include: {
           owner: true,
           reform_proposal_photo: {
-            where: { photo_order: 1 }
+            orderBy: { photo_order: 'asc' },
+            take: 1
           }
         }
       });
@@ -728,7 +756,8 @@ export class TargetRepository {
         include: {
           user: true,
           reform_request_photo: {
-            where: { photo_order: 1 }
+            orderBy: { photo_order: 'asc' },
+            take: 1
           }
         }
       });

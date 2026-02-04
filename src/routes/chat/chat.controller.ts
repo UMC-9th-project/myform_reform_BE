@@ -142,7 +142,7 @@ export class ChatController extends Controller {
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
     const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
     const { result, message, receiverInfo } = await this.chatService.createChatRequest(dto, request.user.id, userType);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
+    this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 
@@ -245,7 +245,7 @@ export class ChatController extends Controller {
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
     const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
     const { result, message, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, userType);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
+    this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 
@@ -353,6 +353,28 @@ export class ChatController extends Controller {
       meta: {
         nextCursor: "c3d4e5f6-a7b8-9012-cdef-123456789abc",
         hasMore: true
+      },
+      chatRoomInfo: {
+        chatRoomId: "550e8400-e29b-41d4-a716-446655440000",
+        lastMessageId: "880e8400-e29b-41d4-a716-446655440333",
+        ownerLastReadId: "990e8400-e29b-41d4-a716-446655440444",
+        requesterLastReadId: "aa0e8400-e29b-41d4-a716-446655440555",
+        targetPayload: { 
+          type: "REQUEST", 
+          id: "bb0e8400-e29b-41d4-a716-446655440666",
+          title: "청바지 리폼 요청합니다"
+        },
+        type: "REQUEST",
+        owner: {
+          id: "660e8400-e29b-41d4-a716-446655440111",
+          nickname: "리폼마스터",
+          profileImage: "https://s3.example.com/owner-profile.jpg"
+        },
+        requester: {
+          id: "770e8400-e29b-41d4-a716-446655440222",
+          nickname: "홍길동",
+          profileImage: "https://s3.example.com/user-profile.jpg"
+        }
       }
     }
   })
