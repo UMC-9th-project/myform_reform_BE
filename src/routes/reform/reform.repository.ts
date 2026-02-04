@@ -40,7 +40,7 @@ export class ReformRepository {
       },
       take: 3,
       orderBy: {
-        updated_at: { sort: 'asc' }
+        updated_at: { sort: 'desc' }
       }
     });
   }
@@ -68,7 +68,7 @@ export class ReformRepository {
       },
       take: 3,
       orderBy: {
-        updated_at: { sort: 'asc' }
+        updated_at: { sort: 'desc' }
       }
     });
   }
@@ -138,7 +138,7 @@ export class ReformRepository {
               }
             }
           : undefined,
-      orderBy: { created_at: 'asc' }
+      orderBy: { created_at: 'desc' }
     });
   }
 
@@ -215,7 +215,7 @@ export class ReformRepository {
               }
             }
           : undefined,
-      orderBy: { created_at: 'asc' }
+      orderBy: { created_at: 'desc' }
     });
   }
 
