@@ -22,6 +22,7 @@ import {
   TsoaResponse,
   commonError
 } from '../../config/tsoaResponse.js';
+import { UnauthorizedError } from '../auth/auth.error.js';
 
 
 @Route('reviews')
@@ -31,6 +32,12 @@ export class ReviewsController extends Controller {
   constructor() {
     super();
     this.reviewService = new ReviewsService();
+  }
+  private requireUserId(userId?: string): string {
+    if (!userId) {
+      throw new UnauthorizedError('토큰에 userId가 존재하지 않거나 유효하지 않은 Access Token입니다.');
+    }
+    return userId;
   }
 
   /**
@@ -43,13 +50,14 @@ export class ReviewsController extends Controller {
   @Get('/me')
   @Security('jwt', ['user'])
   @SuccessResponse(200, '리뷰 조회 성공')
+  @Response<ErrorResponse>(401, '토큰에 userId가 존재하지 않거나 유효하지 않은 Access Token입니다.')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getReviews(
     @Request() req: ExRequest,
     @Query() cursor?: string,
     @Query() limit: number = 20,
   ): Promise<TsoaResponse<ReviewResponseDto>> {
-    const userId = req.user?.id;
+    const userId = this.requireUserId(req.user?.id);
     const result = await this.reviewService.getReviews(
       userId,
       limit,
@@ -66,11 +74,13 @@ export class ReviewsController extends Controller {
   @Delete('/{reviewId}')
   @Security('jwt', ['user'])
   @SuccessResponse(200, '리뷰 삭제가 완료되었습니다.')
+  @Response<ErrorResponse>(403, '권한이 없어 리뷰를 삭제할 수 없습니다. 리뷰 작성자가 아닙니다.')
+  @Response<ErrorResponse>(404, '리뷰를 찾을 수 없습니다.')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async deleteReview(
     @Request() req: ExRequest,
     @Path() reviewId: string): Promise<TsoaResponse<string>> {
-    const userId = req.user?.id;
+    const userId = this.requireUserId(req.user?.id);
     const result = await this.reviewService.deleteReview(userId, reviewId);
     return new ResponseHandler(result);
   }

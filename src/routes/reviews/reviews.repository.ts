@@ -1,4 +1,5 @@
 import prisma from '../../config/prisma.config.js';
+import { review } from '@prisma/client';
 import { PrismaClient } from '@prisma/client/extension';
 import { RawItemInfo, RawProposalInfo, RawRequestInfo, RawReviewData, RawUserInfo, UnifiedProductInfo } from './reviews.model.js';
 
@@ -34,6 +35,11 @@ export class ReviewsRepository {
             delivery_fee: true,
             target_type: true,
             target_id: true,
+          }
+        },
+        review_photo: {
+          select: {
+            content: true,
           }
         }
       },
@@ -135,16 +141,36 @@ export class ReviewsRepository {
     });
   }
 
-  async deleteReview(userId: string, reviewId: string): Promise<number>{
-    const result = await this.prisma.review.deleteMany({
+  async getUserInfos(userIds: string[]): Promise<RawUserInfo[]>{
+    if (!userIds) {
+      return [];
+    }
+    return await this.prisma.user.findMany({
       where: {
-        user_id: userId,
+        user_id: { in: userIds }
+      },
+      select: {
+        user_id: true,
+        name: true,
+        nickname: true,
+        profile_photo: true,
+      }
+    });
+  }
+
+  async deleteReview(reviewId: string): Promise<void>{
+    await this.prisma.review.delete({
+      where: {
         review_id: reviewId
       }
     });
-    return result.count;
+  }
+
+  async findReviewById(reviewId: string): Promise< review | null>{
+    return await this.prisma.review.findUnique({
+      where: {
+        review_id: reviewId
+      }
+    });
   }
 }
-
-
-

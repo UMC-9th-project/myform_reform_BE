@@ -32,6 +32,7 @@ export interface ReviewDto {
   orderThumbnail: string;
   targetType: target_type_enum;
   targetId: string;
+  reviewPhotos: string[];
 }
 
 export interface ReviewResponseDto {
@@ -54,6 +55,11 @@ export type RawReviewData = Prisma.reviewGetPayload<{
         delivery_fee: true;
         target_type: true;
         target_id: true;
+      }
+    }
+    review_photo: {
+      select: {
+        content: true;
       }
     }
   }
