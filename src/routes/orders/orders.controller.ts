@@ -14,7 +14,7 @@ import {
   Tags
 } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
-import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
+import { TsoaResponse, ErrorResponse, commonError, ResponseHandler } from '../../config/tsoaResponse.js';
 import { BasicError } from '../../middleware/error.js';
 import { OrdersService } from './orders.service.js';
 import {
@@ -22,13 +22,15 @@ import {
   CreateOrderRequestDto,
   VerifyPaymentRequestDto,
   GetOrderSheetFromCartRequestDto,
-  CreateOrderFromCartRequestDto
+  CreateOrderFromCartRequestDto,
+  CreateReviewRequestDto
 } from './dto/orders.req.dto.js';
 import {
   GetOrderSheetResponseDto,
   CreateOrderResponseDto,
   VerifyPaymentResponseDto,
-  GetOrderResponseDto
+  GetOrderResponseDto,
+  CreateReviewResponseDto
 } from './dto/orders.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
 
@@ -918,5 +920,33 @@ export class OrdersController extends Controller {
       error: null,
       success: result
     };
+  }
+
+  /**
+   * @summary 주문 건에 대한 리뷰를 작성합니다.
+   * @param orderId 주문 건 ID
+   * @param requestBody 주문 건에 대한 리뷰 작성 요청
+   * @param req 요청 객체
+   * @returns 주문 건에 대한 리뷰 작성 결과
+   * @example requestBody {
+   *   "star": 5,
+   *   "content": "좋은 상품입니다.",
+   *   "photos": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"]
+   * }
+   */
+  @Post('/{orderId}/review')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '주문 건에 대한 리뷰 작성 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  @Response<ErrorResponse>(400, '입력값 오류', commonError.badRequest)
+  public async createReview(
+    @Path() orderId: string,
+    @Body() requestBody: CreateReviewRequestDto,
+    @Request() req: ExpressRequest
+  ): Promise<TsoaResponse<CreateReviewResponseDto>> {
+    const userId = req.user?.id;
+    this.requireUserId(userId);
+    const result = await this.ordersService.createReview(orderId, userId, requestBody);
+    return new ResponseHandler(result);
   }
 }

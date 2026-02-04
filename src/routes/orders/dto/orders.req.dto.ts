@@ -1,4 +1,4 @@
-import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, ValidateNested, IsNotEmpty } from 'class-validator';
+import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, ValidateNested, IsNotEmpty, Max, ArrayMaxSize, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class NewAddressDto {
@@ -120,4 +120,28 @@ export class CreateOrderFromCartRequestDto {
   @IsString()
   @IsNotEmpty()
   merchant_uid!: string;
+}
+
+export class CreateReviewRequestDto {
+  /**
+   * @summary 리뷰 별점
+   * @isInt
+   * @minimum 1
+   * @maximum 5
+   * @example 5
+   */
+  star!: number;
+
+  /**
+   * @summary 리뷰 내용
+   * @example "좋은 상품입니다."
+   */
+  content?: string;
+
+  /**
+   * @summary 리뷰 사진
+   * @minItems 0
+   * @maxItems 4
+   */
+  photos?: string[];
 }
