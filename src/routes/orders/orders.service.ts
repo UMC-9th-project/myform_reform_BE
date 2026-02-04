@@ -11,19 +11,25 @@ import {
   OrderError,
   PaymentError,
   PaymentVerificationError,
-  PaymentAmountMismatchError
+  PaymentAmountMismatchError,
+  ReviewNotAllowedError,
+  ReviewAlreadyExistsError
 } from './orders.error.js';
 import type {
   OrderSheetResponse,
   CreateOrderRequest,
   CreateOrderResponse,
   OrderResponse,
-  OrderItemInfo
+  OrderItemInfo,
 } from './orders.model.js';
 import type { GetOrderResponseDto } from './dto/orders.res.dto.js';
 import { OrdersRepository } from './orders.repository.js';
 import { customAlphabet } from 'nanoid';
 import { Decimal } from '@prisma/client/runtime/binary';
+import { CreateReviewRequestDto } from './dto/orders.req.dto.js';
+import { CreateReviewInput } from './orders.model.js';
+import { CreateReviewResponseDto } from './dto/orders.res.dto.js';
+
 
 export class OrdersService {
   private static readonly ORDER_NUMBER_ALPHABET = '0123456789';
@@ -1986,5 +1992,23 @@ export class OrdersService {
 
       throw new OrderError('주문 생성 실패', errorMessage);
     }
+  }
+
+  // 주문 건에 대한 리뷰 작성
+  async createReview(orderId: string, userId: string, requestBody: CreateReviewRequestDto): Promise<CreateReviewResponseDto> {
+    const order = await this.repository.findOrderById(orderId, userId);
+    if (!order) {
+      throw new OrderNotFoundError(orderId);
+    }
+    if (order.status == order_status_enum.PENDING) {
+      throw new ReviewNotAllowedError('해당 주문은 리뷰 작성 가능한 상태가 아닙니다.');
+    }
+    if (await this.repository.findReviewByOrderId(orderId)) {
+      throw new ReviewAlreadyExistsError('해당 주문에 대한 리뷰가 이미 작성되었습니다.');
+    }
+    const createReviewInput = new CreateReviewInput(orderId, userId, requestBody);
+    const review = await this.repository.createReview(createReviewInput);
+    const createReviewResponse = new CreateReviewResponseDto(review);
+    return createReviewResponse;
   }
 }

@@ -1,4 +1,4 @@
-import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, ValidateNested, IsNotEmpty } from 'class-validator';
+import { IsUUID, IsArray, ArrayMinSize, IsInt, Min, IsOptional, IsString, ValidateNested, IsNotEmpty, Max, ArrayMaxSize, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class NewAddressDto {
@@ -120,4 +120,19 @@ export class CreateOrderFromCartRequestDto {
   @IsString()
   @IsNotEmpty()
   merchant_uid!: string;
+}
+
+export class CreateReviewRequestDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  star!: number;
+  @IsString()
+  @IsNotEmpty()
+  content?: string;
+  @IsArray()
+  @ArrayMinSize(0)
+  @ArrayMaxSize(4)
+  @IsUrl({}, { each: true })
+  photos?: string[];
 }
