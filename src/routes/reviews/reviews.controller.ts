@@ -39,11 +39,12 @@ export class ReviewsController extends Controller {
   }
 
   /**
-   * @ summary 작성한 리뷰를 조회합니다 (로그인 후 자신의 리뷰만 조회 가능)
-   * @ returns 작성한 리뷰 목록
-   * @ param cursor 페이지네이션 커서 (선택)
-   * @ param limit 한 번에 조회할 개수
-   * @ returns 작성한 리뷰 목록
+   * @summary 작성한 리뷰를 조회합니다 (로그인 후 자신의 리뷰만 조회 가능)
+   * @param req 요청 객체
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수
+   * @param order 정렬 순서 (asc: 오름차순, desc: 내림차순)
+   * @returns 작성한 리뷰 목록
    */
   @Get('/me')
   @Security('jwt', ['user'])

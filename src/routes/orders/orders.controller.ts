@@ -923,8 +923,10 @@ export class OrdersController extends Controller {
   }
 
   /**
-   * @summary 주문 건에 대한 리뷰 작성
+   * @summary 주문 건에 대한 리뷰를 작성합니다.
+   * @param orderId 주문 건 ID
    * @param requestBody 주문 건에 대한 리뷰 작성 요청
+   * @param req 요청 객체
    * @returns 주문 건에 대한 리뷰 작성 결과
    * @example requestBody {
    *   "star": 5,
