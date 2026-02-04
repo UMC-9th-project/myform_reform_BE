@@ -44,6 +44,22 @@ export function expressAuthentication(
     });
   }
 
+  // 선택적 JWT 인증 - 토큰이 없어도 통과, 있으면 검증
+  // 사용 예 : @Security('jwt_optional')
+  if (securityName === 'jwt_optional') {
+    const authHeader = request.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    return new Promise((resolve) => {
+      if (!token) return resolve(null);
+      
+      jwt.verify(token as string, jwtSecret, (err: any, decoded: any) => {
+        if (err) return resolve(null);
+        resolve(decoded);
+      });
+    });
+  }
+
   if (securityName === 'jwt_refresh') {
     const token = request.cookies.refreshToken;
     return new Promise((resolve, reject) => {
