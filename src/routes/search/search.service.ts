@@ -13,8 +13,8 @@ export class SearchService {
   public async search(
     type: target_type_enum,
     query: string,
-    userId: string,
-    role: Role,
+    userId?: string,
+    role?: Role,
     cursor?: string
   ): Promise<SearchListResDTO> {
     const searchAfter = CursorUtil.decode<SearchCursor>(cursor);
@@ -85,15 +85,15 @@ export class SearchService {
   }
 
   private async getIsLikedSet(
-    userId: string,
+    userId: string | undefined,
     type: target_type_enum,
     resultIds: string[],
-    role: Role
+    role: Role | undefined
   ): Promise<Set<string>> {
     const isLikedSet = new Set<string>();
     if (!userId || resultIds.length === 0) return isLikedSet;
 
-    if (role === 'user') {
+    if (role === 'user' && userId) {
       const wishes = await prisma.user_wish.findMany({
         where: {
           user_id: userId,
