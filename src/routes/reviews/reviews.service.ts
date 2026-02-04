@@ -10,9 +10,10 @@ export class ReviewsService {
   async getReviews(
     userId: string, 
     limit: number,
-    cursor: string | undefined): Promise<ReviewResponseDto> {
+    cursor: string | undefined,
+    order: 'asc' | 'desc'): Promise<ReviewResponseDto> {
     //리뷰와 관련 테이블 조회
-    const reviews = await this.reviewsRepository.getReviewsWithAll(userId, limit, cursor);
+    const reviews = await this.reviewsRepository.getReviewsWithAll(userId, limit, cursor, order);
     const hasNext = reviews.length > limit;
     const actualReviews = hasNext ? reviews.slice(0, limit) : reviews;
     

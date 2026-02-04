@@ -56,12 +56,14 @@ export class ReviewsController extends Controller {
     @Request() req: ExRequest,
     @Query() cursor?: string,
     @Query() limit: number = 20,
+    @Query() order: 'asc' | 'desc' = 'desc'
   ): Promise<TsoaResponse<ReviewResponseDto>> {
     const userId = this.requireUserId(req.user?.id);
     const result = await this.reviewService.getReviews(
       userId,
       limit,
-      cursor
+      cursor,
+      order
     );
     return new ResponseHandler(result);
   }

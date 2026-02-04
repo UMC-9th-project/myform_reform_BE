@@ -9,14 +9,19 @@ export class ReviewsRepository {
     this.prisma = prisma;
   }
 
-  async getReviewsWithAll(userId: string, limit: number, cursor: string | undefined): Promise<RawReviewData[]>{
+  async getReviewsWithAll(
+    userId: string, 
+    limit: number, 
+    cursor: string | undefined, 
+    order: 'asc' | 'desc' = 'desc')
+    : Promise<RawReviewData[]>{
     const reviews = await this.prisma.review.findMany({
       where: {
         user_id: userId
       },
       take: limit + 1,
       orderBy: {
-        created_at: 'desc'
+        created_at: order
       },
       ...(cursor && {
         cursor: { review_id: cursor },

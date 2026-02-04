@@ -22,6 +22,6 @@ export class ReviewNotFoundError extends BasicError {
 
 export class NotReviewOwnerError extends BasicError {
   constructor(description: string) {
-    super(403, 'Reviews_102', '권한이 없어 리뷰를 삭제할 수 없습니다. 리뷰 작성자가 아닙니다.', description);
+    super(403, 'Reviews_102', '권한이 없어 리뷰를 작성할 수 없습니다. 리뷰 작성자가 아닙니다.', description);
   }
 };

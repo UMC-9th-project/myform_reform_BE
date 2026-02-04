@@ -123,16 +123,25 @@ export class CreateOrderFromCartRequestDto {
 }
 
 export class CreateReviewRequestDto {
-  @IsInt()
-  @Min(1)
-  @Max(5)
+  /**
+   * @summary 리뷰 별점
+   * @isInt
+   * @minimum 1
+   * @maximum 5
+   * @example 5
+   */
   star!: number;
-  @IsString()
-  @IsNotEmpty()
+
+  /**
+   * @summary 리뷰 내용
+   * @example "좋은 상품입니다."
+   */
   content?: string;
-  @IsArray()
-  @ArrayMinSize(0)
-  @ArrayMaxSize(4)
-  @IsUrl({}, { each: true })
+
+  /**
+   * @summary 리뷰 사진
+   * @minItems 0
+   * @maxItems 4
+   */
   photos?: string[];
 }
