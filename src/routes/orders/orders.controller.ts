@@ -92,14 +92,7 @@ export class OrdersController extends Controller {
       error: null,
       success: {
         receipt_number: '481025937412',
-        order_item: {
-          reformer_nickname: '리포머닉네임',
-          thumbnail: 'https://example.com/thumbnail.jpg',
-          title: '상품명',
-          selected_options: ['옵션그룹1 옵션1'],
-          quantity: 1,
-          price: 50000
-        },
+        delivery_fee: 3000,
         delivery_address: {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
@@ -113,7 +106,24 @@ export class OrdersController extends Controller {
           product_amount: 50000,
           delivery_fee: 3000,
           total_amount: 53000
-        }
+        },
+        seller_groups: [
+          {
+            owner_id: '550e8400-e29b-41d4-a716-446655440000',
+            reformer_nickname: '리포머닉네임',
+            items: [
+              {
+                reformer_nickname: '리포머닉네임',
+                thumbnail: 'https://example.com/thumbnail.jpg',
+                title: '상품명',
+                selected_options: ['옵션그룹1 옵션1'],
+                quantity: 1,
+                price: 50000
+              }
+            ],
+            delivery_fee: 3000
+          }
+        ]
       }
     }
   )
@@ -128,7 +138,8 @@ export class OrdersController extends Controller {
         reason: '입력값 검증 실패',
         data: [
           { field: 'item_id', value: 'invalid', messages: 'item_id는 UUID 형식이어야 합니다' },
-          { field: 'quantity', value: 0, messages: 'quantity는 1 이상이어야 합니다' }
+          { field: 'quantity', value: 0, messages: 'quantity는 1 이상이어야 합니다' },
+          { field: 'option_item_ids', value: undefined, messages: 'items 없을 때 option_item_ids·quantity는 필수입니다' }
         ]
       },
       success: null
@@ -182,10 +193,37 @@ export class OrdersController extends Controller {
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(GetOrderSheetRequestDto, requestBody);
 
+    const hasItems = dto.items && dto.items.length > 0;
+    const hasSingle =
+      dto.option_item_ids &&
+      dto.option_item_ids.length >= 0 &&
+      dto.quantity != null &&
+      dto.quantity >= 1;
+
+    if (!hasItems && !hasSingle) {
+      throw new BasicError(
+        400,
+        'ERR-VALIDATION',
+        '입력값 검증 실패',
+        'items 또는 option_item_ids·quantity가 필요합니다.'
+      );
+    }
+
+    const lines = hasItems
+      ? dto.items!.map((i) => ({
+          option_item_ids: i.option_item_ids,
+          quantity: i.quantity
+        }))
+      : [
+          {
+            option_item_ids: dto.option_item_ids!,
+            quantity: dto.quantity!
+          }
+        ];
+
     const result = await this.ordersService.getOrderSheet(
       dto.item_id,
-      dto.option_item_ids,
-      dto.quantity,
+      lines,
       validUserId,
       dto.delivery_address_id,
       dto.new_address
@@ -338,10 +376,37 @@ export class OrdersController extends Controller {
     const validUserId = this.requireUserId(userId);
     const dto = await validateDto(CreateOrderRequestDto, requestBody);
 
+    const hasItems = dto.items && dto.items.length > 0;
+    const hasSingle =
+      dto.option_item_ids &&
+      dto.option_item_ids.length >= 0 &&
+      dto.quantity != null &&
+      dto.quantity >= 1;
+
+    if (!hasItems && !hasSingle) {
+      throw new BasicError(
+        400,
+        'ERR-VALIDATION',
+        '입력값 검증 실패',
+        'items 또는 option_item_ids·quantity가 필요합니다.'
+      );
+    }
+
+    const lines = hasItems
+      ? dto.items!.map((i) => ({
+          option_item_ids: i.option_item_ids,
+          quantity: i.quantity
+        }))
+      : [
+          {
+            option_item_ids: dto.option_item_ids!,
+            quantity: dto.quantity!
+          }
+        ];
+
     const result = await this.ordersService.createOrder(
       dto.item_id,
-      dto.option_item_ids,
-      dto.quantity,
+      lines,
       validUserId,
       dto.delivery_address_id,
       dto.new_address,
@@ -489,7 +554,9 @@ export class OrdersController extends Controller {
           thumbnail: 'https://example.com/thumbnail.jpg',
           title: '상품명',
           selected_options: ['옵션그룹1 옵션1'],
-          reformer_nickname: '리포머닉네임'
+          reformer_nickname: '리포머닉네임',
+          quantity: 1,
+          price: 50000
         },
         remaining_items_count: 1,
         order_items: [
@@ -497,13 +564,17 @@ export class OrdersController extends Controller {
             thumbnail: 'https://example.com/thumbnail.jpg',
             title: '상품명',
             selected_options: ['옵션그룹1 옵션1'],
-            reformer_nickname: '리포머닉네임'
+            reformer_nickname: '리포머닉네임',
+            quantity: 1,
+            price: 50000
           },
           {
             thumbnail: 'https://example.com/thumbnail2.jpg',
             title: '상품명2',
             selected_options: ['옵션그룹2 옵션2'],
-            reformer_nickname: '리포머닉네임'
+            reformer_nickname: '리포머닉네임',
+            quantity: 2,
+            price: 60000
           }
         ],
         payment: {
@@ -515,6 +586,7 @@ export class OrdersController extends Controller {
           approved_at: new Date('2024-12-01T10:30:00Z')
         },
         total_amount: 53000,
+        product_amount: 50000,
         delivery_fee: 3000
       }
     }
@@ -669,14 +741,7 @@ export class OrdersController extends Controller {
       error: null,
       success: {
         receipt_number: '481025937412',
-        order_item: {
-          reformer_nickname: '리포머닉네임',
-          thumbnail: 'https://example.com/thumbnail.jpg',
-          title: '상품명',
-          selected_options: ['옵션그룹1 옵션1'],
-          quantity: 1,
-          price: 50000
-        },
+        delivery_fee: 3000,
         delivery_address: {
           delivery_address_id: '0dcb2293-5c2a-43f6-b128-6e274bac7871',
           postal_code: '12345',
@@ -690,7 +755,24 @@ export class OrdersController extends Controller {
           product_amount: 50000,
           delivery_fee: 3000,
           total_amount: 53000
-        }
+        },
+        seller_groups: [
+          {
+            owner_id: '550e8400-e29b-41d4-a716-446655440000',
+            reformer_nickname: '리포머닉네임',
+            items: [
+              {
+                reformer_nickname: '리포머닉네임',
+                thumbnail: 'https://example.com/thumbnail.jpg',
+                title: '상품명',
+                selected_options: ['옵션그룹1 옵션1'],
+                quantity: 1,
+                price: 50000
+              }
+            ],
+            delivery_fee: 3000
+          }
+        ]
       }
     }
   )
