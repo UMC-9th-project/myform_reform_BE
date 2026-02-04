@@ -33,7 +33,7 @@ export class SearchController extends Controller {
    */
   @Get('/')
   @SuccessResponse(200, '검색 완료')
-  @Security('jwt', ['user', 'reformer'])
+  @Security('jwt_optional')
   @Example({
     type: 'REQUEST',
     query: '유니폼'
@@ -44,9 +44,9 @@ export class SearchController extends Controller {
     @Query() cursor?: string,
     @Request() req?: ExRequest
   ): Promise<TsoaResponse<SearchListResDTO>> {
-    const payload = req!.user;
-    const userId = payload.id;
-    const role = payload.role;
+    const payload = req?.user;
+    const userId = payload?.id;
+    const role = payload?.role;
 
     const result = await this.searchService.search(
       type,

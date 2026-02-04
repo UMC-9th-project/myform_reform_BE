@@ -84,7 +84,7 @@ export class MarketController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
-  @Security('jwt', [])
+  @Security('jwt_optional')
   @Example<TsoaResponse<GetItemListResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
@@ -171,7 +171,7 @@ export class MarketController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
-  @Security('jwt', [])
+  @Security('jwt_optional')
   @Example<TsoaResponse<GetItemDetailResponseDto>>({
     resultType: 'SUCCESS',
     error: null,

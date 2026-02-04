@@ -211,7 +211,7 @@ export class HomeController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 오류', commonError.serverError)
-  @Security('jwt', [])
+  @Security('jwt_optional')
   @Get('/')
   public async getHome(
     @Request() req: ExpressRequest
