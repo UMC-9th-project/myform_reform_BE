@@ -15,7 +15,6 @@ import {
   ReformDto
 } from './profile.model.js';
 import { OptionGroup } from '../../@types/item.js';
-import { dmmfToRuntimeDataModel } from '@prisma/client/runtime/library';
 
 export class ProfileRepository {
   private prisma: PrismaClient;
@@ -496,26 +495,6 @@ export class ProfileRepository {
         name: true,
         nickname: true,
         profile_photo: true
-      }
-    });
-  }
-
-  async getUserProfile(userId: string) {
-    return await this.prisma.user.findUnique({
-      where: { user_id: userId },
-      select: {
-        nickname: true,
-        profile_photo: true,
-        name: true,
-        phone: true,
-        select: {
-          delivery_address: {
-            where: {
-              user_id: userId,
-              is_default: true
-            }
-          }
-        }
       }
     });
   }

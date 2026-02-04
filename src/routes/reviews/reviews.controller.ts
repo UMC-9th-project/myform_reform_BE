@@ -1,13 +1,11 @@
 import {
   Controller,
-  Post,
   Route,
   SuccessResponse,
   Response,
   Tags,
   Get,
   Path,
-  Body,
   Query,
   Security,
   Request,
