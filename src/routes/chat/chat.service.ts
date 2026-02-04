@@ -1,19 +1,22 @@
-import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
+import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { v4, v7 } from 'uuid';
+import { UploadService } from '../common/upload.service.js';
+import { ImageUrls } from '../common/upload.dto.js';
 
 export class ChatService {
   
   constructor(
     private chatRepository = new ChatRepository(),
-    private targetRepository = new TargetRepository()
+    private targetRepository = new TargetRepository(),
+    private uploadService = new UploadService()
   ) {}
   
   // 채팅방 생성
-  async createChatRoom(request : CreateChatRoomDTO, id : string): Promise<SimplePostResponseDTO> {
+  async createChatRoom(request : CreateChatRoomDTO, id : string): Promise<CreateChatRoomResponseDTO> {
     
     let target : any;
     let ownerId : string;
@@ -21,17 +24,15 @@ export class ChatService {
 
     switch (request.type) {
     case 'FEED':
-      target = await this.targetRepository.findFeedWithOwnerById(request.id);
-      if (!target) { throw new CreateTargetNotFoundError('피드를 찾을 수 없습니다.'); }
       // 피드 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
-      ownerId = target.owner_id;
-      requesterId  = id; // 테스트용: 요청에서 직접 받음
+      ownerId = request.id;
+      requesterId  = id; 
       break;
     case 'REQUEST':
       target = await this.targetRepository.findRequestWithUserById(request.id);
       if (!target) { throw new CreateTargetNotFoundError('요청글을 찾을 수 없습니다.');}
       // 요청글 채팅방 생성 로직(리폼러가 유저에게 채팅방 개설)
-      ownerId = id; // 테스트용: 요청에서 직접 받음
+      ownerId = id;
       requesterId = target.user_id;
       break;
     case 'PROPOSAL':
@@ -39,19 +40,39 @@ export class ChatService {
       if (!target) { throw new CreateTargetNotFoundError('제안서를 찾을 수 없습니다.'); }
       // 제안서 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
       ownerId = target.owner_id;
-      requesterId = id; // 테스트용: 요청에서 직접 받음
+      requesterId = id; 
       break;
     default:
       throw new InvalidChatRoomTypeError('유효하지 않은 채팅방 타입입니다.');
     }
 
+    // 중복 채팅방 존재 여부 확인
+    const existingRoom = await this.chatRepository.findChatRoom(
+      ownerId,
+      requesterId,
+      request.type,
+      target?.reform_request_id || target?.reform_proposal_id
+    );
+
+    // 중복이면 기존 채팅방 ID 반환
+    if (existingRoom) {
+      const result: CreateChatRoomResponseDTO = {
+        id: existingRoom.chat_room_id,
+        createdAt: existingRoom.created_at,
+        isNew: false
+      };
+      return result;
+    }
+
+    // 중복이 아니면 새로운 채팅방 생성
     const chatRoom = await this.chatRepository.createChatRoom(
       ChatRoomFactory.createFromRequest(ownerId, requesterId, target, request.type)
     );
 
-    const result : SimplePostResponseDTO = {
+    const result : CreateChatRoomResponseDTO = {
       id : chatRoom['props'].chat_room_id as string,
-      createdAt : chatRoom['props'].created_at as Date
+      createdAt : chatRoom['props'].created_at as Date,
+      isNew: true
     };
     return result;
   }
@@ -62,7 +83,7 @@ export class ChatService {
     myType: 'owner' | 'requester',
     filter?: ChatRoomFilter,
     cursor?: string,
-    limit: number = 20
+    limit: number = 50
   ): Promise<ChatRoomListDTO> {
     const params = { 
       myId, 
@@ -123,8 +144,12 @@ export class ChatService {
     chatRoomId: string,
     readerType: 'OWNER' | 'USER',
     readerId: string
-  ): Promise<void> {
-    await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+  ): Promise<{ receiverId: string; lastReadMessageId: string | null; readerId: string }> {
+    const result = await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+    return {
+      ...result,
+      readerId
+    };
   }
 
   // 메세지 처리
@@ -236,7 +261,7 @@ export class ChatService {
               chatProposalId : proposalUuid,
               price : request.price,
               delivery : request.delivery,
-              expected_working : request.expectedWorking
+              expectedWorking : request.expectedWorking
             }
           )
           
@@ -263,7 +288,8 @@ export class ChatService {
         request.price,
         request.delivery,
         request.expectedWorking,
-        message['props'].message_id as string
+        message['props'].message_id as string,
+        request.image
       );
       const result = {
         id: chatProposal.chat_proposal_id,
@@ -303,6 +329,7 @@ export class ChatService {
           price: chatProposal.price ? Number(chatProposal.price) : null,
           delivery: chatProposal.delivery as number,
           expectedWorking: chatProposal.expected_working as number,
+          images: chatProposal.image as string[],
         },
         createdAt: chatProposal.created_at as Date,
       };
@@ -320,14 +347,30 @@ export class ChatService {
       throw new ChatRoomAccessDeniedError ('채팅 요청서에 대한 수정 권한이 없습니다.');
     }
 
-    return await runInTransaction(async () => {
+    // 이미지 삭제 목록 (트랜잭션 밖에서 처리하기 위해 미리 수집)
+    let imagesToDelete: string[] = [];
+
+    // 트랜잭션 내에서 DB 업데이트
+    const result = await runInTransaction(async () => {
       const updateData: any = {};
       
       if (data.title !== undefined) updateData.title = data.title;
       if (data.content !== undefined) updateData.content = data.content;
       if (data.minBudget !== undefined) updateData.min_budget = data.minBudget;
       if (data.maxBudget !== undefined) updateData.max_budget = data.maxBudget;
-      if (data.image !== undefined) updateData.image = data.image;
+      
+      // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
+      if (data.image !== undefined) {
+        const existingRequest = await this.chatRepository.getChatRequestById(requestId);
+        if (existingRequest && existingRequest.image) {
+          const oldImages = existingRequest.image as string[];
+          const newImages = data.image;
+          
+          // 삭제할 이미지 목록 저장 (트랜잭션 후 삭제를 위해)
+          imagesToDelete = await this.imageListDiff(oldImages, newImages as string[]);
+        }
+        updateData.image = data.image;
+      }
 
       const updated = await this.chatRepository.updateChatRequest(requestId, updateData);
 
@@ -357,6 +400,18 @@ export class ChatService {
         updatedAt: updated.updated_at!
       };
     });
+
+    // 트랜잭션 성공 후 S3에서 이미지 삭제
+    if (imagesToDelete.length > 0) {
+      try {
+        await this.uploadService.deleteImage({url: imagesToDelete} as ImageUrls);
+      } catch (error) {
+        // S3 삭제 실패는 로깅만 하고 에러를 던지지 않음 (DB는 이미 업데이트됨)
+        console.error('S3 이미지 삭제 실패 (orphan 파일 발생):', error);
+      }
+    }
+
+    return result;
   }
 
   // 채팅 제안서 수정
@@ -371,12 +426,29 @@ export class ChatService {
       throw new ChatRoomAccessDeniedError ('채팅 제안서에 대한 수정 권한이 없습니다.');
     }
 
-    return await runInTransaction(async () => {
+    // 이미지 삭제 목록 (트랜잭션 밖에서 처리하기 위해 미리 수집)
+    let imagesToDelete: string[] = [];
+
+    // 트랜잭션 내에서 DB 업데이트
+    const result = await runInTransaction(async () => {
       const updateData: any = {};
       
       if (data.price !== undefined) updateData.price = data.price;
       if (data.delivery !== undefined) updateData.delivery = data.delivery;
       if (data.expectedWorking !== undefined) updateData.expected_working = data.expectedWorking;
+      
+      // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
+      if (data.image !== undefined) {
+        const existingProposal = await this.chatRepository.getChatProposalById(proposalId);
+        if (existingProposal && existingProposal.image) {
+          const oldImages = existingProposal.image as string[];
+          const newImages = data.image;
+          
+          // 삭제할 이미지 목록 저장 (트랜잭션 후 삭제를 위해)
+          imagesToDelete = await this.imageListDiff(oldImages, newImages as string[]);
+        }
+        updateData.image = data.image;
+      }
 
       const updated = await this.chatRepository.updateChatProposal(proposalId, updateData);
 
@@ -406,6 +478,18 @@ export class ChatService {
         updatedAt: updated.updated_at!
       };
     });
+
+    // 트랜잭션 성공 후 S3에서 이미지 삭제 (필요시 사용)
+    if (imagesToDelete.length > 0) {
+      try {
+        await this.uploadService.deleteImage({url: imagesToDelete} as ImageUrls);
+      } catch (error) {
+        // S3 삭제 실패는 로깅만 하고 에러를 던지지 않음 (DB는 이미 업데이트됨)
+        console.error('S3 이미지 삭제 실패 (orphan 파일 발생):', error);
+      }
+    }
+
+    return result;
   }
 
 
@@ -461,4 +545,14 @@ export class ChatService {
     const isParticipant = await this.chatRepository.isUserInChatRoom(roomId, userId, userType === 'owner');
     return isParticipant;
   }
+
+  async imageListDiff(
+    oldImages: string[],
+    newImages: string[]
+  ): Promise<string[]> {
+    // 기존 이미지 중에서 새로운 리스트에 없는 이미지를 찾아 반환
+    const imagesToDelete = oldImages.filter(oldImage => !newImages.includes(oldImage));
+    return imagesToDelete;
+  }
+
 }

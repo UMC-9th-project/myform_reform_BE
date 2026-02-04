@@ -13,6 +13,7 @@ export interface SellerGroupDto {
   items: OrderSheetItemDto[];
   delivery_fee: number;
 }
+import { RawReviewData } from '../orders.model.js';
 
 export interface GetOrderSheetResponseDto {
   receipt_number: string;
@@ -82,4 +83,24 @@ export interface GetOrderResponseDto {
   total_amount: number;
   product_amount: number;
   delivery_fee: number;
+}
+
+export class CreateReviewResponseDto {
+  review_id: string;
+  user_id: string;
+  order_id: string;
+  star: number;
+  content: string;
+  created_at: Date;
+  review_photo: string[];
+
+  constructor(review: RawReviewData) {
+    this.review_id = review.review_id;
+    this.user_id = review.user_id ?? '';
+    this.order_id = review.order_id;
+    this.star = review.star ?? 0;
+    this.content = review.content ?? '';
+    this.review_photo = review.review_photo.map((photo) => photo.content ?? '');
+    this.created_at = review.created_at ?? new Date();
+  }
 }

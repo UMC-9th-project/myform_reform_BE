@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.config.js';
 import { Prisma, order_status_enum, target_type_enum } from '@prisma/client';
+import { CreateReviewInput } from './orders.model.js';
 
 export class OrdersRepository {
   /**
@@ -634,5 +635,44 @@ export class OrdersRepository {
     return await prisma.delivery_address.findUnique({
       where: { delivery_address_id: addressId }
     });
+  }
+
+  /**
+   * 주문 건에 대한 리뷰 작성
+   */
+  async createReview(createReviewInput: CreateReviewInput) {
+    return await prisma.review.create({
+      data: {
+        order_id: createReviewInput.orderId,
+        user_id: createReviewInput.userId,
+        star: createReviewInput.star,
+        content: createReviewInput.content,
+        review_photo: {
+          createMany: {
+            data: createReviewInput.photos.map((photo) => ({
+              content: photo
+            }))
+          }
+        }
+      },
+      include: {
+        review_photo: true
+      }
+    });
+  }
+
+  /**
+   * 주문 건에 대한 리뷰 조회
+   */
+  async findReviewByOrderId(orderId: string): Promise<boolean>{
+    const review = await prisma.review.findFirst({
+      where: {
+        order_id: orderId
+      },
+      select: {
+        review_id: true,
+      }
+    });
+    return !!review;
   }
 }

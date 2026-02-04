@@ -1,3 +1,5 @@
+import { CreateReviewRequestDto } from "./dto/orders.req.dto.js";
+import { Prisma } from "@prisma/client";
 export interface OrderItemInfo {
   reformer_nickname: string;
   thumbnail: string;
@@ -100,3 +102,25 @@ export interface OrderResponse {
   product_amount: number;
   delivery_fee: number;
 }
+
+export class CreateReviewInput {
+  orderId: string;
+  userId: string;
+  star: number;
+  content: string;
+  photos: string[];
+
+  constructor(orderId: string, userId: string, requestBody: CreateReviewRequestDto) {
+    this.orderId = orderId;
+    this.userId = userId;
+    this.star = requestBody.star;
+    this.content = requestBody.content ?? '';
+    this.photos = requestBody.photos ?? [];
+  }
+}
+
+export type RawReviewData = Prisma.reviewGetPayload<{
+  include: {
+    review_photo: true;
+  };
+}>;

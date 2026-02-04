@@ -15,6 +15,37 @@ interface RepoParams {
 export class ChatRepository {
   constructor() {}
 
+  // 채팅방 중복 확인
+  async findChatRoom(
+    ownerId: string,
+    requesterId: string,
+    type: string,
+    targetId?: string
+  ): Promise<any | null> {
+    try {
+      const where: any = {
+        owner_id: ownerId,
+        requester_id: requesterId,
+        type: type,
+        is_active: true
+      };
+
+      // FEED가 아니면 targetId도 확인 (REQUEST/PROPOSAL은 특정 게시물에 대한 채팅방)
+      if (targetId && type !== 'FEED') {
+        where.target_payload = {
+          path: ['id'],
+          equals: targetId
+        };
+      }
+
+      return await prisma.chat_room.findFirst({
+        where
+      });
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
   // 채팅방 생성
   async createChatRoom(ChatRoomInstance: ChatRoom): Promise<ChatRoom> {
     try {
@@ -137,8 +168,8 @@ export class ChatRepository {
           chat_message_chat_room_last_message_idTochat_message: true
         },
         orderBy: [
-          { last_message_id: { sort: 'desc', nulls: 'last' } },
-          { chat_room_id: 'desc' }
+          { chat_message_chat_room_last_message_idTochat_message: { created_at: { sort: 'desc', nulls: 'last' } } },
+          { created_at: 'desc' }
         ],
         take: limit + 1
       });
@@ -211,7 +242,7 @@ export class ChatRepository {
           sender_id: data.sender_id,
           sender_type: data.sender_type,
           message_type: data.message_type as any, // 임시
-          text_content: data.text_content?.toLowerCase(),
+          text_content: data.text_content,
           payload: data.payload as unknown as Prisma.InputJsonValue
         }
       });
@@ -285,36 +316,50 @@ export class ChatRepository {
     chatRoomId: string,
     readerType: 'OWNER' | 'USER',
     readerId: string
-  ): Promise<void> {
+  ): Promise<{ receiverId: string; lastReadMessageId: string | null }> {
     try {
       const isOwnerReader = readerType === 'OWNER';
 
-      // 유저의 안읽은 메세지 카운트 초기화
-      // 그리고 마지막 읽은 메세지 ID 업데이트
-      // 한 쿼리로 초기화하기위해 Raw 쿼리 사용
+      // UPDATE와 동시에 필요한 데이터를 RETURNING으로 가져오기
+      let result: any[];
       if (isOwnerReader) {
-        await prisma.$executeRaw`
+        result = await prisma.$queryRaw`
           UPDATE chat_room 
           SET owner_last_read_id = last_message_id,
               owner_unread_count = 0
           WHERE chat_room_id = ${chatRoomId}::uuid
             AND owner_id = ${readerId}::uuid
             AND is_active = true
-            AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
-            AND (owner_last_read_id IS NULL OR owner_last_read_id != last_message_id) -- 업데이트가 필요할 때만
+            AND last_message_id IS NOT NULL
+            AND (owner_last_read_id IS NULL OR owner_last_read_id != last_message_id)
+          RETURNING requester_id, last_message_id
         `;
       } else {
-        await prisma.$executeRaw`
+        result = await prisma.$queryRaw`
           UPDATE chat_room 
           SET requester_last_read_id = last_message_id,
               requester_unread_count = 0
           WHERE chat_room_id = ${chatRoomId}::uuid
             AND requester_id = ${readerId}::uuid
             AND is_active = true
-            AND last_message_id IS NOT NULL  -- 메시지가 존재할 때만
-            AND (requester_last_read_id IS NULL OR requester_last_read_id != last_message_id) -- 업데이트가 필요할 때만
+            AND last_message_id IS NOT NULL
+            AND (requester_last_read_id IS NULL OR requester_last_read_id != last_message_id)
+          RETURNING owner_id, last_message_id
         `;
       }
+
+      // 업데이트된 행이 없으면 빈 값 반환
+      if (!result || result.length === 0) {
+        return { receiverId: '', lastReadMessageId: null };
+      }
+
+      const receiverId = isOwnerReader ? result[0].requester_id : result[0].owner_id;
+      const lastReadMessageId = result[0].last_message_id;
+
+      return { 
+        receiverId, 
+        lastReadMessageId 
+      };
     } catch (error) {
       throw handleDbError(error);
     }
@@ -407,7 +452,8 @@ export class ChatRepository {
     price: number,
     delivery: number,
     expected_working: number,
-    messageId: string
+    messageId: string,
+    image?: string[]
   ) {
     try {
       return await prisma.chat_proposal.create({
@@ -417,7 +463,8 @@ export class ChatRepository {
           price,
           delivery,
           expected_working,
-          message_id: messageId
+          message_id: messageId,
+          image: image || []
         }
       });
     } catch (error) {
@@ -439,6 +486,7 @@ export class ChatRepository {
           delivery: true,
           expected_working: true,
           created_at: true,
+          image: true,
           // 관계 추적: chat_proposal -> chat_message -> chat_room -> owner
           // 차후 db 설계 변경시 수정 예정
           chat_message: {
@@ -504,6 +552,7 @@ export class ChatRepository {
       price?: number;
       delivery?: number;
       expectedWorking?: number;
+      image?: string[] | null;
     }
   ) {
     try {
@@ -511,6 +560,7 @@ export class ChatRepository {
       if (updateData.price !== undefined) data.price = updateData.price;
       if (updateData.delivery !== undefined) data.delivery = updateData.delivery;
       if (updateData.expectedWorking !== undefined) data.expected_working = updateData.expectedWorking;
+      if (updateData.image !== undefined) data.image = updateData.image;
 
       return await prisma.chat_proposal.update({
         where: {
