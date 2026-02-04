@@ -442,7 +442,7 @@ model cart_option {
 }
 
 model quote_photo {
-  quote_photo_id String    @id(map: "quote_photo_pk") @db.Uuid
+  quote_photo_id String    @id(map: "quote_photo_pk") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   content        String?   @db.VarChar(100)
   created_at     DateTime? @db.Date
   photo_order    Int?

@@ -2,12 +2,22 @@ import { Category } from '../../../@types/item.js';
 import { ImageUrls } from '../../common/upload.dto.js';
 
 export interface AddQuoteReq {
-  userId: string;
+  images: string[];
+  ownerId: string;
   reform_request_id: string;
   price: number;
   delivery: number;
   content: string;
   expected_working: number;
+}
+
+export interface ReformQuoteRequest {
+  images: string[];
+  targetId: string;
+  price: number;
+  contents: string;
+  delivery: number;
+  expectedWorking: number;
 }
 
 export interface ReformRequestRequest {

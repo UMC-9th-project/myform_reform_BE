@@ -9,6 +9,7 @@ import {
   RawRequestDetailImages,
   RawRequestLatest,
   ReformProposalUpdate,
+  ReformQuote,
   ReformRequestCreate,
   ReformRequestUpdate
 } from './reform.model.js';
@@ -465,19 +466,43 @@ export class ReformRepository {
     return result;
   }
 
-  // async addQuoteOrder(dto: OrderQuoteDto) {
-  //   await this.prisma.order.create({
-  //     data: {
-  //       status: dto.status,
-  //       target_type: dto.type,
-  //       target_id: dto.targetId,
-  //       price: dto.price,
-  //       delivery_fee: dto.delivery,
-  //       amount: dto.amount,
-  //       content: dto.content,
-  //       owner_id: dto.ownerId,
-  //       user_id: dto.userId
-  //     }
-  //   });
-  // }
+  async selectReformRequestUser(
+    id: string
+  ): Promise<{ user_id: string } | null> {
+    return await prisma.reform_request.findFirst({
+      where: { reform_request_id: id },
+      select: { user_id: true }
+    });
+  }
+  async insertReformQuotePhoto(dto: ReformQuote, order_id: string) {
+    const { images, ...data } = dto.toDto();
+    return await prisma.quote_photo.createMany({
+      data: images.map((img, index) => ({
+        order_id: order_id,
+        content: img,
+        photo_order: index + 1
+      }))
+    });
+  }
+
+  async insertReformQuote(dto: ReformQuote) {
+    const body = dto.toDto();
+    return await prisma.order.create({
+      data: {
+        owner_id: body.ownerId,
+        user_id: body.userId,
+        content: body.contents,
+        price: body.price,
+        target_type: 'REQUEST',
+        target_id: body.target_id,
+        delivery_fee: body.delivery,
+        //FIXME: 하드코딩 제거
+        receipt_id: '3a002aa5-f93e-487e-b253-ad47bae7b3e4',
+        status: 'PENDING'
+      },
+      select: {
+        order_id: true
+      }
+    });
+  }
 }
