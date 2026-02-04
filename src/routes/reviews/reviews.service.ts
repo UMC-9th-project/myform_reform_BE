@@ -1,6 +1,7 @@
 import { ReviewsRepository } from './reviews.repository.js';
 import { ReviewDto, ReviewResponseDto, UnifiedProductInfo, RawUserInfo } from './reviews.model.js';
 import { NotReviewOwnerError, ReviewNotFoundError } from './reviews.error.js';
+import { runInTransaction } from '../../config/prisma.config.js';
 export class ReviewsService {
   private reviewsRepository: ReviewsRepository;
   constructor() {
@@ -112,7 +113,10 @@ export class ReviewsService {
     if (review.user_id !== userId) {
       throw new NotReviewOwnerError('리뷰를 삭제할 수 없습니다.');
     }
-    await this.reviewsRepository.deleteReview(reviewId);
-    return '리뷰 삭제가 완료되었습니다.';
+    return await runInTransaction(async () => {
+      await this.reviewsRepository.deleteReviewPhotos(reviewId);
+      await this.reviewsRepository.deleteReview(reviewId);
+      return '리뷰 삭제가 완료되었습니다.';
+    });
   }
 }

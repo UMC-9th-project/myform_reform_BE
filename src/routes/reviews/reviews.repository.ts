@@ -171,6 +171,14 @@ export class ReviewsRepository {
     });
   }
 
+  async deleteReviewPhotos(reviewId: string): Promise<void>{
+    await this.prisma.review_photo.deleteMany({
+      where: {
+        review_id: reviewId
+      }
+    });
+  }
+
   async findReviewById(reviewId: string): Promise< review | null>{
     return await this.prisma.review.findUnique({
       where: {
