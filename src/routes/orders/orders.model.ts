@@ -1,3 +1,5 @@
+import { CreateReviewRequestDto } from "./dto/orders.req.dto.js";
+import { Prisma } from "@prisma/client";
 export interface OrderItemInfo {
   reformer_nickname: string;
   thumbnail: string;
@@ -23,17 +25,31 @@ export interface PaymentSummary {
   total_amount: number;
 }
 
+export interface OrderSheetSellerGroup {
+  owner_id: string;
+  reformer_nickname: string;
+  items: OrderItemInfo[];
+  delivery_fee: number;
+}
+
 export interface OrderSheetResponse {
   receipt_number: string;
-  order_item: OrderItemInfo;
+  delivery_fee: number;
   delivery_address: DeliveryAddressInfo | null;
   payment: PaymentSummary;
+  seller_groups: OrderSheetSellerGroup[];
+}
+
+export interface OrderSheetLineItem {
+  option_item_ids: string[];
+  quantity: number;
 }
 
 export interface CreateOrderRequest {
   item_id: string;
-  option_item_ids: string[];
-  quantity: number;
+  option_item_ids?: string[];
+  quantity?: number;
+  items?: OrderSheetLineItem[];
   delivery_address_id?: string;
   new_address?: {
     postal_code?: string;
@@ -60,6 +76,8 @@ export interface OrderItemSummary {
   title: string;
   selected_options: string[];
   reformer_nickname: string;
+  quantity: number;
+  price: number;
 }
 
 export interface PaymentInfo {
@@ -81,5 +99,28 @@ export interface OrderResponse {
   order_items: OrderItemSummary[];
   payment: PaymentInfo;
   total_amount: number;
+  product_amount: number;
   delivery_fee: number;
 }
+
+export class CreateReviewInput {
+  orderId: string;
+  userId: string;
+  star: number;
+  content: string;
+  photos: string[];
+
+  constructor(orderId: string, userId: string, requestBody: CreateReviewRequestDto) {
+    this.orderId = orderId;
+    this.userId = userId;
+    this.star = requestBody.star;
+    this.content = requestBody.content ?? '';
+    this.photos = requestBody.photos ?? [];
+  }
+}
+
+export type RawReviewData = Prisma.reviewGetPayload<{
+  include: {
+    review_photo: true;
+  };
+}>;

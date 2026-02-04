@@ -1,4 +1,4 @@
-import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
+import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
@@ -16,7 +16,7 @@ export class ChatService {
   ) {}
   
   // 채팅방 생성
-  async createChatRoom(request : CreateChatRoomDTO, id : string): Promise<SimplePostResponseDTO> {
+  async createChatRoom(request : CreateChatRoomDTO, id : string): Promise<CreateChatRoomResponseDTO> {
     
     let target : any;
     let ownerId : string;
@@ -46,13 +46,33 @@ export class ChatService {
       throw new InvalidChatRoomTypeError('유효하지 않은 채팅방 타입입니다.');
     }
 
+    // 중복 채팅방 존재 여부 확인
+    const existingRoom = await this.chatRepository.findChatRoom(
+      ownerId,
+      requesterId,
+      request.type,
+      target?.reform_request_id || target?.reform_proposal_id
+    );
+
+    // 중복이면 기존 채팅방 ID 반환
+    if (existingRoom) {
+      const result: CreateChatRoomResponseDTO = {
+        id: existingRoom.chat_room_id,
+        createdAt: existingRoom.created_at,
+        isNew: false
+      };
+      return result;
+    }
+
+    // 중복이 아니면 새로운 채팅방 생성
     const chatRoom = await this.chatRepository.createChatRoom(
       ChatRoomFactory.createFromRequest(ownerId, requesterId, target, request.type)
     );
 
-    const result : SimplePostResponseDTO = {
+    const result : CreateChatRoomResponseDTO = {
       id : chatRoom['props'].chat_room_id as string,
-      createdAt : chatRoom['props'].created_at as Date
+      createdAt : chatRoom['props'].created_at as Date,
+      isNew: true
     };
     return result;
   }
@@ -124,8 +144,12 @@ export class ChatService {
     chatRoomId: string,
     readerType: 'OWNER' | 'USER',
     readerId: string
-  ): Promise<void> {
-    await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+  ): Promise<{ receiverId: string; lastReadMessageId: string | null; readerId: string }> {
+    const result = await this.chatRepository.markMessagesAsRead(chatRoomId, readerType, readerId);
+    return {
+      ...result,
+      readerId
+    };
   }
 
   // 메세지 처리

@@ -1,13 +1,23 @@
+export interface OrderSheetItemDto {
+  reformer_nickname: string;
+  thumbnail: string;
+  title: string;
+  selected_options: string[];
+  quantity: number;
+  price: number;
+}
+
+export interface SellerGroupDto {
+  owner_id: string;
+  reformer_nickname: string;
+  items: OrderSheetItemDto[];
+  delivery_fee: number;
+}
+import { RawReviewData } from '../orders.model.js';
+
 export interface GetOrderSheetResponseDto {
   receipt_number: string;
-  order_item: {
-    reformer_nickname: string;
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    quantity: number;
-    price: number;
-  };
+  delivery_fee: number;
   delivery_address: {
     delivery_address_id?: string;
     postal_code: string | null;
@@ -22,6 +32,7 @@ export interface GetOrderSheetResponseDto {
     delivery_fee: number;
     total_amount: number;
   };
+  seller_groups: SellerGroupDto[];
 }
 
 export interface CreateOrderResponseDto {
@@ -37,6 +48,15 @@ export interface VerifyPaymentResponseDto {
   success: boolean;
 }
 
+export interface GetOrderItemDto {
+  thumbnail: string;
+  title: string;
+  selected_options: string[];
+  reformer_nickname: string;
+  quantity: number;
+  price: number;
+}
+
 export interface GetOrderResponseDto {
   order_id: string;
   receipt_number: string;
@@ -49,12 +69,7 @@ export interface GetOrderResponseDto {
     phone: string | null;
     address_name: string | null;
   };
-  order_items: Array<{
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    reformer_nickname: string;
-  }>;
+  order_items: GetOrderItemDto[];
   payment: {
     amount: number;
     payment_method: string | null;
@@ -63,13 +78,29 @@ export interface GetOrderResponseDto {
     card_info: string | null;
     approved_at: Date | null;
   };
-  first_item: {
-    thumbnail: string;
-    title: string;
-    selected_options: string[];
-    reformer_nickname: string;
-  } | null;
+  first_item: GetOrderItemDto | null;
   remaining_items_count: number;
   total_amount: number;
+  product_amount: number;
   delivery_fee: number;
+}
+
+export class CreateReviewResponseDto {
+  review_id: string;
+  user_id: string;
+  order_id: string;
+  star: number;
+  content: string;
+  created_at: Date;
+  review_photo: string[];
+
+  constructor(review: RawReviewData) {
+    this.review_id = review.review_id;
+    this.user_id = review.user_id ?? '';
+    this.order_id = review.order_id;
+    this.star = review.star ?? 0;
+    this.content = review.content ?? '';
+    this.review_photo = review.review_photo.map((photo) => photo.content ?? '');
+    this.created_at = review.created_at ?? new Date();
+  }
 }
