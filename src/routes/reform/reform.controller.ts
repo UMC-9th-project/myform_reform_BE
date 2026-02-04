@@ -57,7 +57,6 @@ export class ReformController extends Controller {
    */
   @Get('/')
   @SuccessResponse(200, '조회 성공')
-  @Security('jwt')
   @Response<ErrorResponse>(500, '데이터베이스 오류')
   public async findAll(): Promise<TsoaResponse<ReformHomeResponse>> {
     const ans = await this.reformService.selectHomeReform();
@@ -73,7 +72,6 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/request')
-  @Security('jwt')
   async getRequest(
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
@@ -117,7 +115,7 @@ export class ReformController extends Controller {
    * @returns 리폼 요청 상세 정보
    */
   @Get('/request/:id')
-  @Security('jwt')
+  @Security('jwt_optional')
   @Example<ReformDetailRequestResponseDto>({
     isOwner: true,
     reformRequestId: 'bb1a025b-2b3e-4218-85a0-454c05de22ce',
@@ -141,7 +139,7 @@ export class ReformController extends Controller {
     @Path() id: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<ReformDetailRequestResponseDto>> {
-    const payload = req.user;
+    const payload = req.user ?? null;
     const ans = (
       await this.reformService.findDetailRequest(payload, id)
     ).toDto();
@@ -181,7 +179,6 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/proposal')
-  @Security('jwt')
   async getProposal(
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
@@ -200,7 +197,7 @@ export class ReformController extends Controller {
    * @returns 제안 상세 정보
    */
   @Get('/proposal/:id')
-  @Security('jwt')
+  @Security('jwt_optional')
   @Example<ReformDetailProposalResponseDto>({
     isOwner: true,
     reformProposalId: 'bb1a025b-2b3e-4218-85a0-454c05de22ce',
@@ -223,7 +220,8 @@ export class ReformController extends Controller {
     @Path() id: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<ReformDetailProposalResponseDto>> {
-    const payload = req.user;
+    const payload = req.user ?? null;
+    
     const ans = (
       await this.reformService.findDetailProposal(payload, id)
     ).toDto();

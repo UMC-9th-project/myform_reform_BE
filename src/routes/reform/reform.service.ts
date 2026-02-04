@@ -120,18 +120,21 @@ export class ReformService {
   }
 
   async findDetailRequest(
-    payload: CustomJwt,
+    payload: CustomJwt | null,
     reqeustId: string
   ): Promise<ReformDetailRequestResponse> {
     try {
-      const isOwner = await this.reformRepository.checkRequestOwner(
-        payload.id,
-        reqeustId
-      );
+      let isOwner = false;
+      if (payload !== null) {
+        isOwner = await this.reformRepository.checkRequestOwner(
+          payload.id,
+          reqeustId
+        );
+      }
+
       const { images, body } =
         await this.reformRepository.selectDetailRequest(reqeustId);
-      if (body === null || images.length === 0)
-        throw new ReformError('존재하지 않는 아이템입니다.');
+      if (body === null) throw new ReformError('존재하지 않는 아이템입니다.');
 
       const dto = ReformRequestFactory.createFromDetailRaw(
         body,
@@ -233,18 +236,20 @@ export class ReformService {
   }
 
   async findDetailProposal(
-    payload: CustomJwt,
+    payload: CustomJwt | null,
     proposalId: string
   ): Promise<ReformDetailProposalResponse> {
     try {
-      const isOwner = await this.reformRepository.checkProposalOwner(
-        payload.id,
-        proposalId
-      );
+      let isOwner = false;
+      if (payload !== null) {
+        isOwner = await this.reformRepository.checkProposalOwner(
+          payload.id,
+          proposalId
+        );
+      }
       const { images, body } =
         await this.reformRepository.selectDetailProposal(proposalId);
-      if (body === null || images.length === 0)
-        throw new ReformError('존재하지 않는 제안서입니다.');
+      if (body === null) throw new ReformError('존재하지 않는 제안서입니다.');
 
       const dto = ReformProposalFactory.createFromDetailRaw(
         body,

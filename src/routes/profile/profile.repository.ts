@@ -24,8 +24,9 @@ export class ProfileRepository {
 
   async getCategory(dto: ItemDto | ReformDto) {
     const category = dto.category;
+    const categoryName = category.sub ?? category.major;
     return await prisma.category.findFirst({
-      where: { name: category.sub },
+      where: { name: categoryName },
       select: { category_id: true }
     });
   }
