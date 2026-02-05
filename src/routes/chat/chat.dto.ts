@@ -476,6 +476,86 @@ export interface ChatMessageListDTO {
 
     data: ChatMessageDTO[];
     meta: Pagenation;
+    /**
+     * 채팅방 정보 (커서가 없는 경우에만 포함)
+     * 커서가 있으면 null
+     */
+    chatRoomInfo: ChatRoomInfoDTO | null;
+}
+
+export interface ChatRoomInfoDTO {
+    /**
+     * 채팅방 고유 아이디
+     * @example "550e8400-e29b-41d4-a716-446655440000"
+     */
+    chatRoomId: string;
+    /**
+     * 마지막 메시지 ID
+     * @example "880e8400-e29b-41d4-a716-446655440333"
+     */
+    lastMessageId: string | null;
+    /**
+     * 소유자가 마지막으로 읽은 메시지 ID
+     * @example "990e8400-e29b-41d4-a716-446655440444"
+     */
+    ownerLastReadId: string | null;
+    /**
+     * 요청자가 마지막으로 읽은 메시지 ID
+     * @example "aa0e8400-e29b-41d4-a716-446655440555"
+     */
+    requesterLastReadId: string | null;
+    /**
+     * 대상 페이로드 (요청글/제안서 정보 등)
+     * REQUEST 타입: { type: "REQUEST", id: "reform_request_id", title: "제목" }
+     * PROPOSAL 타입: { type: "PROPOSAL", id: "reform_proposal_id", title: "제목" }
+     * FEED 타입: { type: "FEED", ownerId: "owner_id" }
+     */
+    targetPayload: any | null;
+    /**
+     * 채팅방 타입
+     * @example "REQUEST"
+     */
+    type: 'FEED' | 'REQUEST' | 'PROPOSAL';
+    /**
+     * 리폼러(소유자) 정보
+     */
+    owner: {
+        /**
+         * 리폼러 고유 ID
+         * @example "660e8400-e29b-41d4-a716-446655440111"
+         */
+        id: string;
+        /**
+         * 리펼러 닉네임
+         * @example "리폼마스터"
+         */
+        nickname: string | null;
+        /**
+         * 리폼러 프로필 이미지
+         * @example "https://s3.example.com/owner-profile.jpg"
+         */
+        profileImage: string | null;
+    };
+    /**
+     * 일반 유저(요청자) 정보
+     */
+    requester: {
+        /**
+         * 유저 고유 ID
+         * @example "770e8400-e29b-41d4-a716-446655440222"
+         */
+        id: string;
+        /**
+         * 유저 닉네임
+         * @example "홍길동"
+         */
+        nickname: string | null;
+        /**
+         * 유저 프로필 이미지
+         * @example "https://s3.example.com/user-profile.jpg"
+         */
+        profileImage: string | null;
+    };
 }
 
 export interface ChatMessageDTO {

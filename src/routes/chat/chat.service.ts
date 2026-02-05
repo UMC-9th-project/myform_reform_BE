@@ -130,14 +130,15 @@ export class ChatService {
 
       const isOwner = params.senderType === 'OWNER';
       const receiverInfo = isOwner ? 
-        {receiverId: receiver.user_id, nickname: receiver.nickname} : 
-        {receiverId: receiver.owner_id, nickname: receiver.nickname};
+        {receiverId: receiver?.user_id, nickname: receiver?.nickname, receiverType: 'USER'} : 
+        {receiverId: receiver?.owner_id, nickname: receiver?.nickname, receiverType: 'OWNER'};
       return { 
         receiverInfo,
         message 
       };
     });
   }
+
 
   // 읽음 처리 이벤트
   async readChatRoomEvent(
@@ -519,6 +520,55 @@ export class ChatService {
     const data = hasMore ? messages.slice(0, limit) : messages;
     const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].message_id : null;
 
+    // 커서가 없는 경우(첫 페이지)에만 채팅방 정보 조회
+    // 빈 문자열도 커서 없음으로 처리
+    let chatRoomInfo = null;
+    if (!cursor || cursor.trim() === '') {
+      const chatRoom = await this.chatRepository.getChatRoomById(roomId);
+      if (chatRoom) {
+        // targetPayload 파싱 및 null 처리
+        let parsedPayload = null;
+        if (chatRoom.target_payload) {
+          const payload = chatRoom.target_payload as any;
+          if (chatRoom.type === 'PROPOSAL') {
+            parsedPayload = {
+              id: payload.id || null,
+              title: payload.title || null,
+              price: payload.price || null,
+              image: payload.image || null
+            };
+          } else if (chatRoom.type === 'REQUEST') {
+            parsedPayload = {
+              id: payload.id || null,
+              title: payload.title || null,
+              minBudget: payload.minBudget || null,
+              maxBudget: payload.maxBudget || null,
+              image: payload.image || null
+            };
+          }
+        }
+
+        chatRoomInfo = {
+          chatRoomId: chatRoom.chat_room_id,
+          lastMessageId: chatRoom.last_message_id,
+          ownerLastReadId: chatRoom.owner_last_read_id,
+          requesterLastReadId: chatRoom.requester_last_read_id,
+          targetPayload: parsedPayload,
+          type: chatRoom.type as 'FEED' | 'REQUEST' | 'PROPOSAL',
+          owner: {
+            id: chatRoom.owner_id,
+            nickname: chatRoom.owner?.nickname || null,
+            profileImage: chatRoom.owner?.profile_photo || null
+          },
+          requester: {
+            id: chatRoom.requester_id,
+            nickname: chatRoom.user?.nickname || null,
+            profileImage: chatRoom.user?.profile_photo || null
+          }
+        };
+      }
+    }
+
     return {
       data: data.map(msg => ({
         messageId: msg.message_id,
@@ -532,7 +582,8 @@ export class ChatService {
       meta: {
         nextCursor: nextCursor ?? '',
         hasMore
-      }
+      },
+      chatRoomInfo
     };
   }
 

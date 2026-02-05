@@ -29,6 +29,7 @@ app.use(cors({
 RegisterRoutes(app);
 
 app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerJson));
+app.use('/chat-test', express.static('chat-test.html'));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

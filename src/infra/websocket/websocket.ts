@@ -59,6 +59,26 @@ export class WebSocketServer {
 
     this.io.on('connection', (socket: Socket) => {
       console.log(`웹소켓 연결 성공: ${socket.id}`);
+      
+      // // Transport 레벨 핑퐁 모니터링
+      // const transport = (socket.conn as any).transport;
+      // console.log(`[연결] ${socket.data.userId} - Transport: ${transport.name}`);
+      
+      // // 핑퐁 이벤트 모니터링 (engine.io 레벨)
+      // socket.conn.on('packet', (packet: any) => {
+      //   if (packet.type === 'ping') {
+      //     console.log(`[PING 수신] 사용자 ${socket.data.userId} (${socket.id})`);
+      //   } else if (packet.type === 'pong') {
+      //     console.log(`[PONG 전송] 사용자 ${socket.data.userId} (${socket.id})`);
+      //   }
+      // });
+      
+      // socket.conn.on('packetCreate', (packet: any) => {
+      //   if (packet.type === 'ping') {
+      //     console.log(`[PING 생성] 사용자 ${socket.data.userId} (${socket.id})`);
+      //   }
+      // });
+      
       this.chatEventHandler!.setup(socket);
     });
   }

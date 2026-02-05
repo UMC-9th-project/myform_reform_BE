@@ -7,8 +7,8 @@ export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' 
 
 // 채팅방 payload에 담길 타입 정의
 export type ChatRoomPayload = 
-    | { id: string, title: string, price : number, image: string }                          // 제안서로 접근
-    | { id: string, title: string, minBudget : number, maxBudget : number, image: string }  // 요청서로 접근
+    | { id: string, title: string | null, price : number | null, image: string | null }                          // 제안서로 접근
+    | { id: string, title: string | null, minBudget : number | null, maxBudget : number | null, image: string | null }  // 요청서로 접근
     | null;                                                                                 // 피드로 접근
 
 // 채팅메시지 payload에 담길 타입 정의
@@ -54,19 +54,19 @@ export class ChatRoomFactory {
     case 'PROPOSAL':
       return {
         id: target.reform_proposal_id,
-        title: target.title,
-        price: target.price.toNumber(),
-        image: target.reform_proposal_photo?.[0]?.content
+        title: target.title || null,
+        price: target.price ? target.price.toNumber() : null,
+        image: target.reform_proposal_photo?.[0]?.content || null
       };
     case 'FEED':
       return null; // 피드 채팅방은 payload 없음
     case 'REQUEST':
       return {
         id: target.reform_request_id,
-        title: target.title,
-        minBudget: target.min_budget?.toNumber(),
-        maxBudget: target.max_budget?.toNumber(),
-        image: target.reform_request_photo?.[0]?.content
+        title: target.title || null,
+        minBudget: target.min_budget ? target.min_budget.toNumber() : null,
+        maxBudget: target.max_budget ? target.max_budget.toNumber() : null,
+        image: target.reform_request_photo?.[0]?.content || null
       };  
     default:
       throw new InvalidChatRoomTypeError('채팅방 생성 시 잘못된 target 타입이 전달되었습니다.');  
