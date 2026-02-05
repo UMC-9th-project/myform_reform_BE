@@ -9,7 +9,7 @@ export class OrdersRepository {
   async findReceiptByReceiptNumber(receiptNumber: string) {
     return await prisma.receipt.findUnique({
       where: { receipt_number: receiptNumber },
-      select: { 
+      select: {
         receipt_id: true,
         payment_status: true
       }
@@ -157,7 +157,10 @@ export class OrdersRepository {
   /**
    * receipt_number로 receipt와 모든 order 조회
    */
-  async findReceiptByReceiptNumberWithOrders(receiptNumber: string, userId: string) {
+  async findReceiptByReceiptNumberWithOrders(
+    receiptNumber: string,
+    userId: string
+  ) {
     return await prisma.receipt.findFirst({
       where: {
         receipt_number: receiptNumber,
@@ -435,7 +438,7 @@ export class OrdersRepository {
     if (optionItemIds.length === 0) {
       return;
     }
-    
+
     return await prisma.order_option.createMany({
       data: optionItemIds.map((optionItemId) => ({
         order_id: orderId,
@@ -568,18 +571,21 @@ export class OrdersRepository {
   /**
    * 영수증 업데이트
    */
-  async updateReceipt(receiptId: string, data: {
-    payment_status?: string;
-    payment_method?: string;
-    payment_gateway?: string;
-    transaction?: string | null;
-    delivery_postal_code?: string | null;
-    delivery_address?: string | null;
-    delivery_address_detail?: string | null;
-    delivery_recipient_name?: string | null;
-    delivery_phone?: string | null;
-    delivery_address_name?: string | null;
-  }) {
+  async updateReceipt(
+    receiptId: string,
+    data: {
+      payment_status?: string;
+      payment_method?: string;
+      payment_gateway?: string;
+      transaction?: string | null;
+      delivery_postal_code?: string | null;
+      delivery_address?: string | null;
+      delivery_address_detail?: string | null;
+      delivery_recipient_name?: string | null;
+      delivery_phone?: string | null;
+      delivery_address_name?: string | null;
+    }
+  ) {
     return await prisma.receipt.update({
       where: { receipt_id: receiptId },
       data
@@ -618,13 +624,13 @@ export class OrdersRepository {
       where: { order_id: orderId },
       select: { receipt_id: true }
     });
-    
+
     if (!order) {
       return null;
     }
-    
+
     return await prisma.receipt.findUnique({
-      where: { receipt_id: order.receipt_id }
+      where: { receipt_id: order.receipt_id! }
     });
   }
 
@@ -664,13 +670,13 @@ export class OrdersRepository {
   /**
    * 주문 건에 대한 리뷰 조회
    */
-  async findReviewByOrderId(orderId: string): Promise<boolean>{
+  async findReviewByOrderId(orderId: string): Promise<boolean> {
     const review = await prisma.review.findFirst({
       where: {
         order_id: orderId
       },
       select: {
-        review_id: true,
+        review_id: true
       }
     });
     return !!review;

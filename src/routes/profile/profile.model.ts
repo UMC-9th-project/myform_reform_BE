@@ -133,10 +133,10 @@ export class Sale {
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
       status: ORDER_STATUS_LABELS[raw.status!],
-      price: raw.price!.toNumber(),
-      deliveryFee: raw.delivery_fee!.toNumber(),
+      price: raw.price!.toNumber() ?? 0,
+      deliveryFee: raw.delivery_fee!.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt.created_at ?? new Date(),
+      createdAt: raw.receipt!.created_at ?? new Date(),
       title: title ?? '',
       thumbnail: raw.quote_photo[0]?.content ?? ''
     });
@@ -145,10 +145,6 @@ export class Sale {
   toResponse(): SaleResponseDto {
     return { ...this.props };
   }
-
-  // 나중에 비즈니스 메서드 추가 가능
-  // canCancel(): boolean { ... }
-  // calculateTotalPrice(): number { ... }
 }
 
 export class SaleDetail {
@@ -163,15 +159,15 @@ export class SaleDetail {
     option: RawOption | null,
     title: string
   ) {
-    const receipt = raw.receipt;
+    const receipt = raw.receipt!;
     return new SaleDetail({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
       status: ORDER_STATUS_LABELS[raw.status!],
-      price: raw.price!.toNumber(),
-      deliveryFee: raw.delivery_fee!.toNumber(),
+      price: raw.price?.toNumber() ?? 0,
+      deliveryFee: raw.delivery_fee?.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt.created_at ?? new Date(),
+      createdAt: raw.receipt!.created_at ?? new Date(),
       title: title,
       thumbnail: raw.quote_photo[0]?.content ?? '',
       phone: raw.user.phone ?? '',
@@ -183,7 +179,6 @@ export class SaleDetail {
         phone: receipt.delivery_phone ?? null,
         address_name: receipt.delivery_address_name ?? null
       },
-      //FIXME: option, 운송장번호 어떻게 구현할지 논의 해야함
       option: option?.option_item?.name ?? '',
       billNumber: ''
     });
@@ -235,11 +230,11 @@ export class Reform {
         content: url,
         photo_order: i + 1
       })),
-      title: raw.title,
-      content: raw.content,
-      price: raw.price,
-      delivery: raw.delivery,
-      expectedWorking: raw.expected_working,
+      title: raw.title ?? '',
+      content: raw.content ?? '',
+      price: raw.price ?? 0,
+      delivery: raw.delivery ?? 0,
+      expectedWorking: raw.expected_working ?? 0,
       category: raw.category
     });
   }
