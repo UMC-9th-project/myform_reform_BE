@@ -13,10 +13,10 @@ export type ChatRoomPayload =
 
 // 채팅메시지 payload에 담길 타입 정의
 export type ChatMessagePayload = 
-    | {id: string, price: number, delivery: number, expected_working: Date }  //제안서
+    | {id: string, price: number, delivery: number, expectedWorking: number }  //제안서
     | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
     | {urls: string[]}                                                        //이미지
-    | {price: number, delivery: number, expected_working: Date }              //결제정보
+    | {price: number, delivery: number, expectedWorking: number }              //결제정보
     | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
@@ -186,7 +186,7 @@ export class ChatMessageFactory {
       id : target.chatProposalId,
       price : target.price,
       delivery : target.delivery,
-      expected_working : target.expected_working
+      expectedWorking : target.expectedWorking
     };
   }
 
@@ -199,7 +199,7 @@ export class ChatMessageFactory {
     return {
       price : target.price,
       delivery : target.delivery,
-      expected_working : target.expected_working
+      expectedWorking : target.expected_working
     };
   }
 
