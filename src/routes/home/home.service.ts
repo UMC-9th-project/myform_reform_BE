@@ -283,7 +283,11 @@ export class HomeService {
       owner_id: owner.owner_id,
       nickname: owner.nickname || '',
       profile_image: owner.profile_photo || '',
-      bio: owner.bio || ''
+      bio: owner.bio || '',
+      avg_star: owner.avg_star != null ? Number(owner.avg_star) : null,
+      review_count: owner.review_count ?? null,
+      trade_count: owner.trade_count ?? null,
+      keywords: owner.keywords ?? []
     };
   }
 
