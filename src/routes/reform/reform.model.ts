@@ -254,12 +254,12 @@ export class ReformRequestFactory {
     return new ReformRequestCreate({
       userId,
       images: req.images,
-      contents: req.contents,
-      minBudget: req.minBudget,
-      maxBudget: req.maxBudget,
-      dueDate: req.dueDate,
-      category: req.category,
-      title: req.title
+      contents: req.contents ?? '',
+      minBudget: req.minBudget ?? 0,
+      maxBudget: req.maxBudget ?? 0,
+      dueDate: req.dueDate ?? new Date(),
+      title: req.title ?? '',
+      category: req.category
     });
   }
 
@@ -366,12 +366,12 @@ export class ReformProposalFactory {
     return new ReformProposalCreate({
       ownerId,
       images: req.images,
-      contents: req.contents,
-      price: req.price,
-      delivery: req.delivery,
-      expectedWorking: req.expectedWorking,
-      category: req.category,
-      title: req.title
+      contents: req.contents ?? '',
+      price: req.price ?? 0,
+      delivery: req.delivery ?? 0,
+      expectedWorking: req.expectedWorking ?? 0,
+      title: req.title ?? '',
+      category: req.category
     });
   }
 
@@ -417,10 +417,10 @@ export class ReformQuoteFactory {
       userId: userId,
       target_id: raw.targetId,
       images: raw.images,
-      contents: raw.contents,
-      price: raw.price,
-      delivery: raw.delivery,
-      expectedWorking: raw.expectedWorking
+      contents: raw.contents ?? '',
+      price: raw.price ?? 0,
+      delivery: raw.delivery ?? 0,
+      expectedWorking: raw.expectedWorking ?? 0
     });
   }
 }
