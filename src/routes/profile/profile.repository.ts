@@ -13,7 +13,9 @@ import {
   RawSaleDetailData,
   Reform,
   ReformDto,
-  RawOrderData
+  RawOrderData,
+  RawOrderDetailData,
+  RawOptionItemsWithGroup
 } from './profile.model.js';
 import { OptionGroup } from '../../@types/item.js';
 import { target_type_enum } from '@prisma/client';
@@ -583,5 +585,78 @@ export class ProfileRepository {
       }
     });
     return orders;
+  }
+
+  async getOrderDetailByOrderId(orderId: string): Promise<RawOrderDetailData> {
+    return await prisma.order.findFirstOrThrow({
+      where: { order_id: orderId },
+      select: {
+        order_id: true,
+        user_id: true,
+        target_type: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        tracking_number: true,
+        receipt: {
+          select: {
+            created_at: true,
+            receipt_number: true,
+            delivery_address: true,
+            delivery_address_detail: true,
+            delivery_address_name: true,
+            delivery_phone: true,
+            delivery_postal_code: true,
+            delivery_recipient_name: true,
+          }
+        },
+      }
+    })
+  }
+
+  async getOptionIdsByOrderId(orderId: string): Promise<string[]> {
+    const optionIds = await prisma.order_option.findMany({
+      where: { order_id: orderId },
+      orderBy: [
+        {
+          option_item: {
+            sort_order: 'asc'
+          }
+        }
+      ],
+      select: {
+        option_item: {
+          select: {
+            option_item_id: true
+          }
+        }
+      },
+    });
+    return optionIds.map((optionId: (typeof optionIds)[number]) => 
+      optionId.option_item.option_item_id)
+  }
+
+  async getOptionItemsWithGroup(optionItemIds: string[] | undefined ): Promise<RawOptionItemsWithGroup[]> {
+    return await prisma.option_group.findMany({
+      orderBy: {
+        sort_order: 'asc'
+      },
+      select: {
+        option_group_id: true,
+        name: true,
+        option_item: {
+          where: { option_item_id: { in: optionItemIds } },
+          orderBy: {
+            sort_order: 'asc'
+          },
+          select: {
+            option_item_id: true,
+            name: true,
+            extra_price: true
+          }
+        }
+      }
+    })
   }
 }

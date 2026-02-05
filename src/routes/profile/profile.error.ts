@@ -35,3 +35,9 @@ export class OwnerNotFound extends BasicError {
     super(404, 'OWNER-NOT-FOUND', '프로필을 찾을 수 없습니다.', `Owner ID: ${ownerId}`);
   }
 }
+
+export class ForbiddenAccessError extends BasicError {
+  constructor(orderId: string) {
+    super(403, 'NO-AUTH', '해당 주문 정보를 조회할 권한이 없습니다', `Order ID : ${orderId}`)
+  }
+}

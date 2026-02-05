@@ -3,8 +3,12 @@ import {
   CategoryNotExist,
   ItemAddError,
   OrderItemError,
-  OwnerNotFound
+  OwnerNotFound,
+  ForbiddenAccessError
 } from './profile.error.js';
+import {
+  OrderNotFoundError
+} from '../orders/orders.error.js';
 import { AddFeedRequestDto, OrderRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
@@ -13,7 +17,8 @@ import {
   Reform,
   ReformDto,
   Sale,
-  SaleDetail
+  SaleDetail,
+  OrderDetail
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -21,7 +26,8 @@ import type {
   FeedListResponse,
   MarketListResponse,
   ProposalListResponse,
-  ReviewListResponse
+  ReviewListResponse,
+  OrderDetailResponseDto
 } from './dto/profile.res.dto.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
@@ -512,5 +518,45 @@ export class ProfileService {
 
   // 6. 주문 타입 별로 필터링
   return ordersPreview
+  }
+
+  async getOrderDetail(userId: string, orderId: string): Promise<OrderDetailResponseDto> {
+    //1. 주문 조회
+    const order = await this.profileRepository.getOrderDetailByOrderId(orderId);
+    if (!order) {
+      throw new OrderNotFoundError(orderId)
+    }
+    if (order.user_id !== userId){
+      throw new ForbiddenAccessError(orderId)
+    }
+
+    // 2. 옵션 조회
+    const [info, optionItemIds] = await Promise.all([
+      this.getTargetInfo(order.target_type, order.target_id),
+      this.profileRepository.getOptionIdsByOrderId(orderId)
+    ])
+    const optionItemsWithGroup = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    
+    // 3. 결과값 리턴
+    const orderDetail = OrderDetail.create(order,info?.title, info?.thumbnail, optionItemsWithGroup)
+    return orderDetail.toResponse()
+  }
+
+  private async getTargetInfo(type: string | null, id: string | null) {
+    if (!type || !id) return undefined;
+  
+    switch (type) {
+      case 'ITEM':
+        const items = await this.profileRepository.getItemInfos([id]);
+        return items[0] ? { title: items[0].title ?? '', thumbnail: items[0].photo ?? ''} : undefined;
+      case 'PROPOSAL':
+        const proposals = await this.profileRepository.getProposalInfos([id]);
+        return proposals[0] ? { title: proposals[0].title ?? '', thumbnail: proposals[0].photo ?? ''} : undefined;
+      case 'REQUEST':
+        const requests = await this.profileRepository.getRequestInfos([id]);
+        return requests[0] ? { title: requests[0].title ?? '', thumbnail: requests[0].photo ?? ''} : undefined;
+      default:
+        return undefined;
+    }
   }
 }

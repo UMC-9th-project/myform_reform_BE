@@ -1,5 +1,6 @@
 import { order_status_enum } from '@prisma/client';
 import { UUID } from '../../../@types/common.js';
+import { RawOptionItemsWithGroup } from '../profile.model.js'
 
 /** 프로필 피드 등록 성공 응답 DTO */
 export interface AddFeedResponseDto {
@@ -136,4 +137,26 @@ export interface OrderResponseDto {
   deliveryPhone: string;
   deliveryPostalCode: string;
   deliveryRecipientName: string;
+}
+
+export interface OrderDetailResponseDto{
+  title: string;
+  thumbnail: string;
+  receiptNumber: string;
+  orderId: UUID;
+  targetType: string;
+  targetId: string;
+  status: order_status_enum;
+  price: number;
+  deliveryFee: number;
+  totalPrice: string;
+  trackingNumber: string;
+  createdAt: Date;
+  deliveryPostalCode: string;
+  deliveryAddress: string;
+  deliveryAddressDetail: string;
+  deliveryRecipientName: string;
+  deliveryPhone: string;
+  deliveryAddressName: string;
+  options: RawOptionItemsWithGroup[]
 }

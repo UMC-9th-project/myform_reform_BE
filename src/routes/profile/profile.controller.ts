@@ -36,7 +36,8 @@ import {
   MarketListResponse,
   ProposalListResponse,
   ReviewListResponse,
-  OrderResponseDto
+  OrderResponseDto,
+  OrderDetailResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -333,6 +334,27 @@ export class ProfileController extends Controller {
       return order.toResponse();
     });
     return new ResponseHandler(res);
+  }
+
+  
+  /**
+   * 구매 목록 상세 조회
+   * @summary 구매 목록 ID로 해당 목록의 상세 정보를 조회합니다
+   * @param id 구매 목록 ID (order_id)
+   * @returns 구매 목록 상세 정보
+   */
+  @Get('orders/:id')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '구매 목록 상세 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getOrderDetail(
+    @Path() id: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<OrderDetailResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const data = await this.profileService.getOrderDetail(userId, id);
+    return new ResponseHandler(data);
   }
 
   /**
