@@ -4,7 +4,7 @@
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
-import { SaleRequestDto } from './dto/profile.req.dto.js';
+import { OrderRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -12,9 +12,11 @@ import {
   RawSaleData,
   RawSaleDetailData,
   Reform,
-  ReformDto
+  ReformDto,
+  RawOrderData
 } from './profile.model.js';
 import { OptionGroup } from '../../@types/item.js';
+import { target_type_enum } from '@prisma/client';
 
 export class ProfileRepository {
   private prisma: PrismaClient;
@@ -261,6 +263,27 @@ export class ProfileRepository {
     }));
   }
 
+  async getRequestInfos(requestIds: string[]) {
+    if (requestIds.length === 0) return [];
+    const requests = await this.prisma.reform_request.findMany({
+      where: { reform_request_id: { in: requestIds } },
+      select: {
+        reform_request_id: true,
+        title: true,
+        min_budget: true,
+        max_budget: true,
+        reform_request_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    return requests.map((request: (typeof requests)[number]) => ({
+      reform_request_id: request.reform_request_id,
+      title: request.title,
+      minBudget: request.min_budget !== null ? Number(request.min_budget) : null,
+      maxBudget: request.max_budget !== null ? Number(request.max_budget) : null,
+      photo: request.reform_request_photo[0]?.content ?? null
+    }));
+  }
+
   async getOrderDetail(
     ownerId: string,
     orderId: string
@@ -498,5 +521,67 @@ export class ProfileRepository {
         profile_photo: true
       }
     });
+  }
+
+  async getOrdersByUserId(dto: OrderRequestDto): Promise<RawOrderData[]> {
+    const { userId, type, cursor, limit, order, onlyReviewAvailable } = dto;
+    const targetTypeFilter = {
+      REFORM: { in: ['REQUEST', 'PROPOSAL'] },
+      ITEM: 'ITEM',
+      ALL: undefined
+    };
+    const whereClause : any = {
+      user_id: userId,
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined
+    };
+    
+    if (onlyReviewAvailable) {
+      whereClause.review = { none: {} };
+      whereClause.status = { not: 'PENDING' };
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: whereClause,
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { order_id: cursor } : undefined,
+      orderBy: [
+        { created_at: order },
+        { order_id: order }
+      ],
+      select: {
+        order_id: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        target_type: true,
+        quantity: true,
+        tracking_number: true,
+        owner: {
+          select: {
+            nickname: true
+          }
+        },
+        receipt: {
+          select: {
+            created_at: true,
+            receipt_number: true,
+            delivery_address: true,
+            delivery_address_detail: true,
+            delivery_address_name: true,
+            delivery_phone: true,
+            delivery_postal_code: true,
+            delivery_recipient_name: true,
+          }
+        },
+        review: {
+          select: {
+            review_id: true,
+          }
+        }
+      }
+    });
+    return orders;
   }
 }

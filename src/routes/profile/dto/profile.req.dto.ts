@@ -112,3 +112,27 @@ export class AddFeedRequestDto {
 //     this.category = body.category;
 //   }
 // }
+
+export class OrderRequestDto {
+  type: 'ITEM' | 'REFORM' | 'ALL';
+  cursor: string;
+  limit: number;
+  userId: UUID;
+  onlyReviewAvailable: boolean;
+  order: 'asc' | 'desc';
+  constructor(
+    type: 'ITEM' | 'REFORM' | 'ALL',
+    cursor: string | undefined,
+    limit: number,
+    userId: UUID,
+    onlyReviewAvailable: boolean,
+    order: 'asc' | 'desc' = 'desc'
+  ) {
+    this.userId = userId;
+    this.type = type;
+    this.cursor = cursor ?? '';
+    this.limit = limit;
+    this.onlyReviewAvailable = onlyReviewAvailable;
+    this.order = order;
+  }
+}

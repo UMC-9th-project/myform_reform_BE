@@ -1,3 +1,4 @@
+import { order_status_enum } from '@prisma/client';
 import { UUID } from '../../../@types/common.js';
 
 /** 프로필 피드 등록 성공 응답 DTO */
@@ -110,4 +111,29 @@ export interface ReviewListResponse {
   reviews: ReviewItem[];
   nextCursor: string | null;
   hasNext: boolean;
+}
+
+export interface OrderResponseDto {
+  receiptNumber: string;
+  orderId: UUID;
+  title: string;
+  targetId: UUID;
+  status: order_status_enum;
+  price: number;
+  deliveryFee: number;
+  totalPrice: string;
+  targetType: string;
+  quantity: number;
+  ownerNickname: string;
+  createdAt: Date;
+  thumbnail: string;
+  reviewAvailable: boolean;
+  reviewId: UUID | null;
+  trackingNumber: string;
+  deliveryAddress: string;
+  deliveryAddressDetail: string;
+  deliveryAddressName: string;
+  deliveryPhone: string;
+  deliveryPostalCode: string;
+  deliveryRecipientName: string;
 }

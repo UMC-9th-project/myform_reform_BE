@@ -24,7 +24,8 @@ import {
   AddFeedRequestDto,
   AddItemRequestDto,
   AddReformRequestDto,
-  SaleRequestDto
+  SaleRequestDto,
+  OrderRequestDto
 } from './dto/profile.req.dto.js';
 import {
   AddFeedResponseDto,
@@ -34,7 +35,8 @@ import {
   FeedListResponse,
   MarketListResponse,
   ProposalListResponse,
-  ReviewListResponse
+  ReviewListResponse,
+  OrderResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -299,6 +301,38 @@ export class ProfileController extends Controller {
     const ownerId = payload.id;
     const result = await this.profileService.getProfileInfo(ownerId);
     return new ResponseHandler(result);
+  }
+
+  /**
+   * 구매 목록 조회
+   * @summary 사용자의 전체 구매이력 목록을 조회합니다
+   * @returns 구매이력 목록
+   * @param type 주문제작 or 판매상품 선택
+   * @param page 현재 페이지
+   * @param limit 한 페이지 보여줄 목록 수
+   * @param OnlyReviewAvailable 리뷰 가능한 주문 목록만 조회하기 (리뷰 가능 조건 : PENDING이 아닐 때)
+   */
+  @Get('orders')
+  // @Security('jwt', ['user'])
+  @SuccessResponse(200, '구매이력 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getOrders(
+    @Query() type: 'ITEM' | 'REFORM' | 'ALL',
+    @Query() userId: string,
+    @Query() cursor?: string,
+    @Query() limit: number = 20,
+    @Query() order: 'asc' | 'desc' = 'desc',
+    @Query() OnlyReviewAvailable: boolean = false,
+    // @Request() req: ExRequest,
+  ): Promise<TsoaResponse<OrderResponseDto[]>> {
+    // const payload = req.user;
+    // const userId = payload.id;
+    const dto = new OrderRequestDto(type, cursor, limit, userId, OnlyReviewAvailable, order);
+    const data = await this.profileService.getOrders(dto);
+    const res = data.map((order) => {
+      return order.toResponse();
+    });
+    return new ResponseHandler(res);
   }
 
   /**

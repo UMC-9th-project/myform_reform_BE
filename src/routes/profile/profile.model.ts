@@ -2,7 +2,8 @@ import { Prisma, order_status_enum } from '@prisma/client';
 import { UUID } from '../../@types/common.js';
 import {
   SaleDetailResponseDto,
-  SaleResponseDto
+  SaleResponseDto,
+  OrderResponseDto
 } from './dto/profile.res.dto.js';
 import {
   AddItemRequestDto,
@@ -245,6 +246,82 @@ export class Reform {
   }
 
   toDto(): ReformDto {
+    return { ...this.props };
+  }
+}
+
+export type RawOrderData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    quantity: true;
+    tracking_number: true;
+    owner: {
+      select: {
+        nickname: true;
+      };
+    };
+    receipt: {
+      select: {
+        created_at: true;
+        receipt_number: true;
+        delivery_address: true;
+        delivery_address_detail: true;
+        delivery_address_name: true;
+        delivery_phone: true;
+        delivery_postal_code: true;
+        delivery_recipient_name: true;
+      };
+    };
+    review: {
+      select: {
+        review_id: true;
+      };
+    };
+  };
+}>;
+
+export class Order {
+  private props: OrderResponseDto;
+
+  private constructor(props: OrderResponseDto) {
+    this.props = props;
+  }
+
+  static create(raw: RawOrderData, title: string, thumbnail: string): Order {
+    const totalPrice = raw.price!.toNumber() + raw.delivery_fee!.toNumber();
+    const reviewAvailable = raw.status !== 'PENDING' && raw.review[0]?.review_id ? false : true;
+    return new Order({
+      receiptNumber: raw.receipt.receipt_number!,
+      title: title,
+      thumbnail: thumbnail,
+      orderId: raw.order_id as UUID,
+      targetId: raw.target_id as UUID,
+      status: raw.status!,
+      price: raw.price!.toNumber(),
+      deliveryFee: raw.delivery_fee!.toNumber(),
+      totalPrice: totalPrice.toString(),
+      targetType: raw.target_type!,
+      quantity: raw.quantity!,
+      trackingNumber: raw.tracking_number!,
+      ownerNickname: raw.owner.nickname!,
+      createdAt: raw.receipt.created_at ?? new Date(),
+      deliveryAddress: raw.receipt.delivery_address!,
+      deliveryAddressDetail: raw.receipt.delivery_address_detail!,
+      deliveryAddressName: raw.receipt.delivery_address_name!,
+      deliveryPhone: raw.receipt.delivery_phone!,
+      deliveryPostalCode: raw.receipt.delivery_postal_code!,
+      deliveryRecipientName: raw.receipt.delivery_recipient_name!,
+      reviewAvailable: raw.review[0]?.review_id ? true : false,
+      reviewId: raw.review[0]?.review_id ?? null
+    });
+  }
+
+  toResponse(): OrderResponseDto {
     return { ...this.props };
   }
 }

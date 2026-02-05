@@ -5,10 +5,11 @@ import {
   OrderItemError,
   OwnerNotFound
 } from './profile.error.js';
-import { AddFeedRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
+import { AddFeedRequestDto, OrderRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
+  Order,
   Reform,
   ReformDto,
   Sale,
@@ -461,5 +462,55 @@ export class ProfileService {
       nextCursor,
       hasNext
     };
+  }
+
+  // 주문 목록 조회
+  async getOrders(dto: OrderRequestDto): Promise<Order[]> {
+    // 1. 초기 조건에 맞는 주문 목록 조회
+    const orders = await this.profileRepository.getOrdersByUserId(dto);
+    
+    // 1.1 다음 페이지 여부 확인
+    const hasNext = orders.length > dto.limit;
+    const actualOrders = hasNext ? orders.slice(0, dto.limit) : orders;
+    
+    // 2. ID 수집 (Set을 사용해 중복 제거)
+    const itemIds = new Set<string>();
+    const requestIds = new Set<string>();
+    const proposalIds = new Set<string>();
+
+    actualOrders.forEach(o => {
+      if (!o.target_id) return;
+      if (o.target_type === 'ITEM') itemIds.add(o.target_id);
+      else if (o.target_type === 'REQUEST') requestIds.add(o.target_id);
+      else if (o.target_type === 'PROPOSAL') proposalIds.add(o.target_id);
+    });
+
+    
+    // 3. title 과 thumbnail(photo) 조회
+    const [itemInfos, reqInfos, propInfos] = await Promise.all([
+      this.profileRepository.getItemInfos(Array.from(itemIds)),
+      this.profileRepository.getRequestInfos(Array.from(requestIds)),
+      this.profileRepository.getProposalInfos(Array.from(proposalIds))
+    ]);
+
+    const infoMap = new Map<string, { title: string, thumbnail: string }>();
+    const addToMap = (list: any[], idKey: string) => {
+      list.forEach(data => {
+        infoMap.set(data[idKey], { title: data.title, thumbnail: data.photo });
+      });
+    };
+
+    addToMap(itemInfos, 'item_id');
+    addToMap(reqInfos, 'reform_request_id');
+    addToMap(propInfos, 'reform_proposal_id');
+
+  // 4. 모든 주문 목록 preview 생성
+  const ordersPreview = actualOrders.map((order) => {
+    const info = infoMap.get(order.target_id ?? '') ?? { title: '', thumbnail: '' };
+    return Order.create(order, info.title, info.thumbnail);
+  });
+
+  // 6. 주문 타입 별로 필터링
+  return ordersPreview
   }
 }
