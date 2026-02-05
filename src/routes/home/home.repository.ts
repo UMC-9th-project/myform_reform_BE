@@ -153,7 +153,9 @@ export class HomeRepository {
         profile_photo: true,
         bio: true,
         avg_star: true,
-        review_count: true
+        review_count: true,
+        trade_count: true,
+        keywords: true
       },
       orderBy: [
         { review_count: 'desc' },

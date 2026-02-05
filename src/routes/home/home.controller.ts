@@ -109,7 +109,11 @@ export class HomeController extends Controller {
               owner_id: '990e8400-e29b-41d4-a716-446655440004',
               nickname: '베스트 리폼러',
               profile_image: 'https://example.com/reformer.jpg',
-              bio: '최고의 리폼 전문가'
+              bio: '최고의 리폼 전문가',
+              avg_star: 4.5,
+              review_count: 123,
+              trade_count: 456,
+              keywords: ['수선', '리폼', '맞춤']
             }
           ]
         }
