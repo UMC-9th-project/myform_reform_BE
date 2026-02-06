@@ -6,6 +6,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { Prisma as PrismaClient } from '@prisma/client';
 import type {
+  CategoryTreeItemDto,
   GetCategoriesResponseDto,
   GetItemListResponseDto,
   GetItemDetailResponseDto,
@@ -28,14 +29,34 @@ export class MarketService {
    */
   async getCategories(): Promise<GetCategoriesResponseDto> {
     const rows = await this.repository.findCategories();
+    const flat = rows.map((row) => ({
+      categoryId: row.category_id,
+      name: row.name,
+      parentId: row.parent_id,
+      depth: row.depth,
+      sortOrder: row.sort_order
+    }));
+
+    const roots = flat.filter((c) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder);
+    const byParent = new Map<string | null, typeof flat>();
+    for (const c of flat) {
+      const key = c.parentId;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(c);
+    }
+
+    const buildTree = (parentId: string | null): CategoryTreeItemDto[] => {
+      const items = (byParent.get(parentId) ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+      return items.map((item) => ({
+        categoryId: item.categoryId,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        children: buildTree(item.categoryId)
+      }));
+    };
+
     return {
-      categories: rows.map((row) => ({
-        categoryId: row.category_id,
-        name: row.name,
-        parentId: row.parent_id,
-        depth: row.depth,
-        sortOrder: row.sort_order
-      }))
+      categories: buildTree(null)
     };
   }
 

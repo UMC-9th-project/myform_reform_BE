@@ -6,8 +6,15 @@ export interface CategoryItemDto {
   sortOrder: number;
 }
 
+export interface CategoryTreeItemDto {
+  categoryId: string;
+  name: string;
+  sortOrder: number;
+  children: CategoryTreeItemDto[];
+}
+
 export interface GetCategoriesResponseDto {
-  categories: CategoryItemDto[];
+  categories: CategoryTreeItemDto[];
 }
 
 export interface GetItemListResponseDto {
