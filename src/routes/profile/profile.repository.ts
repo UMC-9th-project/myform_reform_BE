@@ -57,6 +57,8 @@ export class ProfileRepository {
         price: dto.price,
         delivery: dto.delivery,
         category_id: categoryId,
+        avg_star: 0,
+        review_count: 0,
         item_photo:
           dto.images.length > 0
             ? {
@@ -105,6 +107,8 @@ export class ProfileRepository {
         delivery: dto.delivery,
         expected_working: dto.expectedWorking,
         category_id: categoryId,
+        avg_star: 0,
+        review_count: 0,
         reform_proposal_photo:
           dto.images.length > 0
             ? {
@@ -201,7 +205,11 @@ export class ProfileRepository {
       select: {
         title: true,
         price: true,
-        item_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+        item_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
       }
     });
     if (!item) return null;
@@ -218,7 +226,11 @@ export class ProfileRepository {
       select: {
         title: true,
         price: true,
-        reform_proposal_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+        reform_proposal_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
       }
     });
     if (!proposal) return null;
@@ -237,7 +249,11 @@ export class ProfileRepository {
         item_id: true,
         title: true,
         price: true,
-        item_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+        item_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
       }
     });
     return items.map((item: (typeof items)[number]) => ({
@@ -256,7 +272,11 @@ export class ProfileRepository {
         reform_proposal_id: true,
         title: true,
         price: true,
-        reform_proposal_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+        reform_proposal_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
       }
     });
     return proposals.map((p: (typeof proposals)[number]) => ({
@@ -348,7 +368,11 @@ export class ProfileRepository {
     });
   }
 
-  async findUserWishTargetIds(userId: string, targetType: 'ITEM' | 'PROPOSAL', targetIds: string[]) {
+  async findUserWishTargetIds(
+    userId: string,
+    targetType: 'ITEM' | 'PROPOSAL',
+    targetIds: string[]
+  ) {
     if (targetIds.length === 0) return [];
     const rows = await this.prisma.user_wish.findMany({
       where: {
@@ -393,8 +417,16 @@ export class ProfileRepository {
     return itemCount + proposalCount;
   }
 
-  async findFeedsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
-    const whereCondition: { owner_id: string; OR?: unknown[]; feed_id?: { lt: string } } = {
+  async findFeedsByOwnerId(
+    ownerId: string,
+    cursor: string | undefined,
+    take: number
+  ) {
+    const whereCondition: {
+      owner_id: string;
+      OR?: unknown[];
+      feed_id?: { lt: string };
+    } = {
       owner_id: ownerId
     };
 
@@ -433,7 +465,10 @@ export class ProfileRepository {
     });
   }
 
-  async createFeed(ownerId: string, isPinned: boolean): Promise<{ feed_id: string }> {
+  async createFeed(
+    ownerId: string,
+    isPinned: boolean
+  ): Promise<{ feed_id: string }> {
     const feed = await this.prisma.feed.create({
       data: {
         owner_id: ownerId,
@@ -455,7 +490,11 @@ export class ProfileRepository {
     });
   }
 
-  async findItemsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+  async findItemsByOwnerId(
+    ownerId: string,
+    cursor: string | undefined,
+    take: number
+  ) {
     const where = cursor
       ? { owner_id: ownerId, item_id: { lt: cursor } }
       : { owner_id: ownerId };
@@ -473,7 +512,11 @@ export class ProfileRepository {
     });
   }
 
-  async findProposalsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+  async findProposalsByOwnerId(
+    ownerId: string,
+    cursor: string | undefined,
+    take: number
+  ) {
     const where = cursor
       ? { owner_id: ownerId, reform_proposal_id: { lt: cursor } }
       : { owner_id: ownerId };
@@ -491,7 +534,11 @@ export class ProfileRepository {
     });
   }
 
-  async findReviewsByOwnerId(ownerId: string, cursor: string | undefined, take: number) {
+  async findReviewsByOwnerId(
+    ownerId: string,
+    cursor: string | undefined,
+    take: number
+  ) {
     const where = cursor
       ? { owner_id: ownerId, review_id: { lt: cursor } }
       : { owner_id: ownerId };

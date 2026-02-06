@@ -514,8 +514,6 @@ export class ReformRepository {
         target_type: 'REQUEST',
         target_id: body.target_id,
         delivery_fee: body.delivery,
-        //FIXME: 하드코딩 제거
-        receipt_id: '3a002aa5-f93e-487e-b253-ad47bae7b3e4',
         status: 'PENDING'
       },
       select: {
