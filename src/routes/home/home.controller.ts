@@ -100,6 +100,9 @@ export class HomeController extends Controller {
               thumbnail: 'https://example.com/proposal1.jpg',
               title: '커스텀 오더',
               min_price: 100000,
+              star: 4.5,
+              review_count: 12,
+              is_wished: false,
               owner_id: '990e8400-e29b-41d4-a716-446655440004',
               owner_nickname: '리포머닉네임'
             }

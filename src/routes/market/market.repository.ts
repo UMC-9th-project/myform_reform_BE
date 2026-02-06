@@ -14,6 +14,22 @@ export class MarketRepository {
   }
 
   /**
+   * 카테고리 전체 목록 조회 (sort_order, depth 기준 정렬)
+   */
+  async findCategories() {
+    return await prisma.category.findMany({
+      orderBy: [{ depth: 'asc' }, { sort_order: 'asc' }],
+      select: {
+        category_id: true,
+        name: true,
+        parent_id: true,
+        depth: true,
+        sort_order: true
+      }
+    });
+  }
+
+  /**
    * 상품 목록 조회 (필터 및 정렬 적용)
    */
   async findItemsWithFilters(
