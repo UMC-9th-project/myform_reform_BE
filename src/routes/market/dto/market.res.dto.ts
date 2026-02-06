@@ -1,3 +1,15 @@
+export interface CategoryItemDto {
+  categoryId: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  sortOrder: number;
+}
+
+export interface GetCategoriesResponseDto {
+  categories: CategoryItemDto[];
+}
+
 export interface GetItemListResponseDto {
   items: Array<{
     item_id: string;

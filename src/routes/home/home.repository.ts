@@ -106,6 +106,27 @@ export class HomeRepository {
   }
 
   /**
+   * @returns Set<string> - 찜한 프로포절(reform_proposal) ID 목록
+   */
+  async findUserWishProposalIdsByUserId(userId: string): Promise<Set<string>> {
+    const wishList = await prisma.user_wish.findMany({
+      where: {
+        user_id: userId,
+        target_type: 'PROPOSAL'
+      },
+      select: {
+        target_id: true
+      }
+    });
+
+    return new Set(
+      wishList
+        .map((w) => w.target_id)
+        .filter((id): id is string => !!id)
+    );
+  }
+
+  /**
    * @param limit 조회할 개수 (기본값: 3)
    */
   async findRecentProposals(limit: number = 3): Promise<ReformProposalWithRelations[]> {

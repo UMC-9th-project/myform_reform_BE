@@ -43,6 +43,9 @@ export interface CustomOrder {
   thumbnail: string;
   title: string;
   min_price: number;
+  star: number;
+  review_count: number;
+  is_wished: boolean;
   owner_id: string;
   owner_nickname: string;
 }

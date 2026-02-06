@@ -6,6 +6,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { Prisma as PrismaClient } from '@prisma/client';
 import type {
+  GetCategoriesResponseDto,
   GetItemListResponseDto,
   GetItemDetailResponseDto,
   GetItemReviewsResponseDto,
@@ -21,6 +22,22 @@ export class MarketService {
   private static readonly DEFAULT_DELIVERY_INFO = '평균 3일 이내 배송 시작';
   private static readonly MAX_PREVIEW_PHOTOS = 7;
   private static readonly DEFAULT_REVIEW_LIMIT = 5;
+
+  /**
+   * 카테고리 목록 조회
+   */
+  async getCategories(): Promise<GetCategoriesResponseDto> {
+    const rows = await this.repository.findCategories();
+    return {
+      categories: rows.map((row) => ({
+        categoryId: row.category_id,
+        name: row.name,
+        parentId: row.parent_id,
+        depth: row.depth,
+        sortOrder: row.sort_order
+      }))
+    };
+  }
 
   /**
    * 상품 목록 조회
