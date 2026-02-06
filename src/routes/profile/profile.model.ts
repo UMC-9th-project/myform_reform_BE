@@ -2,7 +2,9 @@ import { Prisma, order_status_enum } from '@prisma/client';
 import { UUID } from '../../@types/common.js';
 import {
   SaleDetailResponseDto,
-  SaleResponseDto
+  SaleResponseDto,
+  OrderResponseDto,
+  OrderDetailResponseDto
 } from './dto/profile.res.dto.js';
 import {
   AddItemRequestDto,
@@ -242,4 +244,186 @@ export class Reform {
   toDto(): ReformDto {
     return { ...this.props };
   }
+}
+
+export type RawOrderData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    quantity: true;
+    tracking_number: true;
+    owner: {
+      select: {
+        nickname: true;
+      };
+    };
+    receipt: {
+      select: {
+        created_at: true;
+        receipt_number: true;
+        delivery_address: true;
+        delivery_address_detail: true;
+        delivery_address_name: true;
+        delivery_phone: true;
+        delivery_postal_code: true;
+        delivery_recipient_name: true;
+      };
+    };
+    review: {
+      select: {
+        review_id: true;
+      };
+    };
+  };
+}>;
+
+export class Order {
+  private props: OrderResponseDto;
+
+  private constructor(props: OrderResponseDto) {
+    this.props = props;
+  }
+
+  static create(raw: RawOrderData, title: string, thumbnail: string): Order {
+    const price = raw.price ? raw.price.toNumber() : 0;
+    const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
+    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
+    const isPending = raw.status === 'PENDING';
+    const hasReview = raw.review.length > 0;
+    const reviewAvailable = !isPending && !hasReview;
+    return new Order({
+      receiptNumber: raw.receipt?.receipt_number ?? '',
+      title: title,
+      thumbnail: thumbnail,
+      orderId: raw.order_id as UUID,
+      targetType: raw.target_type ?? 'ITEM',
+      targetId: raw.target_id as UUID,
+      status: raw.status!,
+      price: price,
+      deliveryFee: delivery_fee,
+      totalPrice: totalPrice,
+      quantity: raw.quantity ?? 1,
+      ownerNickname: raw.owner.nickname ?? '',
+      createdAt: raw.receipt?.created_at ?? new Date(),
+      reviewAvailable: reviewAvailable,
+      reviewId: raw.review[0]?.review_id ?? null
+    });
+  }
+
+  toResponse(): OrderResponseDto {
+    return { ...this.props };
+  }
+}
+
+export type RawOrderDetailData = Prisma.orderGetPayload<{
+  select: {
+    order_id: true;
+    user_id: true;
+    target_id: true;
+    status: true;
+    price: true;
+    delivery_fee: true;
+    target_type: true;
+    tracking_number: true;
+    receipt: {
+      select: {
+        created_at: true;
+        receipt_number: true;
+        delivery_address: true;
+        delivery_address_detail: true;
+        delivery_address_name: true;
+        delivery_phone: true;
+        delivery_postal_code: true;
+        delivery_recipient_name: true;
+      };
+    };
+  };
+}>;
+
+export type RawOptionItemsWithGroup = {
+  option_group_id: string;
+  name: string | null;
+  option_item: RawOptionItem[]
+}
+
+export type RawOptionItem = {
+  name: string | null;
+  option_item_id: string;
+  extra_price: number | null;
+}
+
+
+
+export class OrderDetail {
+  private props: OrderDetailResponseDto;
+
+  private constructor(props: OrderDetailResponseDto) {
+    this.props = props;
+  }
+
+  static create(raw: RawOrderDetailData, title: string | undefined, thumbnail: string | undefined, options : RawOptionItemsWithGroup[]): OrderDetail {
+    const price = raw.price ? raw.price.toNumber() : 0;
+    const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
+    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
+    return new OrderDetail({
+      title: title ?? '',
+      thumbnail: thumbnail ?? '',
+      orderId: raw.order_id,
+      targetType: raw.target_type!,
+      targetId: raw.target_id!,
+      status: raw.status ?? 'PENDING',
+      price: price,
+      deliveryFee: delivery_fee,
+      totalPrice: totalPrice,
+      trackingNumber: raw.tracking_number ?? '',
+      createdAt: raw.receipt?.created_at ?? new Date(),
+      receiptNumber: raw.receipt?.receipt_number ?? '',
+      deliveryPostalCode: raw.receipt?.delivery_postal_code ?? '',
+      deliveryAddress: raw.receipt?.delivery_address ?? '',
+      deliveryAddressDetail: raw.receipt?.delivery_address_detail ?? '',
+      deliveryRecipientName: raw.receipt?.delivery_recipient_name ?? '',
+      deliveryPhone: raw.receipt?.delivery_phone ?? '',
+      deliveryAddressName: raw.receipt?.delivery_address_name ?? '',
+      options : options
+    });
+  }
+
+  toResponse(): OrderDetailResponseDto {
+    return { ...this.props };
+  }  
+}
+
+export type RawRequestData = Prisma.reform_requestGetPayload<{
+  select: {
+    reform_request_id: true;
+    user_id: true;
+    title: true;
+    min_budget: true;
+    max_budget: true;
+    due_date: true;
+    created_at: true;
+    reform_request_photo: {
+      select: {
+        reform_request_photo_id: true;
+        content: true;
+      };
+      take: 1;
+    };
+  };
+}>;
+
+export type RequestData = {
+  reformRequestId:UUID;
+  userId: UUID;
+  title: string;
+  minBudget: number | null;
+  maxBudget: number | null;
+  dueDate: Date | null;
+  createdAt: Date | null;
+  reformRequestPhotoId: UUID;
+  thumbnail: string | null;
 }

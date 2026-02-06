@@ -1,4 +1,6 @@
+import { order_status_enum } from '@prisma/client';
 import { UUID } from '../../../@types/common.js';
+import { RawOptionItemsWithGroup, RequestData } from '../profile.model.js'
 
 /** 프로필 피드 등록 성공 응답 DTO */
 export interface AddFeedResponseDto {
@@ -110,4 +112,56 @@ export interface ReviewListResponse {
   reviews: ReviewItem[];
   nextCursor: string | null;
   hasNext: boolean;
+}
+
+export interface OrderResponseDto {
+  receiptNumber: string;
+  orderId: UUID;
+  title: string;
+  targetId: UUID;
+  status: order_status_enum;
+  price: number;
+  deliveryFee: number;
+  totalPrice: string;
+  targetType: string;
+  quantity: number;
+  ownerNickname: string;
+  createdAt: Date;
+  thumbnail: string;
+  reviewAvailable: boolean;
+  reviewId: UUID | null;
+}
+
+export interface OrderListResponseDto {
+  orders: OrderResponseDto[];
+  nextCursor: string | null;
+  hasNext: boolean;
+}
+
+export interface OrderDetailResponseDto{
+  title: string;
+  thumbnail: string;
+  receiptNumber: string;
+  orderId: UUID;
+  targetType: string;
+  targetId: string;
+  status: order_status_enum;
+  price: number;
+  deliveryFee: number;
+  totalPrice: string;
+  trackingNumber: string;
+  createdAt: Date;
+  deliveryPostalCode: string;
+  deliveryAddress: string;
+  deliveryAddressDetail: string;
+  deliveryRecipientName: string;
+  deliveryPhone: string;
+  deliveryAddressName: string;
+  options: RawOptionItemsWithGroup[]
+}
+
+export interface RequestsListResponseDto {
+  requestData: RequestData[], 
+  nextCursor: string | null, 
+  hasNext: boolean
 }

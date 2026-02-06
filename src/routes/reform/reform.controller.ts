@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Example,
   Get,
   Patch,
@@ -170,6 +171,24 @@ export class ReformController extends Controller {
     return new ResponseHandler(ans);
   }
 
+    /**
+   * @summary 특정 리폼 요청을 삭제합니다.
+   * @param id 삭제하려는 리폼 요청글 ID (UUID)
+   * @returns 리폼 요청 삭제 성공 여부
+   */
+    @Delete('/request/:id')
+    @Security('jwt')
+    @SuccessResponse(200, '삭제 성공')
+    public async deleteRequest(
+      @Path() id: string,
+      @Request() req: ExRequest
+    ): Promise<TsoaResponse<string>> {
+      const payload = req.user;
+      const userId = payload.id;
+      const ans = await this.reformService.deleteRequest(id, userId);
+      return new ResponseHandler(ans);
+    }
+    
   /**
    * @summary 요청서 목록을 보여줍니다.
    * @param sortBy 정렬 기준

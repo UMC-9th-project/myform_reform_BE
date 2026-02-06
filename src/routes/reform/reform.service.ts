@@ -21,6 +21,7 @@ import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { CustomJwt } from '../../@types/expreees.js';
 import { runInThisContext } from 'vm';
 import { runInTransaction } from '../../config/prisma.config.js';
+import { UUID } from 'crypto';
 
 export class ReformService {
   private reformRepository: ReformRepository;
@@ -201,6 +202,29 @@ export class ReformService {
       return ans;
     } catch (err: any) {
       throw new ReformError(err);
+    }
+  }
+
+  async deleteRequest(requestId: string, userId: string): Promise<string> {
+    const isOwner = await this.reformRepository.checkRequestOwner(
+      userId,
+      requestId
+    );
+    if (!isOwner)
+      throw new ReformError('본인의 요청서만 삭제할 수 있습니다.');
+
+    try {
+      return await runInTransaction(async () => {
+        await this.reformRepository.deleteRequestPhotos(requestId);
+        await this.reformRepository.deleteRequest(
+          requestId,
+          userId
+        );
+        return '요청글이 성공적으로 삭제되었습니다.'
+      });
+      } catch (err: any) {
+        console.error(`[DeleteRequest Error] ID: ${requestId}`, err);
+        throw new ReformError('요청글 삭제 중 오류가 발생했습니다.');
     }
   }
 

@@ -418,6 +418,24 @@ export class ReformRepository {
     return result;
   }
 
+  async deleteRequestPhotos(requestId: string){
+  await this.prisma.reform_request_photo.deleteMany({
+    where: { 
+      reform_request_id : requestId 
+      }
+    })
+  }
+
+  async deleteRequest(requestId: string, userId: string){
+    await this.prisma.reform_request.deleteMany({
+      where: {
+        reform_request_id : requestId,
+        user_id : userId
+      }
+    })
+  }
+  
+
   async updateProposal(
     dto: ReformProposalUpdate,
     categoryId?: UUID
