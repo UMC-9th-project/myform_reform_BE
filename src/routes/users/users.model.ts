@@ -1,8 +1,8 @@
 import prisma from '../../config/prisma.config.js';
-import { UsersInfoResponse } from './dto/users.res.dto.js';
+import { UpdateUserProfileResponseDto, UsersInfoResponse, UserProfileResponseDto } from './dto/users.res.dto.js';
 import { UpdateReformerStatusRequest } from './dto/users.req.dto.js';
 import { account_role, owner, provider_type, social_account, user } from '@prisma/client';
-
+import { Prisma } from '@prisma/client';
 export class UsersModel {
   private prisma;
 
@@ -191,5 +191,40 @@ export class UsersModel {
       }
     }
     return null;
+  }
+}
+
+export type RawUserPorfile = Prisma.userGetPayload<{
+  select: {
+    user_id: true,
+    email: true,
+    name: true,
+    nickname: true,
+    phone: true,
+    profile_photo: true
+  }
+}>
+
+export class UserProfile {
+  private props: UserProfileResponseDto
+
+  private constructor(props: UserProfileResponseDto) {
+    this.props = props;
+  }
+
+  static create(raw: RawUserPorfile): UserProfile {
+    return new UserProfile({
+      userId: raw.user_id,
+      email: raw.email ?? '',
+      name: raw.name ?? '',
+      nickName: raw.nickname ?? '',
+      phone: raw.phone ?? '',
+      profilePhoto: raw.profile_photo ?? '',
+      role: 'user'
+    })
+  }
+  
+  toDto() {
+    return { ...this.props };
   }
 }

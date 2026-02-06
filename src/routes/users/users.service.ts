@@ -1,9 +1,32 @@
-import { CheckNicknameResponse, UpdateUserProfileResponseDto, UsersInfoResponse, UpdateReformerProfileResponseDto, UserDetailInfoResponseDto, ReformerDetailInfoResponseDto } from './dto/users.res.dto.js';
-import { UpdateReformerStatusRequest, UpdateUserProfileParams, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto, UpdateReformerProfileParams } from './dto/users.req.dto.js';
+import { 
+  CheckNicknameResponse, 
+  UpdateUserProfileResponseDto, 
+  UsersInfoResponse, 
+  UpdateReformerProfileResponseDto, 
+  UserDetailInfoResponseDto, 
+  ReformerDetailInfoResponseDto 
+} from './dto/users.res.dto.js';
+import { 
+  UpdateReformerStatusRequest, 
+  UpdateUserProfileParams, 
+  UpdateUserProfileRequestDto,
+  UpdateReformerProfileRequestDto, 
+  UpdateReformerProfileParams 
+} from './dto/users.req.dto.js';
 import { validateNickname } from '../../utils/validators.js';
-import { UsersModel } from './users.model.js';
-import { EmailDuplicateError, UnknownAuthError, AccountNotFoundError } from '../auth/auth.error.js';
-import { NicknameDuplicateError, PhoneNumberDuplicateError } from './users.error.js';
+import { 
+  UsersModel, 
+  UserProfile 
+} from './users.model.js';
+import { 
+  EmailDuplicateError,
+  UnknownAuthError, 
+  AccountNotFoundError 
+} from '../auth/auth.error.js';
+import { 
+  NicknameDuplicateError, 
+  PhoneNumberDuplicateError 
+} from './users.error.js';
 import { UsersRepository } from './users.repository.js';
 import { AuthStatus } from '../auth/auth.dto.js';
 
@@ -121,5 +144,14 @@ export class UsersService {
       return reformerDetailInfo;
     }
     throw new AccountNotFoundError('존재하지 않는 리폼러입니다.');
+  }
+
+  // 일반 유저 프로필 조회
+  async getUserProfile(userId: string): Promise<UserProfile> {
+    const userProfile = await this.usersRepository.getUserProfile(userId);
+    if (!userProfile){
+      throw new AccountNotFoundError('존재하지 않는 유저 계정입니다.')
+    }
+    return UserProfile.create(userProfile)
   }
 }
