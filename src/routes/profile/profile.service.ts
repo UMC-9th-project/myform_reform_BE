@@ -471,7 +471,7 @@ export class ProfileService {
   }
 
   // 주문 목록 조회
-  async getOrders(dto: OrderRequestDto): Promise<Order[]> {
+  async getOrders(dto: OrderRequestDto): Promise<{ orders: Order[], nextCursor: string | null, hasNext: boolean }> {
     // 1. 초기 조건에 맞는 주문 목록 조회
     const orders = await this.profileRepository.getOrdersByUserId(dto);
     
@@ -516,8 +516,13 @@ export class ProfileService {
     return Order.create(order, info.title, info.thumbnail);
   });
 
-  // 6. 주문 타입 별로 필터링
-  return ordersPreview
+  const nextCursor = hasNext ? actualOrders[actualOrders.length - 1].order_id : null;
+
+  return {
+    orders: ordersPreview,
+    nextCursor,
+    hasNext
+    };
   }
 
   async getOrderDetail(userId: string, orderId: string): Promise<OrderDetailResponseDto> {

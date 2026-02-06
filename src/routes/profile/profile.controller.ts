@@ -37,7 +37,8 @@ import {
   ProposalListResponse,
   ReviewListResponse,
   OrderResponseDto,
-  OrderDetailResponseDto
+  OrderDetailResponseDto,
+  OrderListResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -311,28 +312,32 @@ export class ProfileController extends Controller {
    * @param type 주문제작 or 판매상품 선택
    * @param page 현재 페이지
    * @param limit 한 페이지 보여줄 목록 수
-   * @param OnlyReviewAvailable 리뷰 가능한 주문 목록만 조회하기 (리뷰 가능 조건 : PENDING이 아닐 때)
+   * @param OnlyReviewAvailable 리뷰 가능한 주문 목록만 조회하기 (리뷰 가능 조건 : PENDING이 아닐 때, 작성된 리뷰가 없을 때)
    */
+  @Security('jwt', ['user'])
   @Get('orders')
-  // @Security('jwt', ['user'])
   @SuccessResponse(200, '구매이력 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getOrders(
     @Query() type: 'ITEM' | 'REFORM' | 'ALL',
-    @Query() userId: string,
+    @Request() req: ExRequest,
+    // @Query() userId: string,
     @Query() cursor?: string,
     @Query() limit: number = 20,
     @Query() order: 'asc' | 'desc' = 'desc',
     @Query() OnlyReviewAvailable: boolean = false,
-    // @Request() req: ExRequest,
-  ): Promise<TsoaResponse<OrderResponseDto[]>> {
-    // const payload = req.user;
-    // const userId = payload.id;
-    const dto = new OrderRequestDto(type, cursor, limit, userId, OnlyReviewAvailable, order);
-    const data = await this.profileService.getOrders(dto);
-    const res = data.map((order) => {
-      return order.toResponse();
-    });
+  ): Promise<TsoaResponse<OrderListResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    // console.log(userId);
+    const dto = new OrderRequestDto(type, cursor, limit, userId, OnlyReviewAvailable, order); 
+    const { orders, nextCursor, hasNext } = await this.profileService.getOrders(dto);
+    const ordersRes = orders.map((o) => o.toResponse());
+    const res: OrderListResponseDto = {
+      orders: ordersRes,
+      nextCursor,
+      hasNext
+    };
     return new ResponseHandler(res);
   }
 

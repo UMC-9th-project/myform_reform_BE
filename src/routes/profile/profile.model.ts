@@ -294,8 +294,12 @@ export class Order {
   }
 
   static create(raw: RawOrderData, title: string, thumbnail: string): Order {
-    const totalPrice = raw.price!.toNumber() + raw.delivery_fee!.toNumber();
-    const reviewAvailable = raw.status !== 'PENDING' && raw.review[0]?.review_id ? false : true;
+    const price = raw.price ? raw.price.toNumber() : 0;
+    const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
+    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
+    const isPending = raw.status === 'PENDING';
+    const hasReview = raw.review.length > 0;
+    const reviewAvailable = !isPending && !hasReview;
     return new Order({
       receiptNumber: raw.receipt.receipt_number!,
       title: title,
@@ -303,20 +307,13 @@ export class Order {
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
       status: raw.status!,
-      price: raw.price!.toNumber(),
-      deliveryFee: raw.delivery_fee!.toNumber(),
-      totalPrice: totalPrice.toString(),
-      targetType: raw.target_type!,
-      quantity: raw.quantity!,
-      trackingNumber: raw.tracking_number!,
-      ownerNickname: raw.owner.nickname!,
+      price: price,
+      deliveryFee: delivery_fee,
+      totalPrice: totalPrice,
+      targetType: raw.target_type ?? 'ITEM',
+      quantity: raw.quantity ?? 1,
+      ownerNickname: raw.owner.nickname ?? '',
       createdAt: raw.receipt.created_at ?? new Date(),
-      deliveryAddress: raw.receipt.delivery_address!,
-      deliveryAddressDetail: raw.receipt.delivery_address_detail!,
-      deliveryAddressName: raw.receipt.delivery_address_name!,
-      deliveryPhone: raw.receipt.delivery_phone!,
-      deliveryPostalCode: raw.receipt.delivery_postal_code!,
-      deliveryRecipientName: raw.receipt.delivery_recipient_name!,
       reviewAvailable: reviewAvailable,
       reviewId: raw.review[0]?.review_id ?? null
     });
@@ -374,7 +371,9 @@ export class OrderDetail {
   }
 
   static create(raw: RawOrderDetailData, title: string | undefined, thumbnail: string | undefined, options : RawOptionItemsWithGroup[]): OrderDetail {
-    const totalPrice = (raw.price!.toNumber() + raw.delivery_fee!.toNumber()).toString();
+    const price = raw.price ? raw.price.toNumber() : 0;
+    const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
+    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
     return new OrderDetail({
       title: title ?? '',
       thumbnail: thumbnail ?? '',
@@ -382,8 +381,8 @@ export class OrderDetail {
       targetType: raw.target_type!,
       targetId: raw.target_id!,
       status: raw.status ?? 'PENDING',
-      price: raw.price!.toNumber()!,
-      deliveryFee: raw.delivery_fee!.toNumber(),
+      price: price,
+      deliveryFee: delivery_fee,
       totalPrice: totalPrice,
       trackingNumber: raw.tracking_number ?? '',
       createdAt: raw.receipt.created_at ?? new Date(),

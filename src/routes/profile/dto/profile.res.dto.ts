@@ -130,13 +130,12 @@ export interface OrderResponseDto {
   thumbnail: string;
   reviewAvailable: boolean;
   reviewId: UUID | null;
-  trackingNumber: string;
-  deliveryAddress: string;
-  deliveryAddressDetail: string;
-  deliveryAddressName: string;
-  deliveryPhone: string;
-  deliveryPostalCode: string;
-  deliveryRecipientName: string;
+}
+
+export interface OrderListResponseDto {
+  orders: OrderResponseDto[];
+  nextCursor: string | null;
+  hasNext: boolean;
 }
 
 export interface OrderDetailResponseDto{

@@ -548,8 +548,14 @@ export class ProfileRepository {
       skip: cursor ? 1 : 0,
       cursor: cursor ? { order_id: cursor } : undefined,
       orderBy: [
-        { created_at: order },
-        { order_id: order }
+        {
+          receipt: {
+            created_at: order
+          }
+        },
+        {
+          order_id: order
+        }
       ],
       select: {
         order_id: true,
@@ -568,13 +574,7 @@ export class ProfileRepository {
         receipt: {
           select: {
             created_at: true,
-            receipt_number: true,
-            delivery_address: true,
-            delivery_address_detail: true,
-            delivery_address_name: true,
-            delivery_phone: true,
-            delivery_postal_code: true,
-            delivery_recipient_name: true,
+            receipt_number: true
           }
         },
         review: {
