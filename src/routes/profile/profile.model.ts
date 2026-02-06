@@ -296,7 +296,7 @@ export class Order {
     const hasReview = raw.review.length > 0;
     const reviewAvailable = !isPending && !hasReview;
     return new Order({
-      receiptNumber: raw.receipt.receipt_number!,
+      receiptNumber: raw.receipt?.receipt_number ?? '',
       title: title,
       thumbnail: thumbnail,
       orderId: raw.order_id as UUID,
@@ -308,7 +308,7 @@ export class Order {
       totalPrice: totalPrice,
       quantity: raw.quantity ?? 1,
       ownerNickname: raw.owner.nickname ?? '',
-      createdAt: raw.receipt.created_at ?? new Date(),
+      createdAt: raw.receipt?.created_at ?? new Date(),
       reviewAvailable: reviewAvailable,
       reviewId: raw.review[0]?.review_id ?? null
     });
@@ -380,14 +380,14 @@ export class OrderDetail {
       deliveryFee: delivery_fee,
       totalPrice: totalPrice,
       trackingNumber: raw.tracking_number ?? '',
-      createdAt: raw.receipt.created_at ?? new Date(),
-      receiptNumber: raw.receipt.receipt_number ?? '',
-      deliveryPostalCode: raw.receipt.delivery_postal_code ?? '',
-      deliveryAddress: raw.receipt.delivery_address ?? '',
-      deliveryAddressDetail: raw.receipt.delivery_address_detail ?? '',
-      deliveryRecipientName: raw.receipt.delivery_recipient_name ?? '',
-      deliveryPhone: raw.receipt.delivery_phone ?? '',
-      deliveryAddressName: raw.receipt.delivery_address_name ?? '',
+      createdAt: raw.receipt?.created_at ?? new Date(),
+      receiptNumber: raw.receipt?.receipt_number ?? '',
+      deliveryPostalCode: raw.receipt?.delivery_postal_code ?? '',
+      deliveryAddress: raw.receipt?.delivery_address ?? '',
+      deliveryAddressDetail: raw.receipt?.delivery_address_detail ?? '',
+      deliveryRecipientName: raw.receipt?.delivery_recipient_name ?? '',
+      deliveryPhone: raw.receipt?.delivery_phone ?? '',
+      deliveryAddressName: raw.receipt?.delivery_address_name ?? '',
       options : options
     });
   }
