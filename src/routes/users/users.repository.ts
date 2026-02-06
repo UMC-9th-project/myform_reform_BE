@@ -2,6 +2,7 @@ import { DatabaseError } from "./users.error.js";
 import { UpdateReformerProfileParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
 import prisma from "../../config/prisma.config.js";
 import { user, owner } from "@prisma/client";
+import { RawUserPorfile } from './users.model.js'
 
 export class UsersRepository {
   async updateUserProfile(updateUserProfileParams: UpdateUserProfileParams): Promise<user> {
@@ -55,5 +56,22 @@ export class UsersRepository {
       console.error(error);
       throw new DatabaseError('리폼러 조회 중 DB에서 오류가 발생했습니다.');
     }
+  }
+
+  async getUserProfile(userId: string): Promise<RawUserPorfile | null> {
+    const userProfile = await prisma.user.findUnique({
+      where: {
+        user_id: userId
+      },
+      select: {
+        user_id: true,
+        email: true,
+        name: true,
+        nickname: true,
+        phone: true,
+        profile_photo: true
+      }
+    })
+    return userProfile
   }
 }
