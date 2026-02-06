@@ -9,7 +9,7 @@ import {
 import {
   OrderNotFoundError
 } from '../orders/orders.error.js';
-import { AddFeedRequestDto, OrderRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
+import { AddFeedRequestDto, OrderRequestDto, RequestListRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -18,7 +18,7 @@ import {
   ReformDto,
   Sale,
   SaleDetail,
-  OrderDetail
+  OrderDetail,
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -27,7 +27,8 @@ import type {
   MarketListResponse,
   ProposalListResponse,
   ReviewListResponse,
-  OrderDetailResponseDto
+  OrderDetailResponseDto,
+  RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
@@ -562,6 +563,19 @@ export class ProfileService {
         return requests[0] ? { title: requests[0].title ?? '', thumbnail: requests[0].photo ?? ''} : undefined;
       default:
         return undefined;
+    }
+  }
+  
+
+  async getRequests(dto: RequestListRequestDto): Promise< RequestsListResponseDto >{
+    const requests = await this.profileRepository.getRequestsByUserId(dto);
+    const hasNext = requests.length > dto.limit;
+    const actualRequests = hasNext ? requests.slice(0, dto.limit) : requests
+    const nextCursor = hasNext ? actualRequests[actualRequests.length - 1].reformRequestId : null
+    return {
+      requestData: actualRequests,
+      nextCursor,
+      hasNext
     }
   }
 }

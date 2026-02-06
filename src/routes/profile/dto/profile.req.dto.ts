@@ -136,3 +136,21 @@ export class OrderRequestDto {
     this.order = order;
   }
 }
+
+export class RequestListRequestDto{
+  cursor: string;
+  limit: number;
+  userId: UUID;
+  order: 'asc' | 'desc' = 'desc';
+  constructor(
+    cursor: string | undefined,
+    limit: number,
+    userId: UUID,
+    order: 'asc' | 'desc' = 'desc'
+  ) {
+    this.cursor = cursor ?? '';
+    this.limit = limit;
+    this.userId = userId;
+    this.order = order;
+  }
+}

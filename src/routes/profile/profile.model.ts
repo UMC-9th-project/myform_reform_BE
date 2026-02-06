@@ -305,12 +305,12 @@ export class Order {
       title: title,
       thumbnail: thumbnail,
       orderId: raw.order_id as UUID,
+      targetType: raw.target_type ?? 'ITEM',
       targetId: raw.target_id as UUID,
       status: raw.status!,
       price: price,
       deliveryFee: delivery_fee,
       totalPrice: totalPrice,
-      targetType: raw.target_type ?? 'ITEM',
       quantity: raw.quantity ?? 1,
       ownerNickname: raw.owner.nickname ?? '',
       createdAt: raw.receipt.created_at ?? new Date(),
@@ -400,4 +400,35 @@ export class OrderDetail {
   toResponse(): OrderDetailResponseDto {
     return { ...this.props };
   }  
+}
+
+export type RawRequestData = Prisma.reform_requestGetPayload<{
+  select: {
+    reform_request_id: true;
+    user_id: true;
+    title: true;
+    min_budget: true;
+    max_budget: true;
+    due_date: true;
+    created_at: true;
+    reform_request_photo: {
+      select: {
+        reform_request_photo_id: true;
+        content: true;
+      };
+      take: 1;
+    };
+  };
+}>;
+
+export type RequestData = {
+  reformRequestId:UUID;
+  userId: UUID;
+  title: string;
+  minBudget: number | null;
+  maxBudget: number | null;
+  dueDate: Date | null;
+  createdAt: Date | null;
+  reformRequestPhotoId: UUID;
+  thumbnail: string | null;
 }

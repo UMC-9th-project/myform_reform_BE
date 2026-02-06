@@ -25,7 +25,8 @@ import {
   AddItemRequestDto,
   AddReformRequestDto,
   SaleRequestDto,
-  OrderRequestDto
+  OrderRequestDto,
+  RequestListRequestDto
 } from './dto/profile.req.dto.js';
 import {
   AddFeedResponseDto,
@@ -36,9 +37,9 @@ import {
   MarketListResponse,
   ProposalListResponse,
   ReviewListResponse,
-  OrderResponseDto,
   OrderDetailResponseDto,
-  OrderListResponseDto
+  OrderListResponseDto,
+  RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -310,8 +311,8 @@ export class ProfileController extends Controller {
    * @summary 사용자의 전체 구매이력 목록을 조회합니다
    * @returns 구매이력 목록
    * @param type 주문제작 or 판매상품 선택
-   * @param page 현재 페이지
-   * @param limit 한 페이지 보여줄 목록 수
+   * @param cursor 페이지네이션 커서
+   * @param limit 한 번에 보여줄 목록 수
    * @param OnlyReviewAvailable 리뷰 가능한 주문 목록만 조회하기 (리뷰 가능 조건 : PENDING이 아닐 때, 작성된 리뷰가 없을 때)
    */
   @Security('jwt', ['user'])
@@ -321,7 +322,6 @@ export class ProfileController extends Controller {
   public async getOrders(
     @Query() type: 'ITEM' | 'REFORM' | 'ALL',
     @Request() req: ExRequest,
-    // @Query() userId: string,
     @Query() cursor?: string,
     @Query() limit: number = 20,
     @Query() order: 'asc' | 'desc' = 'desc',
@@ -359,6 +359,30 @@ export class ProfileController extends Controller {
     const payload = req.user;
     const userId = payload.id;
     const data = await this.profileService.getOrderDetail(userId, id);
+    return new ResponseHandler(data);
+  }
+
+  /**
+   * 일반 유저 작성한 요청 글목록 조회
+   * @summary 작성한 요청글 목록을 조회합니다. (일반 유저, 자신의 글만 조회 가능)
+   * @param cursor 페이지네이션 커서 (optional)
+   * @param limit 한 번에 보여줄 목록 수 (기본 값 20)
+   * @return 사용자가 작성한 요청글 목록
+   */
+  @Get('requests')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '작성 요청글 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getRequests(
+    @Request() req: ExRequest,
+    @Query() cursor?: string,
+    @Query() limit: number = 20,
+    @Query() order: 'asc' | 'desc' = 'desc',
+  ): Promise<TsoaResponse<RequestsListResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const dto = new RequestListRequestDto(cursor, limit, userId, order)
+    const data = await this.profileService.getRequests(dto);
     return new ResponseHandler(data);
   }
 

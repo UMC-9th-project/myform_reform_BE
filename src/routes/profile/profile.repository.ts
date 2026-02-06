@@ -4,7 +4,7 @@
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
-import { OrderRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
+import { OrderRequestDto, RequestListRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -15,7 +15,9 @@ import {
   ReformDto,
   RawOrderData,
   RawOrderDetailData,
-  RawOptionItemsWithGroup
+  RawOptionItemsWithGroup,
+  RequestData,
+  RawRequestData
 } from './profile.model.js';
 import { OptionGroup } from '../../@types/item.js';
 import { target_type_enum } from '@prisma/client';
@@ -658,5 +660,56 @@ export class ProfileRepository {
         }
       }
     })
+  }
+
+  async getRequestsByUserId(dto: RequestListRequestDto): Promise<RequestData[]> {
+    const { cursor, limit, userId, order } = dto;
+    const requests: RawRequestData[] = await this.prisma.reform_request.findMany({
+      where: {
+        user_id: userId
+      },
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { reform_request_id : cursor } : undefined,
+      orderBy: [
+        { created_at: order },
+        { reform_request_id: order }
+      ],
+      select: {
+        reform_request_id: true,
+        user_id: true,
+        title: true,
+        min_budget: true,
+        max_budget: true,
+        due_date: true,
+        created_at: true,
+        reform_request_photo: {
+          select: {
+            reform_request_photo_id: true,
+            content: true,
+          },
+          orderBy:  [
+              { photo_order: 'asc' },
+              { reform_request_photo_id : 'asc'}
+            ],
+          take: 1
+        }
+      }
+    })
+    return requests.map((request) => {
+      const photo = request.reform_request_photo[0];
+
+      return {
+        reformRequestId: request.reform_request_id,
+        userId: request.user_id ?? userId,
+        title: request.title ?? '',
+        minBudget: request.min_budget ? Number(request.min_budget) : null,
+        maxBudget: request.max_budget ? Number(request.max_budget) : null,
+        dueDate: request.due_date,
+        createdAt: request.created_at,
+        reformRequestPhotoId: photo?.reform_request_photo_id ?? null,
+        thumbnail: photo?.content ?? '' 
+      };
+    });
   }
 }
