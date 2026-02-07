@@ -308,6 +308,30 @@ export class ProfileRepository {
     }));
   }
 
+  async getFeedInfos(feedIds: string[]) {
+    if(feedIds.length === 0) return [];
+    const feeds = await this.prisma.chat_proposal.findMany({
+      where: { chat_proposal_id: { in : feedIds } },
+      select: {
+        chat_proposal_id: true,
+        title: true,
+        price: true,
+        delivery: true,
+        expected_working: true,
+        image: true
+      }
+    });
+    return feeds.map((feed: (typeof feeds)[number]) => ({
+      chatProposalId: feed.chat_proposal_id,
+      title: feed.title ?? '',
+      photo : feed.image[0] ?? '',
+      price: feed.price ?? 0,
+      delivery: feed.delivery ?? 0,
+      expectedWorking: feed.expected_working ?? 0,
+      image: feed.image ?? []
+    }))
+  }
+
   async getOrderDetail(
     ownerId: string,
     orderId: string
@@ -577,7 +601,7 @@ export class ProfileRepository {
   async getOrdersByUserId(dto: OrderRequestDto): Promise<RawOrderData[]> {
     const { userId, type, cursor, limit, order, onlyReviewAvailable } = dto;
     const targetTypeFilter = {
-      REFORM: { in: ['REQUEST', 'PROPOSAL'] },
+      REFORM: { in: ['REQUEST', 'PROPOSAL', 'FEED'] },
       ITEM: 'ITEM',
       ALL: undefined
     };
