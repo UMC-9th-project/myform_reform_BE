@@ -359,6 +359,7 @@ export class ReformRepository {
           price: true,
           delivery: true,
           expected_working: true,
+          owner_id: true,
           owner: {
             select: {
               name: true,
@@ -418,23 +419,22 @@ export class ReformRepository {
     return result;
   }
 
-  async deleteRequestPhotos(requestId: string){
-  await this.prisma.reform_request_photo.deleteMany({
-    where: { 
-      reform_request_id : requestId 
+  async deleteRequestPhotos(requestId: string) {
+    await this.prisma.reform_request_photo.deleteMany({
+      where: {
+        reform_request_id: requestId
       }
-    })
+    });
   }
 
-  async deleteRequest(requestId: string, userId: string){
+  async deleteRequest(requestId: string, userId: string) {
     await this.prisma.reform_request.deleteMany({
       where: {
-        reform_request_id : requestId,
-        user_id : userId
+        reform_request_id: requestId,
+        user_id: userId
       }
-    })
+    });
   }
-  
 
   async updateProposal(
     dto: ReformProposalUpdate,
@@ -520,5 +520,12 @@ export class ReformRepository {
         order_id: true
       }
     });
+  }
+  async checkIsWishUser(targetId: UUID, userId: UUID) {
+    return (
+      (await prisma.user_wish.findFirst({
+        where: { target_id: targetId, user_id: userId }
+      })) !== null
+    );
   }
 }
