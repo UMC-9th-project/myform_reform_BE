@@ -8,7 +8,6 @@ import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { AuthModel } from './auth.model.js';
-import { S3 } from '../../config/s3.js';
 import { UsersModel } from '../users/users.model.js';
 import { UsersInfoResponse } from '../users/dto/users.res.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
@@ -49,7 +48,7 @@ export class AuthService {
       attempts: 0,
       generatedAt: Date.now()
     });
-    const textMessage = `[니폼내폼] 본인 확인 인증번호 [${authCode}]입니다.`;
+    const textMessage = `[내폼리폼] 본인 확인 인증번호 [${authCode}]입니다.`;
     
     // Redis에 인증 코드 저장
     try {
@@ -71,7 +70,7 @@ export class AuthService {
       //SMS 전송 실패 시 Redis에서 인증 코드 삭제
       await redisClient.del(authKey);
       console.log(`SMS 전송 실패로 ${cleanPhoneNumber} 번호로 ${authCode} 인증 코드를 Redis에서 삭제했습니다.`);
-      throw new SmsProviderError(`SOLAPI API 요청 실패 : ${error.message}`);
+      throw new SmsProviderError(`SMS API 요청 실패 : ${error.message}`);
     }  
   }
 
@@ -172,11 +171,9 @@ export class AuthService {
   }
 
   // 리폼러 회원가입 처리
-  async signupReformer(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[])
+  async signupReformer(requestBody: ReformerSignupRequest)
   : Promise<AuthLoginResponse> {
-    await this.validateReformerSignupRequest(requestBody, portfolioPhotos);
-    const s3 = new S3();
-    const portfolioUrls = await s3.uploadManyToS3(portfolioPhotos);
+    await this.validateReformerSignupRequest(requestBody);
     return await this.processSignup(requestBody,  async (hashedPassword, cleanPhoneNumber) => {
       const { password, phoneNumber, oauthId, ...rest } = requestBody;
       const ownerDto: OwnerCreateDto = {
@@ -187,7 +184,7 @@ export class AuthService {
         role: 'reformer' as Role,
         businessNumber: this.getCleanBusinessNumber(rest.businessNumber),
         description: requestBody.description,
-        portfolioPhotos: portfolioUrls
+        portfolioPhotos: requestBody.portfolioPhotos
       };
       return await this.authModel.createOwner(ownerDto);
     });
@@ -381,11 +378,11 @@ export class AuthService {
   }
 
   // 리폼러 회원가입시 입력한 정보 유효성 검증
-  private async validateReformerSignupRequest(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[]): Promise<void> {
+  private async validateReformerSignupRequest(requestBody: ReformerSignupRequest): Promise<void> {
     await this.validateSignupRequest(requestBody, 'reformer');
     validateBusinessNumber(requestBody.businessNumber);
     validateDescription(requestBody.description);
-    validatePortfolioPhotos(portfolioPhotos);
+    validatePortfolioPhotos(requestBody.portfolioPhotos);
   }
 
   // 전화번호 숫자만 추출

@@ -87,9 +87,9 @@ export const validateDescription = (description: string): void => {
   }
 };
 
-export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]): void => {
-  if (portfolioPhotos.length === 0 || portfolioPhotos.length > 9){
-    throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
+export const validatePortfolioPhotos = (portfolioPhotos: string[]): void => {
+  if (portfolioPhotos.length === 0 || portfolioPhotos.length > 8){
+    throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 8장 이하로 업로드해주세요.');
   }
 };
 
