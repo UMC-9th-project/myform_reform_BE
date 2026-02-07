@@ -341,14 +341,19 @@ export class ReformService {
             payload.id
           );
 
-        const profile = await this.profileService.getProfileInfo(body.owner_id);
+        const [profile, avgStarRecent3mRaw] = await Promise.all([
+          this.profileService.getProfileInfo(body.owner_id),
+          this.reformRepository.findAvgStarRecent3MonthsByOwnerId(body.owner_id)
+        ]);
+        const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
 
         return ReformProposalFactory.createFromDetailRaw(
           body,
           images,
           profile,
           isOwner,
-          isWished
+          isWished,
+          avgStarRecent3m
         );
       });
     } catch (err: any) {

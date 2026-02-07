@@ -59,6 +59,7 @@ export interface ReformDetailProposalResponseDto {
     ownerName: string;
     ownerProfile: string;
     avgStar: number;
+    avgStarRecent3m: number;
     reviewCount: number;
     toatalSaleCount: number;
     keywords: string[];
