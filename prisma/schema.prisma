@@ -110,6 +110,7 @@ model chat_room {
   chat_message_chat_room_last_message_idTochat_message chat_message?  @relation("chat_room_last_message_idTochat_message", fields: [last_message_id], references: [message_id], onDelete: NoAction, onUpdate: NoAction)
   owner                                                owner          @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction)
   user                                                 user           @relation(fields: [requester_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  order                                                order[]
 
   @@index([owner_id])
   @@index([requester_id])
@@ -221,8 +222,10 @@ model order {
   receipt_id       String?            @db.Uuid
   quantity         Int?               @default(1)
   tracking_number  String?            @db.VarChar(50)
+  chat_room_id     String?            @db.Uuid
   owner            owner              @relation(fields: [owner_id], references: [owner_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_owner_TO_order_1")
   user             user               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_TO_order_1")
+  chat_room        chat_room?         @relation(fields: [chat_room_id], references: [chat_room_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_chat_room")
   receipt          receipt?           @relation(fields: [receipt_id], references: [receipt_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_receipt_to_order_1")
   order_option     order_option[]
   quote_photo      quote_photo[]
@@ -232,6 +235,7 @@ model order {
   @@index([status], map: "idx_order_status")
   @@index([user_id], map: "idx_order_user")
   @@index([receipt_id], map: "idx_order_receipt")
+  @@index([chat_room_id], map: "idx_order_chat_room")
 }
 
 model order_option {
@@ -467,6 +471,7 @@ model receipt {
   delivery_phone          String?   @db.VarChar(20)
   delivery_postal_code    String?   @db.VarChar(10)
   delivery_recipient_name String?   @db.VarChar(50)
+  approved_at             DateTime? @db.Timestamp(6)
   order                   order[]
 }
 
@@ -523,6 +528,7 @@ enum target_type_enum {
   REQUEST
   PROPOSAL
   ITEM
+  FEED
 }
 
 enum chat_target_type_enum {
