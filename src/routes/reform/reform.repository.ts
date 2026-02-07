@@ -1,6 +1,5 @@
 import prisma from '../../config/prisma.config.js';
 import { ReformFilter } from './dto/reform.req.dto.js';
-import { Category } from '../../@types/item.js';
 import {
   RawProposalDetail,
   RawProposalDetailImages,
@@ -73,40 +72,40 @@ export class ReformRepository {
     });
   }
 
-  async getCategoryIds(category: Category): Promise<string[]> {
-    // 소분류가 있으면 해당 소분류 ID만 반환
-    if (category.sub) {
-      const subCategory = await this.prisma.category.findFirst({
-        where: {
-          name: category.sub
-        },
-        select: { category_id: true }
-      });
-      return subCategory ? [subCategory.category_id] : [];
-    }
-
-    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
-    const majorCategory = await this.prisma.category.findFirst({
+  async findMajorCategory(
+    name: string
+  ): Promise<{ category_id: string } | null> {
+    return this.prisma.category.findFirst({
       where: {
-        name: category.major,
+        name,
         parent_id: null
       },
       select: { category_id: true }
     });
+  }
 
-    if (!majorCategory) return [];
-
-    const subCategories = await this.prisma.category.findMany({
+  async findSubCategory(
+    name: string,
+    parentId: string
+  ): Promise<{ category_id: string } | null> {
+    return this.prisma.category.findFirst({
       where: {
-        parent_id: majorCategory.category_id
+        name,
+        parent_id: parentId
       },
       select: { category_id: true }
     });
+  }
 
-    return [
-      majorCategory.category_id,
-      ...subCategories.map((c) => c.category_id)
-    ];
+  async findSubCategories(
+    parentId: string
+  ): Promise<{ category_id: string }[]> {
+    return this.prisma.category.findMany({
+      where: {
+        parent_id: parentId
+      },
+      select: { category_id: true }
+    });
   }
 
   async getRequestByRecent(

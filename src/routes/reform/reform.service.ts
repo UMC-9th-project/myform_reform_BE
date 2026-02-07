@@ -19,6 +19,7 @@ import {
 import { ReformRepository } from './reform.repository.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { CustomJwt } from '../../@types/expreees.js';
+import { Category } from '../../@types/item.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { ProfileService } from '../profile/profile.service.js';
 
@@ -30,6 +31,34 @@ export class ReformService {
     this.reformRepository = new ReformRepository();
     this.profileService = new ProfileService();
     this.s3 = new S3();
+  }
+
+  private async getCategoryIds(category: Category): Promise<string[]> {
+    // 먼저 대분류를 찾음
+    const majorCategory = await this.reformRepository.findMajorCategory(
+      category.major
+    );
+
+    if (!majorCategory) return [];
+
+    // 소분류가 있으면 해당 대분류 하위의 소분류 ID만 반환
+    if (category.sub) {
+      const subCategory = await this.reformRepository.findSubCategory(
+        category.sub,
+        majorCategory.category_id
+      );
+      return subCategory ? [subCategory.category_id] : [];
+    }
+
+    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
+    const subCategories = await this.reformRepository.findSubCategories(
+      majorCategory.category_id
+    );
+
+    return [
+      majorCategory.category_id,
+      ...subCategories.map((c) => c.category_id)
+    ];
   }
 
   async selectHomeReform(
@@ -82,9 +111,7 @@ export class ReformService {
   ): Promise<ReformRequestResponseDto[] | null> {
     try {
       return await runInTransaction(async () => {
-        const categoryId = await this.reformRepository.getCategoryIds(
-          filter.category
-        );
+        const categoryId = await this.getCategoryIds(filter.category);
 
         let requests;
         switch (filter.sortBy) {
@@ -143,9 +170,7 @@ export class ReformService {
       if (data.minBudget > data.maxBudget)
         throw new ReformError('예산 범위가 잘못 설정 되었습니다.');
 
-      const categoryId = await this.reformRepository.getCategoryIds(
-        data.category
-      );
+      const categoryId = await this.getCategoryIds(data.category);
 
       if (categoryId.length === 0)
         throw new ReformError('존재하지 않는 카테고리입니다');
@@ -226,9 +251,7 @@ export class ReformService {
       // 카테고리 ID 조회
       let categoryId: string | undefined;
       if (data.category !== undefined) {
-        const categoryIds = await this.reformRepository.getCategoryIds(
-          data.category
-        );
+        const categoryIds = await this.getCategoryIds(data.category);
         if (categoryIds.length === 0)
           throw new ReformError('존재하지 않는 카테고리입니다');
         categoryId = categoryIds[0];
@@ -273,9 +296,7 @@ export class ReformService {
   ): Promise<ReformProposalResponseDto[] | null> {
     try {
       return await runInTransaction(async () => {
-        const categoryId = await this.reformRepository.getCategoryIds(
-          filter.category
-        );
+        const categoryId = await this.getCategoryIds(filter.category);
 
         let proposals;
         switch (filter.sortBy) {
@@ -399,9 +420,7 @@ export class ReformService {
       // 카테고리 ID 조회
       let categoryId: string | undefined;
       if (data.category !== undefined) {
-        const categoryIds = await this.reformRepository.getCategoryIds(
-          data.category
-        );
+        const categoryIds = await this.getCategoryIds(data.category);
         if (categoryIds.length === 0)
           throw new ReformError('존재하지 않는 카테고리입니다');
         categoryId = categoryIds[0];
