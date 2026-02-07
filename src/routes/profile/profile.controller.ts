@@ -10,7 +10,8 @@ import {
   Body,
   Query,
   Security,
-  Request
+  Request,
+  Example
 } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
 import { ProfileService } from './profile.service.js';
@@ -388,9 +389,9 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 기본 정보 조회
-   * @summary owner ID로 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다
-   * @param id owner UUID
-   * @returns 프로필 정보
+   * @summary 리폼러 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다. owner UUID 또는 닉네임으로 조회할 수 있습니다.
+   * @param id owner UUID 또는 리폼러 닉네임
+   * @returns 프로필 정보 (ownerId, avgStarRecent3m 포함)
    */
   @Get('{id}')
   @SuccessResponse(200, '프로필 정보 조회 성공')
@@ -408,6 +409,21 @@ export class ProfileController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<ProfileInfoResponse>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      ownerId: '880e8400-e29b-41d4-a716-446655440000',
+      profilePhoto: 'https://example.com/profile.jpg',
+      nickname: '리폼러닉네임',
+      avgStar: 4.5,
+      avgStarRecent3m: 4.2,
+      reviewCount: 120,
+      totalSaleCount: 45,
+      keywords: ['리폼', '수선'],
+      bio: '프로필 소개글입니다.'
+    }
+  })
   public async getProfileInfo(
     @Path() id: string
   ): Promise<TsoaResponse<ProfileInfoResponse>> {
@@ -455,8 +471,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 판매 상품 목록 조회 (cursor 기반)
-   * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
-   * @param id owner UUID
+   * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 판매 상품 목록
@@ -496,8 +512,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 주문제작 목록 조회 (cursor 기반)
-   * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
-   * @param id owner UUID
+   * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 주문제작 목록
@@ -537,8 +553,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 리뷰 목록 조회 (cursor 기반)
-   * @summary owner에 대한 리뷰 목록을 조회합니다 (공개)
-   * @param id owner UUID
+   * @summary owner에 대한 리뷰 목록을 조회합니다 (공개). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 리뷰 목록
