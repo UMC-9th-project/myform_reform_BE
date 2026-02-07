@@ -19,6 +19,7 @@ import {
   Sale,
   SaleDetail,
   OrderDetail,
+  RawOptionItemsWithGroup,
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -541,11 +542,15 @@ export class ProfileService {
     }
 
     // 2. 옵션 조회
-    const [info, optionItemIds] = await Promise.all([
-      this.getTargetInfo(order.target_type, order.target_id),
-      this.profileRepository.getOptionIdsByOrderId(orderId)
-    ])
-    const optionItemsWithGroup = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    const optionItemIds = await this.profileRepository.getOptionIdsByOrderId(orderId)
+    let optionItemsWithGroup: RawOptionItemsWithGroup[] = [];
+    if(optionItemIds.length > 0 ){
+      optionItemsWithGroup = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    }
+
+    const [info] = await Promise.all([
+      this.getTargetInfo(order.target_type, order.target_id)
+    ])    
     
     // 3. 결과값 리턴
     const orderDetail = OrderDetail.create(order,info?.title, info?.thumbnail, optionItemsWithGroup)
@@ -565,6 +570,9 @@ export class ProfileService {
       case 'REQUEST':
         const requests = await this.profileRepository.getRequestInfos([id]);
         return requests[0] ? { title: requests[0].title ?? '', thumbnail: requests[0].photo ?? ''} : undefined;
+      case 'FEED':
+        const feeds = await this.profileRepository.getFeedInfos([id]);
+        return feeds[0] ? { title: feeds[0].title ?? '', thumbnail: feeds[0].photo ?? ''} : undefined;
       default:
         return undefined;
     }

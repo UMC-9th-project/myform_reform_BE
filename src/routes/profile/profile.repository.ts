@@ -689,6 +689,7 @@ export class ProfileRepository {
   }
 
   async getOptionIdsByOrderId(orderId: string): Promise<string[]> {
+    if (!orderId) return [];
     const optionIds = await prisma.order_option.findMany({
       where: { order_id: orderId },
       orderBy: [
@@ -712,6 +713,13 @@ export class ProfileRepository {
 
   async getOptionItemsWithGroup(optionItemIds: string[] | undefined ): Promise<RawOptionItemsWithGroup[]> {
     return await prisma.option_group.findMany({
+      where: {
+        option_item: {
+          some: {
+            option_item_id: { in: optionItemIds }
+          }
+        }
+      },
       orderBy: {
         sort_order: 'asc'
       },
