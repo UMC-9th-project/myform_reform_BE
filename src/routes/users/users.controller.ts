@@ -55,7 +55,7 @@ export class UsersController extends Controller {
   }
 
   /**
-   * @summary 리폼러 인증 상태를 업데이트합니다.
+   * @summary 리폼러 인증 상태를 업데이트합니다. 상태가 변경되면 리폼러에게 문자로 변경 사항을 안내합니다.
    * @param reformerId 리폼러 ID
    * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED)
    * @returns 리폼러 상태 업데이트 결과

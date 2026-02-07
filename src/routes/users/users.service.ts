@@ -6,6 +6,7 @@ import {
   UserDetailInfoResponseDto, 
   ReformerDetailInfoResponseDto 
 } from './dto/users.res.dto.js';
+import { SolapiMessageService} from 'solapi';
 import { 
   UpdateReformerStatusRequest, 
   UpdateUserProfileParams, 
@@ -21,7 +22,8 @@ import {
 import { 
   EmailDuplicateError,
   UnknownAuthError, 
-  AccountNotFoundError 
+  AccountNotFoundError, 
+  SmsProviderError
 } from '../auth/auth.error.js';
 import { 
   NicknameDuplicateError, 
@@ -29,6 +31,11 @@ import {
 } from './users.error.js';
 import { UsersRepository } from './users.repository.js';
 import { AuthStatus } from '../auth/auth.dto.js';
+
+const messageService = new SolapiMessageService(
+  process.env.SOLAPI_API_KEY || '',
+  process.env.SOLAPI_API_SECRET || ''
+);
 
 export class UsersService {
 
@@ -41,7 +48,18 @@ export class UsersService {
 
   // 리폼러 상태 업데이트
   async updateReformerStatus(reformerId: string, requestBody: UpdateReformerStatusRequest): Promise<UsersInfoResponse> {
+    const reformer = await this.usersRepository.findReformerbyReformerId(reformerId);
+    if (!reformer) {
+      throw new AccountNotFoundError('리폼러의 계정이 존재하지 않습니다.')
+    }
     const result = await this.usersModel.updateReformerStatus(reformerId, requestBody);
+    
+    
+    if (result.auth_status && reformer.status !== result.auth_status) {
+      this.sendNotificationSms(reformer.phone, result.auth_status).catch(err => {
+        console.error(`[SMS 전송 실패] ID: ${reformerId}, Error: ${err.message}`)
+      })
+    }
     return result as UsersInfoResponse;
   }
 
@@ -153,5 +171,28 @@ export class UsersService {
       throw new AccountNotFoundError('존재하지 않는 유저 계정입니다.')
     }
     return UserProfile.create(userProfile)
+  }
+
+  private async sendNotificationSms(phone: string | null, status: string) {
+    if (!phone) return;
+
+    const statusMap: Record<string, string> = {
+      'APPROVED': '승인',
+      'REJECTED': '승인 거부',
+      'PENDING': '대기 상태로 변경'
+    };
+
+    const resultStatus = statusMap[status] || '처리';
+    const textMessage = `[내폼리폼] 프로필 검토 결과 ${resultStatus}되었음을 알려드립니다.`;
+
+    try {
+      await messageService.send({
+        to: phone,
+        from: process.env.SOLAPI_PHONE_NUMBER!,
+        text: textMessage
+      });
+    } catch (error: any) {
+      throw new SmsProviderError(`SMS API 요청 실패 : ${error.message}`);
+    }
   }
 }
