@@ -399,6 +399,7 @@ export class ProfileRepository {
     return await this.prisma.owner.findUnique({
       where: { owner_id: ownerId },
       select: {
+        owner_id: true,
         profile_photo: true,
         nickname: true,
         avg_star: true,
@@ -407,6 +408,34 @@ export class ProfileRepository {
         bio: true
       }
     });
+  }
+
+  async findOwnerByNickname(nickname: string) {
+    return await this.prisma.owner.findUnique({
+      where: { nickname },
+      select: {
+        owner_id: true,
+        profile_photo: true,
+        nickname: true,
+        avg_star: true,
+        review_count: true,
+        keywords: true,
+        bio: true
+      }
+    });
+  }
+
+  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await this.prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   async countSaleByOwnerId(ownerId: string): Promise<number> {
