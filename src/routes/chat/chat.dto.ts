@@ -1,5 +1,5 @@
 import { UUID } from '../../@types/common.js';
-import { ChatRoomFilter } from './chat.model.js';
+import { ChatRoomFilter, MessageType } from './chat.model.js';
 
 /**
  * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
@@ -145,7 +145,7 @@ export interface ChatRoomPreviewDTO {
      * 마지막 메시지 타입
      * @example "TEXT"
      */
-    messageType: 'TEXT' | 'IMAGE' | 'OTHER';
+    messageType: MessageType;
     /**
      * 채팅방 분류
      * - INQUIRY: 문의 채팅

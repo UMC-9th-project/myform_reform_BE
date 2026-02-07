@@ -92,7 +92,7 @@ export class ChatController extends Controller {
           image: "https://s3.example.com/thumb.jpg",
           title: "리폼마스터",
           roomType: "FEED",
-          messageType: "TEXT",
+          messageType: "text",
           type: "INQUIRY",
           lastMessage: "안녕하세요, 문의드립니다.",
           lastMessageAt: new Date(),
