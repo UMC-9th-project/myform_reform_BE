@@ -116,3 +116,50 @@ export interface UnifiedProductInfo {
   title: string;
   thumbnail: string;
 }
+
+// 제안서 리뷰 목록 조회용 DTO
+export interface ProposalReviewDto {
+  reviewId: string;
+  userId: string;
+  userNickname: string;
+  userProfilePhoto: string;
+  star: number;
+  createdAt: Date;
+  content: string;
+  reviewPhotos: string[];
+}
+
+export interface ProposalReviewListResponseDto {
+  totalCount: number;
+  avgStar: number;
+  photoReviewCount: number;
+  reviewPhotos: string[];
+  reviews: ProposalReviewDto[];
+  cursor: string | null;
+  hasNext: boolean;
+}
+
+export type ProposalReviewSortBy = 'recent' | 'high_rating' | 'low_rating';
+
+export type RawProposalReviewData = Prisma.reviewGetPayload<{
+  select: {
+    review_id: true;
+    user_id: true;
+    star: true;
+    content: true;
+    created_at: true;
+    review_photo: {
+      select: {
+        content: true;
+        photo_order: true;
+      };
+    };
+  };
+}>;
+
+export interface ProposalReviewStats {
+  totalCount: number;
+  avgStar: number;
+  photoReviewCount: number;
+  reviewPhotos: string[];
+}
