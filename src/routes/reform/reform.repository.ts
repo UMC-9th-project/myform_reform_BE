@@ -528,4 +528,11 @@ export class ReformRepository {
       })) !== null
     );
   }
+  async checkIsWishReformer(targetId: UUID, ownerId: UUID) {
+    return (
+      (await prisma.owner_wish.findFirst({
+        where: { reform_request_id: targetId, owner_id: ownerId }
+      })) !== null
+    );
+  }
 }

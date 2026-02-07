@@ -19,6 +19,7 @@ export interface ReformProposalResponseDto {
 export interface ReformRequestResponseDto {
   reformRequestId: UUID;
   thumbnail: string;
+  isWished: boolean;
   title: string;
   minBudget: number;
   maxBudget: number;

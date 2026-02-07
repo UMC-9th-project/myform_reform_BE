@@ -214,8 +214,12 @@ export class ReformRequestUpdate {
 // 팩토리 클래스
 export class ReformRequestFactory {
   // 조회용: DB 결과 -> 응답 객체
-  static createFromRaw(raw: RawRequestLatest): ReformRequestResponse {
+  static createFromRaw(
+    raw: RawRequestLatest,
+    isWished: boolean
+  ): ReformRequestResponse {
     return new ReformRequestResponse({
+      isWished: isWished,
       reformRequestId: raw.reform_request_id,
       thumbnail: raw.reform_request_photo[0]?.content ?? '',
       title: raw.title ?? '',

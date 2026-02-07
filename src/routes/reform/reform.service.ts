@@ -42,8 +42,17 @@ export class ReformService {
           this.reformRepository.selectProposalLatest()
         ]);
 
-        const requests = requestData.map((o) =>
-          ReformRequestFactory.createFromRaw(o).toDto()
+        const requests = await Promise.all(
+          requestData.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
         );
 
         const proposals = await Promise.all(
@@ -68,30 +77,48 @@ export class ReformService {
   }
 
   async getRequest(
-    filter: ReformFilter
+    filter: ReformFilter,
+    payload?: CustomJwt
   ): Promise<ReformRequestResponseDto[] | null> {
     try {
-      const categoryId = await this.reformRepository.getCategoryIds(
-        filter.category
-      );
-      if (filter.sortBy === 'RECENT') {
-        const ans = await this.reformRepository.getRequestByRecent(
-          filter,
-          categoryId
+      return await runInTransaction(async () => {
+        const categoryId = await this.reformRepository.getCategoryIds(
+          filter.category
         );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
-      if (filter.sortBy === 'POPULAR') {
-        const ans = await this.reformRepository.getRequestByPopular(
-          filter,
-          categoryId
-        );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
 
-      return null;
+        let requests;
+        switch (filter.sortBy) {
+          case 'RECENT':
+            requests = await this.reformRepository.getRequestByRecent(
+              filter,
+              categoryId
+            );
+            break;
+          case 'POPULAR':
+            requests = await this.reformRepository.getRequestByPopular(
+              filter,
+              categoryId
+            );
+            break;
+          default:
+            return null;
+        }
+
+        const results = await Promise.all(
+          requests.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        return results;
+      });
     } catch (err: any) {
       console.error(err);
       throw new ReformError('요청서 조회중 에러가 발생했습니다.');

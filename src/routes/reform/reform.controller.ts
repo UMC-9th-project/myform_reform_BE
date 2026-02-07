@@ -76,15 +76,18 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/request')
+  @Security('jwt_optional')
   async getRequest(
+    @Request() req: ExRequest,
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
     @Query() limit: number = 15,
     @Query() category?: string,
     @Query() subcategory?: string
   ) {
+    const payload = req.user ?? null;
     const dto = new ReformFilter(sortBy, page, limit, category, subcategory);
-    const ans = await this.reformService.getRequest(dto);
+    const ans = await this.reformService.getRequest(dto, payload);
     return new ResponseHandler(ans);
   }
 
