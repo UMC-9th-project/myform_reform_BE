@@ -56,6 +56,7 @@ export interface GetItemDetailResponseDto {
     profile_image: string | null;
     nickname: string | null;
     star: number;
+    star_recent_3m: number;
     order_count: number;
   };
   is_wished: boolean;

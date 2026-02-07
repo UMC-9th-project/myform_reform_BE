@@ -19,32 +19,57 @@ import {
 import { ReformRepository } from './reform.repository.js';
 import { addSearchSyncJob } from '../../worker/search.queue.js';
 import { CustomJwt } from '../../@types/expreees.js';
-import { runInThisContext } from 'vm';
 import { runInTransaction } from '../../config/prisma.config.js';
-import { UUID } from 'crypto';
+import { ProfileService } from '../profile/profile.service.js';
 
 export class ReformService {
   private reformRepository: ReformRepository;
+  private profileService: ProfileService;
   private s3: S3;
   constructor() {
     this.reformRepository = new ReformRepository();
+    this.profileService = new ProfileService();
     this.s3 = new S3();
   }
 
-  async selectHomeReform(): Promise<ReformHomeResponse> {
+  async selectHomeReform(
+    payload?: CustomJwt | null
+  ): Promise<ReformHomeResponse> {
     try {
-      const [requestData, proposalData] = await Promise.all([
-        this.reformRepository.selectRequestLatest(),
-        this.reformRepository.selectProposalLatest()
-      ]);
-      const requests = requestData.map((o) =>
-        ReformRequestFactory.createFromRaw(o).toDto()
-      );
-      const proposals = proposalData.map((o) =>
-        ReformProposalFactory.createFromRaw(o).toDto()
-      );
+      return await runInTransaction(async () => {
+        const [requestData, proposalData] = await Promise.all([
+          this.reformRepository.selectRequestLatest(),
+          this.reformRepository.selectProposalLatest()
+        ]);
 
-      return { requests, proposals };
+        const requests = await Promise.all(
+          requestData.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        const proposals = await Promise.all(
+          proposalData.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'user') {
+              isWished = await this.reformRepository.checkIsWishUser(
+                o.reform_proposal_id,
+                payload.id
+              );
+            }
+            return ReformProposalFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        return { requests, proposals };
+      });
     } catch (err: any) {
       console.error(err);
       throw new ReformError('조회중 에러가 발생했습니다.');
@@ -52,30 +77,48 @@ export class ReformService {
   }
 
   async getRequest(
-    filter: ReformFilter
+    filter: ReformFilter,
+    payload?: CustomJwt
   ): Promise<ReformRequestResponseDto[] | null> {
     try {
-      const categoryId = await this.reformRepository.getCategoryIds(
-        filter.category
-      );
-      if (filter.sortBy === 'RECENT') {
-        const ans = await this.reformRepository.getRequestByRecent(
-          filter,
-          categoryId
+      return await runInTransaction(async () => {
+        const categoryId = await this.reformRepository.getCategoryIds(
+          filter.category
         );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
-      if (filter.sortBy === 'POPULAR') {
-        const ans = await this.reformRepository.getRequestByPopular(
-          filter,
-          categoryId
-        );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
 
-      return null;
+        let requests;
+        switch (filter.sortBy) {
+          case 'RECENT':
+            requests = await this.reformRepository.getRequestByRecent(
+              filter,
+              categoryId
+            );
+            break;
+          case 'POPULAR':
+            requests = await this.reformRepository.getRequestByPopular(
+              filter,
+              categoryId
+            );
+            break;
+          default:
+            return null;
+        }
+
+        const results = await Promise.all(
+          requests.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        return results;
+      });
     } catch (err: any) {
       console.error(err);
       throw new ReformError('요청서 조회중 에러가 발생했습니다.');
@@ -210,49 +253,63 @@ export class ReformService {
       userId,
       requestId
     );
-    if (!isOwner)
-      throw new ReformError('본인의 요청서만 삭제할 수 있습니다.');
+    if (!isOwner) throw new ReformError('본인의 요청서만 삭제할 수 있습니다.');
 
     try {
       return await runInTransaction(async () => {
         await this.reformRepository.deleteRequestPhotos(requestId);
-        await this.reformRepository.deleteRequest(
-          requestId,
-          userId
-        );
-        return '요청글이 성공적으로 삭제되었습니다.'
+        await this.reformRepository.deleteRequest(requestId, userId);
+        return '요청글이 성공적으로 삭제되었습니다.';
       });
-      } catch (err: any) {
-        console.error(`[DeleteRequest Error] ID: ${requestId}`, err);
-        throw new ReformError('요청글 삭제 중 오류가 발생했습니다.');
+    } catch (err: any) {
+      console.error(`[DeleteRequest Error] ID: ${requestId}`, err);
+      throw new ReformError('요청글 삭제 중 오류가 발생했습니다.');
     }
   }
 
   async getProposal(
-    filter: ReformFilter
+    filter: ReformFilter,
+    payload?: CustomJwt
   ): Promise<ReformProposalResponseDto[] | null> {
     try {
-      const categoryId = await this.reformRepository.getCategoryIds(
-        filter.category
-      );
-      if (filter.sortBy === 'RECENT') {
-        const ans = await this.reformRepository.getProposalByRecent(
-          filter,
-          categoryId
+      return await runInTransaction(async () => {
+        const categoryId = await this.reformRepository.getCategoryIds(
+          filter.category
         );
-        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
-      if (filter.sortBy === 'POPULAR') {
-        const ans = await this.reformRepository.getProposalByPopular(
-          filter,
-          categoryId
-        );
-        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
-      }
 
-      return null;
+        let proposals;
+        switch (filter.sortBy) {
+          case 'POPULAR':
+            proposals = await this.reformRepository.getProposalByRecent(
+              filter,
+              categoryId
+            );
+            break;
+          case 'RECENT':
+            proposals = await this.reformRepository.getProposalByPopular(
+              filter,
+              categoryId
+            );
+            break;
+          default:
+            return null;
+        }
+
+        const results = await Promise.all(
+          proposals.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'user') {
+              isWished = await this.reformRepository.checkIsWishUser(
+                o.reform_proposal_id,
+                payload.id
+              );
+            }
+            return ReformProposalFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        return results;
+      });
     } catch (err: any) {
       console.error(err);
       throw new ReformError('제안서 조회중 에러가 발생했습니다.');
@@ -271,17 +328,34 @@ export class ReformService {
           proposalId
         );
       }
-      const { images, body } =
-        await this.reformRepository.selectDetailProposal(proposalId);
-      if (body === null) throw new ReformError('존재하지 않는 제안서입니다.');
 
-      const dto = ReformProposalFactory.createFromDetailRaw(
-        body,
-        images,
-        isOwner
-      );
+      return runInTransaction(async () => {
+        const { images, body } =
+          await this.reformRepository.selectDetailProposal(proposalId);
+        if (body === null) throw new ReformError('존재하지 않는 제안서입니다.');
 
-      return dto;
+        let isWished = false;
+        if (payload?.role === 'user')
+          isWished = await this.reformRepository.checkIsWishUser(
+            body.reform_proposal_id,
+            payload.id
+          );
+
+        const [profile, avgStarRecent3mRaw] = await Promise.all([
+          this.profileService.getProfileInfo(body.owner_id),
+          this.reformRepository.findAvgStarRecent3MonthsByOwnerId(body.owner_id)
+        ]);
+        const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
+
+        return ReformProposalFactory.createFromDetailRaw(
+          body,
+          images,
+          profile,
+          isOwner,
+          isWished,
+          avgStarRecent3m
+        );
+      });
     } catch (err: any) {
       throw new ReformError(err);
     }

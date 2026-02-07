@@ -148,7 +148,10 @@ export class MarketService {
       const isWished = await this.checkItemWished(userId, itemId);
       const images = this.extractItemImages(item);
       const optionGroups = this.transformOptionGroups(item);
-      const reviewData = await this.getReviewDataForItem(itemId);
+      const [reviewData, starRecent3m] = await Promise.all([
+        this.getReviewDataForItem(itemId),
+        this.repository.findAvgStarRecent3MonthsByOwnerId(item.owner.owner_id)
+      ]);
       const itemThumbnail = await this.getItemThumbnail(itemId);
       const reviews = await this.transformReviews(reviewData.allReviews, itemThumbnail);
 
@@ -165,6 +168,7 @@ export class MarketService {
           profile_image: item.owner.profile_photo,
           nickname: item.owner.nickname,
           star: item.owner.avg_star ? Number(item.owner.avg_star) : 0,
+          star_recent_3m: starRecent3m ?? 0,
           order_count: item.owner.trade_count || 0
         },
         is_wished: isWished,

@@ -13,6 +13,7 @@ import {
   ReformRequestRequest
 } from './dto/reform.req.dto.js';
 import { Category } from '../../@types/item.js';
+import { ProfileInfoResponse } from '../profile/dto/profile.res.dto.js';
 
 export interface ReformRequestCreateData {
   userId: string;
@@ -136,6 +137,7 @@ export type RawProposalDetail = Prisma.reform_proposalGetPayload<{
     price: true;
     delivery: true;
     expected_working: true;
+    owner_id: true;
     owner: {
       select: {
         name: true;
@@ -212,8 +214,12 @@ export class ReformRequestUpdate {
 // 팩토리 클래스
 export class ReformRequestFactory {
   // 조회용: DB 결과 -> 응답 객체
-  static createFromRaw(raw: RawRequestLatest): ReformRequestResponse {
+  static createFromRaw(
+    raw: RawRequestLatest,
+    isWished: boolean
+  ): ReformRequestResponse {
     return new ReformRequestResponse({
+      isWished: isWished,
       reformRequestId: raw.reform_request_id,
       thumbnail: raw.reform_request_photo[0]?.content ?? '',
       title: raw.title ?? '',
@@ -323,8 +329,12 @@ export class ReformProposalUpdate {
 
 // 제안서 팩토리 클래스
 export class ReformProposalFactory {
-  static createFromRaw(raw: RawProposalLatest): ReformProposalResponse {
+  static createFromRaw(
+    raw: RawProposalLatest,
+    isWished: boolean
+  ): ReformProposalResponse {
     return new ReformProposalResponse({
+      isWished: isWished,
       reformProposalId: raw.reform_proposal_id,
       thumbnail: raw.reform_proposal_photo[0]?.content ?? '',
       title: raw.title ?? '',
@@ -338,18 +348,31 @@ export class ReformProposalFactory {
   static createFromDetailRaw(
     rawBody: RawProposalDetail,
     rawPhoto: RawProposalDetailImages[],
-    isOwner: boolean
+    rawProfile: ProfileInfoResponse,
+    isOwner: boolean,
+    isWished: boolean,
+    avgStarRecent3m: number = 0
   ): ReformDetailProposalResponse {
     return new ReformDetailProposalResponse({
       isOwner: isOwner,
+      isWished: isWished,
       reformProposalId: rawBody.reform_proposal_id,
+      ownerId: rawBody.owner_id,
       title: rawBody.title ?? '',
       content: rawBody.content ?? '',
       price: rawBody.price?.toNumber() ?? 0,
       delivery: rawBody.delivery?.toNumber() ?? 0,
       expectedWorking: rawBody.expected_working?.toNumber() ?? 0,
-      ownerName: rawBody.owner.name ?? '',
-      ownerProfile: rawBody.owner.profile_photo ?? '',
+      profile: {
+        ownerName: rawProfile.nickname ?? '',
+        ownerProfile: rawProfile.profilePhoto ?? '',
+        avgStar: rawProfile.avgStar ?? 0,
+        avgStarRecent3m,
+        reviewCount: rawProfile.reviewCount ?? 0,
+        toatalSaleCount: rawProfile.totalSaleCount ?? 0,
+        keywords: rawProfile.keywords ?? [],
+        bio: rawProfile.bio ?? ''
+      },
       images: rawPhoto.map((props) => {
         return {
           photo: props.content ?? '',
