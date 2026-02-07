@@ -7,7 +7,6 @@ export interface ReformHomeResponse {
 
 export interface ReformProposalResponseDto {
   reformProposalId: UUID;
-  isWished: boolean;
   thumbnail: string;
   title: string;
   price: number;
@@ -19,7 +18,6 @@ export interface ReformProposalResponseDto {
 export interface ReformRequestResponseDto {
   reformRequestId: UUID;
   thumbnail: string;
-  isWished: boolean;
   title: string;
   minBudget: number;
   maxBudget: number;
@@ -43,26 +41,16 @@ export interface ReformDetailRequestResponseDto {
 
 export interface ReformDetailProposalResponseDto {
   reformProposalId: UUID;
-  isOwner: boolean;
-  isWished: boolean;
-  ownerId: UUID;
   title: string;
   price: number;
   delivery: number;
   expectedWorking: number;
+  isOwner: boolean;
   images: {
     photo: string;
     photo_order: number;
   }[];
   content: string;
-  profile: {
-    ownerName: string;
-    ownerProfile: string;
-    avgStar: number;
-    avgStarRecent3m: number;
-    reviewCount: number;
-    toatalSaleCount: number;
-    keywords: string[];
-    bio: string;
-  };
+  ownerName: string;
+  ownerProfile: string;
 }

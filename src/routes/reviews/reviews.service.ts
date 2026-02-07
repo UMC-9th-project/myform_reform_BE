@@ -1,13 +1,5 @@
 import { ReviewsRepository } from './reviews.repository.js';
-import {
-  ReviewDto,
-  ReviewResponseDto,
-  UnifiedProductInfo,
-  RawUserInfo,
-  ProposalReviewListResponseDto,
-  ProposalReviewDto,
-  ProposalReviewSortBy
-} from './reviews.model.js';
+import { ReviewDto, ReviewResponseDto, UnifiedProductInfo, RawUserInfo } from './reviews.model.js';
 import { NotReviewOwnerError, ReviewNotFoundError } from './reviews.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 export class ReviewsService {
@@ -126,64 +118,5 @@ export class ReviewsService {
       await this.reviewsRepository.deleteReview(reviewId);
       return '리뷰 삭제가 완료되었습니다.';
     });
-  }
-
-  // 리폼러 ID로 리뷰 목록 조회
-  async getReviewsByReformerId(
-    reformerId: string,
-    limit: number,
-    cursor: string | undefined,
-    sortBy: ProposalReviewSortBy = 'recent'
-  ): Promise<ProposalReviewListResponseDto> {
-    // 리폼러의 모든 제안서에 연결된 order ID 목록 조회
-    const orderIds =
-      await this.reviewsRepository.getOrderIdsByReformerId(reformerId);
-
-    // 리뷰 통계 및 리뷰 목록 병렬 조회
-    const [stats, reviews] = await Promise.all([
-      this.reviewsRepository.getReformerReviewStats(orderIds),
-      this.reviewsRepository.getReviewsByOrderIds(orderIds, limit, cursor, sortBy)
-    ]);
-
-    const hasNext = reviews.length > limit;
-    const actualReviews = hasNext ? reviews.slice(0, limit) : reviews;
-
-    // 유저 정보 조회
-    const userIds = [...new Set(actualReviews.map((r) => r.user_id))];
-    const userInfos = await this.reviewsRepository.getUserInfos(
-      userIds.filter((id): id is string => id !== null)
-    );
-    const userInfoMap = new Map<string, RawUserInfo>();
-    userInfos.forEach((u) => userInfoMap.set(u.user_id, u));
-
-    // 리뷰 DTO 변환
-    const reviewDtos: ProposalReviewDto[] = actualReviews.map((review) => {
-      const user = userInfoMap.get(review.user_id ?? '');
-      return {
-        reviewId: review.review_id,
-        userId: user?.user_id ?? review.user_id ?? '',
-        userNickname: user?.nickname ?? '알 수 없음',
-        userProfilePhoto: user?.profile_photo ?? '',
-        star: review.star ?? 0,
-        createdAt: review.created_at!,
-        content: review.content ?? '',
-        reviewPhotos: review.review_photo.map((p) => p.content ?? '')
-      };
-    });
-
-    const nextCursor =
-      actualReviews.length > 0
-        ? actualReviews[actualReviews.length - 1].review_id
-        : null;
-
-    return {
-      totalCount: stats.totalCount,
-      avgStar: stats.avgStar,
-      photoReviewCount: stats.photoReviewCount,
-      reviewPhotos: stats.reviewPhotos,
-      reviews: reviewDtos,
-      cursor: nextCursor,
-      hasNext
-    };
   }
 }
