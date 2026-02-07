@@ -220,22 +220,6 @@ export class MarketRepository {
   }
 
   /**
-   * 해당 오너(리폼러)의 최근 3개월 리뷰 평균 별점
-   */
-  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const result = await prisma.review.aggregate({
-      where: {
-        owner_id: ownerId,
-        created_at: { gte: threeMonthsAgo }
-      },
-      _avg: { star: true }
-    });
-    return result._avg.star != null ? Number(result._avg.star) : null;
-  }
-
-  /**
    * 상품의 리뷰 목록 조회 (제한된 개수)
    */
   async findReviewsForItemPreview(itemId: string, limit: number): Promise<ReviewWithPhotos[]> {

@@ -159,41 +159,27 @@ export class ProfileService {
     return SaleDetail.create(order, option, title);
   }
 
-  private async resolveOwner(idOrNickname: string) {
-    const trimmed = idOrNickname.trim();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
-    const owner = isUuid
-      ? await this.profileRepository.findOwnerById(trimmed)
-      : await this.profileRepository.findOwnerByNickname(trimmed);
-    if (!owner) throw new OwnerNotFound(idOrNickname);
-    return owner;
-  }
-
-  async getProfileInfo(idOrNickname: string): Promise<ProfileInfoResponse> {
-    const owner = await this.resolveOwner(idOrNickname);
-    const ownerId = owner.owner_id;
+  async getProfileInfo(id: string): Promise<ProfileInfoResponse> {
+    const owner = await this.profileRepository.findOwnerById(id);
+    if (!owner) {
+      throw new OwnerNotFound(id);
+    }
 
     let avgStar = owner.avg_star ? Number(owner.avg_star) : null;
     let reviewCount = owner.review_count;
 
     if (avgStar === null || reviewCount === null) {
-      const stats = await this.profileRepository.findReviewStatsByOwnerId(ownerId);
+      const stats = await this.profileRepository.findReviewStatsByOwnerId(id);
       avgStar = stats._avg.star !== null ? Number(stats._avg.star) : null;
       reviewCount = stats._count.review_id ?? 0;
     }
 
-    const [totalSaleCount, avgStarRecent3mRaw] = await Promise.all([
-      this.profileRepository.countSaleByOwnerId(ownerId),
-      this.profileRepository.findAvgStarRecent3MonthsByOwnerId(ownerId)
-    ]);
-    const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
+    const totalSaleCount = await this.profileRepository.countSaleByOwnerId(id);
 
     return {
-      ownerId: owner.owner_id,
       profilePhoto: owner.profile_photo,
       nickname: owner.nickname,
       avgStar,
-      avgStarRecent3m,
       reviewCount,
       totalSaleCount,
       keywords: owner.keywords ?? [],
@@ -206,11 +192,13 @@ export class ProfileService {
     cursor: string | undefined,
     limit: number
   ): Promise<FeedListResponse> {
-    const owner = await this.resolveOwner(id);
-    const ownerId = owner.owner_id;
+    const owner = await this.profileRepository.findOwnerById(id);
+    if (!owner) {
+      throw new OwnerNotFound(id);
+    }
 
     const take = Math.min(limit, 50);
-    const feeds = await this.profileRepository.findFeedsByOwnerId(ownerId, cursor, take);
+    const feeds = await this.profileRepository.findFeedsByOwnerId(id, cursor, take);
     const hasNext = feeds.length > take;
     const actualFeeds = hasNext ? feeds.slice(0, take) : feeds;
 
@@ -244,10 +232,13 @@ export class ProfileService {
     limit: number,
     userId: string | undefined
   ): Promise<MarketListResponse> {
-    const ownerId = await this.resolveOwnerId(id);
+    const owner = await this.profileRepository.findOwnerById(id);
+    if (!owner) {
+      throw new OwnerNotFound(id);
+    }
 
     const take = Math.min(limit, 50);
-    const items = await this.profileRepository.findItemsByOwnerId(ownerId, cursor, take);
+    const items = await this.profileRepository.findItemsByOwnerId(id, cursor, take);
     const hasNext = items.length > take;
     const actualItems = hasNext ? items.slice(0, take) : items;
 
@@ -299,12 +290,14 @@ export class ProfileService {
     limit: number,
     userId: string | undefined
   ): Promise<ProposalListResponse> {
-    const owner = await this.resolveOwner(id);
-    const ownerId = owner.owner_id;
+    const owner = await this.profileRepository.findOwnerById(id);
+    if (!owner) {
+      throw new OwnerNotFound(id);
+    }
 
     const take = Math.min(limit, 50);
     const proposals = await this.profileRepository.findProposalsByOwnerId(
-      ownerId,
+      id,
       cursor,
       take
     );
@@ -360,11 +353,13 @@ export class ProfileService {
     cursor: string | undefined,
     limit: number
   ): Promise<ReviewListResponse> {
-    const owner = await this.resolveOwner(id);
-    const ownerId = owner.owner_id;
+    const owner = await this.profileRepository.findOwnerById(id);
+    if (!owner) {
+      throw new OwnerNotFound(id);
+    }
 
     const take = Math.min(limit, 50);
-    const reviews = await this.profileRepository.findReviewsByOwnerId(ownerId, cursor, take);
+    const reviews = await this.profileRepository.findReviewsByOwnerId(id, cursor, take);
     const hasNext = reviews.length > take;
     const actualReviews = hasNext ? reviews.slice(0, take) : reviews;
 

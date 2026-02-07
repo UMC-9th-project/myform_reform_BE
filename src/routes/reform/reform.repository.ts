@@ -359,7 +359,6 @@ export class ReformRepository {
           price: true,
           delivery: true,
           expected_working: true,
-          owner_id: true,
           owner: {
             select: {
               name: true,
@@ -370,19 +369,6 @@ export class ReformRepository {
       })
     ]);
     return { images, body };
-  }
-
-  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const result = await this.prisma.review.aggregate({
-      where: {
-        owner_id: ownerId,
-        created_at: { gte: threeMonthsAgo }
-      },
-      _avg: { star: true }
-    });
-    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   async updateRequest(
@@ -432,22 +418,23 @@ export class ReformRepository {
     return result;
   }
 
-  async deleteRequestPhotos(requestId: string) {
-    await this.prisma.reform_request_photo.deleteMany({
-      where: {
-        reform_request_id: requestId
+  async deleteRequestPhotos(requestId: string){
+  await this.prisma.reform_request_photo.deleteMany({
+    where: { 
+      reform_request_id : requestId 
       }
-    });
+    })
   }
 
-  async deleteRequest(requestId: string, userId: string) {
+  async deleteRequest(requestId: string, userId: string){
     await this.prisma.reform_request.deleteMany({
       where: {
-        reform_request_id: requestId,
-        user_id: userId
+        reform_request_id : requestId,
+        user_id : userId
       }
-    });
+    })
   }
+  
 
   async updateProposal(
     dto: ReformProposalUpdate,
@@ -533,19 +520,5 @@ export class ReformRepository {
         order_id: true
       }
     });
-  }
-  async checkIsWishUser(targetId: UUID, userId: UUID) {
-    return (
-      (await prisma.user_wish.findFirst({
-        where: { target_id: targetId, user_id: userId }
-      })) !== null
-    );
-  }
-  async checkIsWishReformer(targetId: UUID, ownerId: UUID) {
-    return (
-      (await prisma.owner_wish.findFirst({
-        where: { reform_request_id: targetId, owner_id: ownerId }
-      })) !== null
-    );
   }
 }
