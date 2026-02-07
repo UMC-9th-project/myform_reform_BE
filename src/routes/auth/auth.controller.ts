@@ -235,11 +235,9 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('signup/reformer')
   public async signupReformer(
-  @FormField() data: string,
-  @UploadedFiles('portfolios') portfolioPhotos: Express.Multer.File[]
+    @Body() requestBody: ReformerSignupRequest
   ): Promise<TsoaResponse<AuthPublicResponse>> {
-    const requestBody: ReformerSignupRequest = JSON.parse(data);
-    const result = await this.authService.signupReformer(requestBody, portfolioPhotos);
+    const result = await this.authService.signupReformer(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);

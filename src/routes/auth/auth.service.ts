@@ -172,11 +172,9 @@ export class AuthService {
   }
 
   // 리폼러 회원가입 처리
-  async signupReformer(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[])
+  async signupReformer(requestBody: ReformerSignupRequest)
   : Promise<AuthLoginResponse> {
-    await this.validateReformerSignupRequest(requestBody, portfolioPhotos);
-    const s3 = new S3();
-    const portfolioUrls = await s3.uploadManyToS3(portfolioPhotos);
+    await this.validateReformerSignupRequest(requestBody);
     return await this.processSignup(requestBody,  async (hashedPassword, cleanPhoneNumber) => {
       const { password, phoneNumber, oauthId, ...rest } = requestBody;
       const ownerDto: OwnerCreateDto = {
@@ -187,7 +185,7 @@ export class AuthService {
         role: 'reformer' as Role,
         businessNumber: this.getCleanBusinessNumber(rest.businessNumber),
         description: requestBody.description,
-        portfolioPhotos: portfolioUrls
+        portfolioPhotos: requestBody.portfolioPhotos
       };
       return await this.authModel.createOwner(ownerDto);
     });
@@ -381,11 +379,11 @@ export class AuthService {
   }
 
   // 리폼러 회원가입시 입력한 정보 유효성 검증
-  private async validateReformerSignupRequest(requestBody: ReformerSignupRequest, portfolioPhotos: Express.Multer.File[]): Promise<void> {
+  private async validateReformerSignupRequest(requestBody: ReformerSignupRequest): Promise<void> {
     await this.validateSignupRequest(requestBody, 'reformer');
     validateBusinessNumber(requestBody.businessNumber);
     validateDescription(requestBody.description);
-    validatePortfolioPhotos(portfolioPhotos);
+    validatePortfolioPhotos(requestBody.portfolioPhotos);
   }
 
   // 전화번호 숫자만 추출
