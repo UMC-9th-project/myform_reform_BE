@@ -350,7 +350,8 @@ export class ReformProposalFactory {
     rawPhoto: RawProposalDetailImages[],
     rawProfile: ProfileInfoResponse,
     isOwner: boolean,
-    isWished: boolean
+    isWished: boolean,
+    avgStarRecent3m: number = 0
   ): ReformDetailProposalResponse {
     return new ReformDetailProposalResponse({
       isOwner: isOwner,
@@ -366,6 +367,7 @@ export class ReformProposalFactory {
         ownerName: rawProfile.nickname ?? '',
         ownerProfile: rawProfile.profilePhoto ?? '',
         avgStar: rawProfile.avgStar ?? 0,
+        avgStarRecent3m,
         reviewCount: rawProfile.reviewCount ?? 0,
         toatalSaleCount: rawProfile.totalSaleCount ?? 0,
         keywords: rawProfile.keywords ?? [],
