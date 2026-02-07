@@ -244,7 +244,8 @@ export class ProfileService {
     limit: number,
     userId: string | undefined
   ): Promise<MarketListResponse> {
-    const ownerId = await this.resolveOwnerId(id);
+    const owner = await this.resolveOwner(id);
+    const ownerId = owner.owner_id;
 
     const take = Math.min(limit, 50);
     const items = await this.profileRepository.findItemsByOwnerId(ownerId, cursor, take);
