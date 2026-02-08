@@ -513,9 +513,11 @@ export class OrdersController extends Controller {
     this.requireUserId(userId);
     const dto = await validateDto(VerifyPaymentRequestDto, requestBody);
 
-    const receiptId = await this.ordersService.verifyPayment(dto.order_id, dto.imp_uid);
-
-    if (receiptId) {
+    const { receiptId, didUpdate } = await this.ordersService.verifyPayment(
+      dto.order_id,
+      dto.imp_uid
+    );
+    if (didUpdate && receiptId) {
       this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
         console.error('결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
       });
@@ -688,7 +690,15 @@ export class OrdersController extends Controller {
         }
       }
 
-      await this.ordersService.handleWebhook(imp_uid, merchant_uid);
+      const receiptId = await this.ordersService.handleWebhook(
+        imp_uid,
+        merchant_uid
+      );
+      if (receiptId) {
+        this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
+          console.error('웹훅 후 결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
+        });
+      }
 
       return { status: 'ok' };
     } catch (error) {

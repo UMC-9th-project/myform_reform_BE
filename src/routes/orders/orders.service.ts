@@ -1137,6 +1137,9 @@ export class OrdersService {
    * 결제 검증 및 주문 상태 업데이트 (공통 로직)
    * verifyPayment와 handleWebhook에서 공통으로 사용
    */
+  /**
+   * @returns didUpdate: true면 이번 호출에서 pending → paid 로 갱신함. false면 이미 paid였거나 실패. (채팅 알림은 didUpdate일 때만 1회 전송)
+   */
   private async verifyAndUpdatePayment(
     receipt: {
       receipt_id: string;
@@ -1152,7 +1155,7 @@ export class OrdersService {
     impUid: string,
     merchantUid: string,
     throwOnError: boolean = true
-  ): Promise<boolean> {
+  ): Promise<{ didUpdate: boolean }> {
     try {
       if (receipt.order.length === 0) {
         const paymentInfo = await this.fetchPaymentInfoWithRetry(impUid);
@@ -1186,7 +1189,7 @@ export class OrdersService {
                 : new Date()
             });
 
-            return true;
+            return { didUpdate: true };
           }
         }
 
@@ -1196,14 +1199,14 @@ export class OrdersService {
             '주문 생성 후 결제 검증을 진행해주세요.'
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const allPaid = receipt.order.every(
         (o) => o.status === order_status_enum.PAID
       );
       if (allPaid) {
-        return true;
+        return { didUpdate: false };
       }
 
       const allPending = receipt.order.every(
@@ -1229,7 +1232,7 @@ export class OrdersService {
             `결제 상태: ${paymentInfo.status}`
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const expectedAmount = receipt.total_amount
@@ -1243,7 +1246,7 @@ export class OrdersService {
             paymentInfo.amount
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       if (paymentInfo.merchant_uid !== merchantUid) {
@@ -1254,7 +1257,7 @@ export class OrdersService {
             `예상 merchant_uid: ${merchantUid}, 실제: ${paymentInfo.merchant_uid}`
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       // 트랜잭션으로 상태 업데이트
@@ -1290,21 +1293,24 @@ export class OrdersService {
         });
       });
 
-      return true;
+      return { didUpdate: true };
     } catch (error) {
       if (throwOnError) {
         throw error;
       }
-      return false;
+      return { didUpdate: false };
     }
   }
 
   /**
    * 결제 검증 및 주문 상태 업데이트 (프론트엔드용)
    * order_id: UUID 또는 receipt_number(12자리) 모두 지원. receipt_number로 검증 시 merchant_uid와 동일하게 넣으면 됨.
-   * @returns 성공 시 receipt_id (채팅 결제 완료 알림 등 후속 처리용)
+   * @returns 성공 시 { receiptId, didUpdate }. didUpdate가 true일 때만 채팅 결제 완료 알림 전송(1회만).
    */
-  async verifyPayment(orderId: string, impUid: string): Promise<string> {
+  async verifyPayment(
+    orderId: string,
+    impUid: string
+  ): Promise<{ receiptId: string; didUpdate: boolean }> {
     try {
       const isReceiptNumber = /^\d{12}$/.test(orderId);
       let receiptData: {
@@ -1378,13 +1384,13 @@ export class OrdersService {
         )
       };
 
-      await this.verifyAndUpdatePayment(
+      const { didUpdate } = await this.verifyAndUpdatePayment(
         receipt,
         impUid,
         receipt.receipt_number || '',
         true
       );
-      return receiptData.receipt_id;
+      return { receiptId: receiptData.receipt_id, didUpdate };
     } catch (error) {
       if (
         error instanceof OrderError ||
@@ -1463,9 +1469,10 @@ export class OrdersService {
 
   /**
    * 웹훅 처리: 결제 검증 및 주문 상태 업데이트
-   * 프론트엔드 요청과 동일한 검증 로직 사용
+   * 프론트엔드 요청과 동일한 검증 로직 사용.
+   * @returns 검증 완료된 receipt_id (채팅 기반 결제 시 알림용). 실패 시 null.
    */
-  async handleWebhook(impUid: string, merchantUid: string): Promise<void> {
+  async handleWebhook(impUid: string, merchantUid: string): Promise<string | null> {
     try {
       let receiptData =
         await this.repository.findReceiptByReceiptNumberForVerification(
@@ -1536,7 +1543,7 @@ export class OrdersService {
                   console.error(
                     `웹훅: receipt 생성 실패 후 조회도 실패 (merchantUid: ${merchantUid}, impUid: ${impUid})`
                   );
-                  return;
+                  return null;
                 }
               } else {
                 throw createError;
@@ -1554,14 +1561,14 @@ export class OrdersService {
               console.error(
                 `웹훅: receipt 생성/업데이트 후 조회 실패 (merchantUid: ${merchantUid}, impUid: ${impUid})`
               );
-              return;
+              return null;
             }
           } else {
             // 결제가 완료되지 않았거나 merchant_uid가 일치하지 않음
             console.error(
               `웹훅: 결제 정보 불일치 (merchantUid: ${merchantUid}, impUid: ${impUid}, status: ${paymentInfo.status})`
             );
-            return;
+            return null;
           }
         } catch (error) {
           // 포트원 API 조회 실패 시 로그만 남기고 성공 응답 (재전송 방지)
@@ -1569,7 +1576,7 @@ export class OrdersService {
             `웹훅: receipt를 찾을 수 없고 결제 정보 조회 실패 (merchantUid: ${merchantUid}, impUid: ${impUid}):`,
             error
           );
-          return;
+          return null;
         }
       }
 
@@ -1599,12 +1606,19 @@ export class OrdersService {
         )
       };
 
-      await this.verifyAndUpdatePayment(receipt, impUid, merchantUid, false);
+      const { didUpdate } = await this.verifyAndUpdatePayment(
+        receipt,
+        impUid,
+        merchantUid,
+        false
+      );
+      return didUpdate ? receipt.receipt_id : null;
     } catch (error) {
       console.error(
         `웹훅 처리 실패 (impUid: ${impUid}, merchantUid: ${merchantUid}):`,
         error
       );
+      return null;
     }
   }
 
