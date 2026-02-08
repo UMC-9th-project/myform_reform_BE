@@ -639,6 +639,7 @@ export class ProfileRepository {
         target_type: true,
         quantity: true,
         tracking_number: true,
+        chat_room_id: true,
         owner: {
           select: {
             nickname: true
