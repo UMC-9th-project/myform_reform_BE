@@ -365,6 +365,11 @@ export interface CreateChatProposalDTO {
      */
     expectedWorking: number;
     /**
+     * 본문 내용
+     * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+     */
+    content: string;
+    /**
      * 제안서 이미지 URL 목록
      * @example ["https://s3.example.com/proposal1.jpg", "https://s3.example.com/proposal2.jpg"]
      */
@@ -394,6 +399,11 @@ export interface UpdateChatProposalDTO {
      * @minimum 1
      */
     expectedWorking?: number;
+    /**
+     * 본문 내용 (선택)
+     * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+     */
+    content?: string;
     /**
      * 제안서 이미지 URL 목록 (선택)
      * @example ["https://s3.example.com/proposal1.jpg"]
@@ -459,6 +469,11 @@ export interface ChatProposalResponseDTO {
          * @example 7
          */
         expectedWorking : number;
+        /**
+         * 본문 내용
+         * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+         */
+        content : string;   
         /**
          * 제안서 이미지 URL 목록
          * @example ["https://s3.example.com/proposal1.jpg"]
