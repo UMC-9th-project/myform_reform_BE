@@ -289,6 +289,7 @@ export class ChatService {
         request.price,
         request.delivery,
         request.expectedWorking,
+        request.content,
         message['props'].message_id as string,
         request.image
       );
@@ -330,6 +331,7 @@ export class ChatService {
           price: chatProposal.price ? Number(chatProposal.price) : null,
           delivery: chatProposal.delivery as number,
           expectedWorking: chatProposal.expected_working as number,
+          content: chatProposal.content || '',
           images: chatProposal.image as string[],
         },
         createdAt: chatProposal.created_at as Date,
@@ -437,7 +439,8 @@ export class ChatService {
       if (data.price !== undefined) updateData.price = data.price;
       if (data.delivery !== undefined) updateData.delivery = data.delivery;
       if (data.expectedWorking !== undefined) updateData.expected_working = data.expectedWorking;
-      
+      if (data.content !== undefined) updateData.content = data.content;
+
       // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
       if (data.image !== undefined) {
         const existingProposal = await this.chatRepository.getChatProposalById(proposalId);

@@ -452,6 +452,7 @@ export class ChatRepository {
     price: number,
     delivery: number,
     expected_working: number,
+    content: string,
     messageId: string,
     image?: string[]
   ) {
@@ -463,6 +464,7 @@ export class ChatRepository {
           price,
           delivery,
           expected_working,
+          content,
           message_id: messageId,
           image: image || []
         }
@@ -485,6 +487,7 @@ export class ChatRepository {
           price: true,
           delivery: true,
           expected_working: true,
+          content: true,
           created_at: true,
           image: true,
           // 관계 추적: chat_proposal -> chat_message -> chat_room -> owner
@@ -552,6 +555,7 @@ export class ChatRepository {
       price?: number;
       delivery?: number;
       expectedWorking?: number;
+      content?: string;
       image?: string[] | null;
     }
   ) {
@@ -561,7 +565,8 @@ export class ChatRepository {
       if (updateData.delivery !== undefined) data.delivery = updateData.delivery;
       if (updateData.expectedWorking !== undefined) data.expected_working = updateData.expectedWorking;
       if (updateData.image !== undefined) data.image = updateData.image;
-
+      if (updateData.content !== undefined) data.content = updateData.content;
+      
       return await prisma.chat_proposal.update({
         where: {
           chat_proposal_id: proposalId
