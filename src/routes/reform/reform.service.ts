@@ -62,16 +62,20 @@ export class ReformService {
           filter,
           categoryId
         );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
+        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o)).map((o) => o.toDto());
+        const ids = dto.map((d) => d.reformRequestId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', ids);
+        return dto.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformRequestId) }));
       }
       if (filter.sortBy === 'POPULAR') {
         const ans = await this.reformRepository.getRequestByPopular(
           filter,
           categoryId
         );
-        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
+        const dto = ans.map((o) => ReformRequestFactory.createFromRaw(o)).map((o) => o.toDto());
+        const ids = dto.map((d) => d.reformRequestId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', ids);
+        return dto.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformRequestId) }));
       }
 
       return null;
@@ -121,19 +125,19 @@ export class ReformService {
 
   async findDetailRequest(
     payload: CustomJwt | null,
-    reqeustId: string
+    requestId: string
   ): Promise<ReformDetailRequestResponse> {
     try {
       let isOwner = false;
       if (payload !== null) {
         isOwner = await this.reformRepository.checkRequestOwner(
           payload.id,
-          reqeustId
+          requestId
         );
       }
 
       const { images, body } =
-        await this.reformRepository.selectDetailRequest(reqeustId);
+        await this.reformRepository.selectDetailRequest(requestId);
       if (body === null) throw new ReformError('존재하지 않는 아이템입니다.');
 
       const dto = ReformRequestFactory.createFromDetailRaw(
@@ -141,8 +145,10 @@ export class ReformService {
         images,
         isOwner
       );
-
-      return dto;
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', [requestId]);
+      return {
+        toDto: () => ({ ...dto.toDto(), isCompleted: paidIds.has(requestId) })
+      } as ReformDetailRequestResponse;
     } catch (err: any) {
       throw new ReformError(err);
     }
@@ -216,16 +222,20 @@ export class ReformService {
           filter,
           categoryId
         );
-        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
+        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o)).map((o) => o.toDto());
+        const ids = dto.map((d) => d.reformProposalId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', ids);
+        return dto.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformProposalId) }));
       }
       if (filter.sortBy === 'POPULAR') {
         const ans = await this.reformRepository.getProposalByPopular(
           filter,
           categoryId
         );
-        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o));
-        return dto.map((o) => o.toDto());
+        const dto = ans.map((o) => ReformProposalFactory.createFromRaw(o)).map((o) => o.toDto());
+        const ids = dto.map((d) => d.reformProposalId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', ids);
+        return dto.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformProposalId) }));
       }
 
       return null;
@@ -256,8 +266,10 @@ export class ReformService {
         images,
         isOwner
       );
-
-      return dto;
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', [proposalId]);
+      return {
+        toDto: () => ({ ...dto.toDto(), isCompleted: paidIds.has(proposalId) })
+      } as ReformDetailProposalResponse;
     } catch (err: any) {
       throw new ReformError(err);
     }

@@ -15,6 +15,9 @@ export interface SaleResponseDto {
   createdAt: Date;
   title: string;
   thumbnail: string;
+  receiptNumber: string | null;
+  chatRoomId: string | null;
+  targetType: string;
 }
 
 export interface SaleDetailResponseDto extends SaleResponseDto {

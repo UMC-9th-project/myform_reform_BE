@@ -33,16 +33,19 @@ import {
   CreateReviewResponseDto
 } from './dto/orders.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
+import { ChatService } from '../chat/chat.service.js';
 
 @Route('orders')
 @Tags('Orders')
 @Security('jwt')
 export class OrdersController extends Controller {
   private ordersService: OrdersService;
+  private chatService: ChatService;
 
   constructor() {
     super();
     this.ordersService = new OrdersService();
+    this.chatService = new ChatService();
   }
 
   /**
@@ -507,10 +510,16 @@ export class OrdersController extends Controller {
     @Request() req: ExpressRequest
   ): Promise<TsoaResponse<VerifyPaymentResponseDto>> {
     const userId = req.user?.id;
-    const validUserId = this.requireUserId(userId);
+    this.requireUserId(userId);
     const dto = await validateDto(VerifyPaymentRequestDto, requestBody);
 
-    await this.ordersService.verifyPayment(dto.order_id, dto.imp_uid);
+    const receiptId = await this.ordersService.verifyPayment(dto.order_id, dto.imp_uid);
+
+    if (receiptId) {
+      this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
+        console.error('결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
+      });
+    }
 
     return {
       resultType: 'SUCCESS',

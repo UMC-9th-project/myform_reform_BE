@@ -233,7 +233,10 @@ export class ProfileController extends Controller {
           address_name: '수원집'
         },
         billNumber: '',
-        option: '옵션그룹1 옵션1'
+        option: '옵션그룹1 옵션1',
+        receiptNumber: '123456789012',
+        chatRoomId: null,
+        targetType: 'ITEM'
       }
     }
   )

@@ -446,6 +446,28 @@ export class ChatRepository {
     }
   }
 
+  /** FEED 채팅방에서 결제 대상 요청서 ID(가장 최근 request 메시지의 chat_request_id) 조회 */
+  async getLatestChatRequestIdByChatRoomId(chatRoomId: string): Promise<string | null> {
+    try {
+      const latestRequestMessage = await prisma.chat_message.findFirst({
+        where: {
+          chat_room_id: chatRoomId,
+          message_type: 'request'
+        },
+        orderBy: { created_at: 'desc' },
+        select: { message_id: true }
+      });
+      if (!latestRequestMessage) return null;
+      const req = await prisma.chat_request.findFirst({
+        where: { message_id: latestRequestMessage.message_id },
+        select: { chat_request_id: true }
+      });
+      return req?.chat_request_id ?? null;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
   async createChatProposal(
     proposalId: string | null,
     title: string,
