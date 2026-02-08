@@ -1418,6 +1418,39 @@ export class OrdersService {
   }
 
   /**
+   * receipt_id로 결제 요약 조회 (채팅 결제 완료 메시지용)
+   * 반환 형식: { receiptNumber, totalAmount, currency, paymentMethod: { type, provider, cardNumber }, approvedAt }
+   */
+  async getReceiptPaymentSummaryByReceiptId(receiptId: string): Promise<{
+    receiptNumber: string;
+    totalAmount: number;
+    currency: string;
+    paymentMethod: {
+      type: string;
+      provider: string | null;
+      cardNumber: string | null;
+    };
+    approvedAt: string | null;
+  } | null> {
+    const receipt = await this.repository.findReceiptByIdWithOrders(receiptId);
+    if (!receipt) return null;
+    const cardDetails = this.extractCardDetails(receipt.transaction || null);
+    const paymentMethodType =
+      receipt.payment_method === 'card' ? 'CARD_EASY_PAY' : (receipt.payment_method ?? 'CARD_EASY_PAY');
+    return {
+      receiptNumber: receipt.receipt_number ?? '',
+      totalAmount: receipt.total_amount ? Number(receipt.total_amount) : 0,
+      currency: 'KRW',
+      paymentMethod: {
+        type: paymentMethodType,
+        provider: cardDetails.card_name ?? null,
+        cardNumber: cardDetails.masked_card_number ?? null
+      },
+      approvedAt: receipt.approved_at ? receipt.approved_at.toISOString() : null
+    };
+  }
+
+  /**
    * receipt의 모든 order 취소 및 재고 복구 (결제 실패 시)
    * PENDING 상태에서 주문 생성 시 차감된 재고를 복구
    */

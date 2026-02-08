@@ -178,9 +178,14 @@ export class ChatService {
 
   /**
    * 결제 검증 완료 후 리폼(채팅) 주문의 채팅방에 결제 완료 메시지 전송
+   * content: { completed: true, receiptNumber, totalAmount, currency, paymentMethod, approvedAt }
    */
   async notifyPaymentCompleteForReceipt(receiptId: string): Promise<void> {
     const rooms = await this.ordersService.getReformOrderChatRoomsByReceiptId(receiptId);
+    const paymentSummary = await this.ordersService.getReceiptPaymentSummaryByReceiptId(receiptId);
+    const content = paymentSummary
+      ? { completed: true, ...paymentSummary }
+      : { completed: true };
     for (const room of rooms) {
       try {
         await this.processSendMessage({
@@ -188,7 +193,7 @@ export class ChatService {
           senderId: room.owner_id,
           senderType: 'OWNER',
           messageType: 'result',
-          content: { completed: true }
+          content
         });
       } catch (err) {
         console.error(
