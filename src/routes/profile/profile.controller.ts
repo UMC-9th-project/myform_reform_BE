@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Route,
   SuccessResponse,
   Response,
@@ -25,6 +26,7 @@ import {
   AddFeedRequestDto,
   AddItemRequestDto,
   AddReformRequestDto,
+  UpdateItemRequest,
   SaleRequestDto,
   OrderRequestDto,
   RequestListRequestDto
@@ -43,7 +45,7 @@ import {
   RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
-import { Item, Reform } from './profile.model.js';
+import { Item, ItemUpdate, Reform } from './profile.model.js';
 import { ItemAddError } from './profile.error.js';
 import { CustomJwt } from '../../@types/expreees.js';
 
@@ -82,7 +84,33 @@ export class ProfileController extends Controller {
 
     return new ResponseHandler('판매글 등록 성공');
   }
+  /**
+   * 판매 상품 수정
+   *
+   * @summary 기존 판매 상품 정보를 수정합니다
+   * @param id 판매 상품 ID (item_id)
+   * @param body 수정할 판매 상품 정보
+   * @returns 판매글 수정 결과
+   */
+  @Patch('item/{id}')
+  @Security('jwt')
+  @SuccessResponse(200, '판매글 수정 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async updateItem(
+    @Path() id: string,
+    @Body() body: UpdateItemRequest,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 수정할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+    const dto = ItemUpdate.createFromUpdateRequest(body, id, ownerId);
+    const itemId = await this.profileService.updateItem(dto);
 
+    return new ResponseHandler(itemId);
+  }
   /**
    * 주문제작 상품 등록
    *
@@ -118,44 +146,36 @@ export class ProfileController extends Controller {
   @Post('feed')
   @Security('jwt')
   @SuccessResponse(201, '피드 등록 성공')
-  @Response<TsoaResponse<AddFeedResponseDto>>(
-    201,
-    '피드 등록 성공',
-    {
-      resultType: 'SUCCESS',
-      error: null,
-      success: {
-        feedId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
-      }
+  @Response<TsoaResponse<AddFeedResponseDto>>(201, '피드 등록 성공', {
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      feedId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
     }
-  )
-  @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
+  })
   @Response<ErrorResponse>(
-    400,
-    '판매자(리폼러)만 등록할 수 있습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-FEED-NOT-REFORMER',
-        reason: '판매자(리폼러)만 등록할 수 있습니다.',
-        data: null
-      },
-      success: null
-    }
+    401,
+    '로그인이 필요합니다.',
+    commonError.unauthorized
   )
-  @Response<ErrorResponse>(
-    400,
-    '이미지 URL을 1개 이상 입력해 주세요.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-FEED-VALIDATION',
-        reason: '이미지 URL을 1개 이상 입력해 주세요.',
-        data: null
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '판매자(리폼러)만 등록할 수 있습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-FEED-NOT-REFORMER',
+      reason: '판매자(리폼러)만 등록할 수 있습니다.',
+      data: null
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(400, '이미지 URL을 1개 이상 입력해 주세요.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-FEED-VALIDATION',
+      reason: '이미지 URL을 1개 이상 입력해 주세요.',
+      data: null
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async addFeed(
     @Body() body: AddFeedRequestDto,
@@ -267,33 +287,29 @@ export class ProfileController extends Controller {
   @Get()
   @Security('jwt')
   @SuccessResponse(200, '내 프로필 조회 성공')
-  @Response<ErrorResponse>(401, '로그인이 필요합니다.', commonError.unauthorized)
   @Response<ErrorResponse>(
-    400,
-    '판매자(리폼러)만 조회할 수 있습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-PROFILE-NOT-REFORMER',
-        reason: '판매자(리폼러)만 조회할 수 있습니다.',
-        data: null
-      },
-      success: null
-    }
+    401,
+    '로그인이 필요합니다.',
+    commonError.unauthorized
   )
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: null
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '판매자(리폼러)만 조회할 수 있습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-PROFILE-NOT-REFORMER',
+      reason: '판매자(리폼러)만 조회할 수 있습니다.',
+      data: null
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: null
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getMyProfile(
     @Request() req: ExRequest
@@ -326,13 +342,21 @@ export class ProfileController extends Controller {
     @Query() cursor?: string,
     @Query() limit: number = 20,
     @Query() order: 'asc' | 'desc' = 'desc',
-    @Query() OnlyReviewAvailable: boolean = false,
+    @Query() OnlyReviewAvailable: boolean = false
   ): Promise<TsoaResponse<OrderListResponseDto>> {
     const payload = req.user;
     const userId = payload.id;
     // console.log(userId);
-    const dto = new OrderRequestDto(type, cursor, limit, userId, OnlyReviewAvailable, order); 
-    const { orders, nextCursor, hasNext } = await this.profileService.getOrders(dto);
+    const dto = new OrderRequestDto(
+      type,
+      cursor,
+      limit,
+      userId,
+      OnlyReviewAvailable,
+      order
+    );
+    const { orders, nextCursor, hasNext } =
+      await this.profileService.getOrders(dto);
     const ordersRes = orders.map((o) => o.toResponse());
     const res: OrderListResponseDto = {
       orders: ordersRes,
@@ -342,7 +366,6 @@ export class ProfileController extends Controller {
     return new ResponseHandler(res);
   }
 
-  
   /**
    * 구매 목록 상세 조회
    * @summary 구매 목록 ID로 해당 목록의 상세 정보를 조회합니다
@@ -378,11 +401,11 @@ export class ProfileController extends Controller {
     @Request() req: ExRequest,
     @Query() cursor?: string,
     @Query() limit: number = 20,
-    @Query() order: 'asc' | 'desc' = 'desc',
+    @Query() order: 'asc' | 'desc' = 'desc'
   ): Promise<TsoaResponse<RequestsListResponseDto>> {
     const payload = req.user;
     const userId = payload.id;
-    const dto = new RequestListRequestDto(cursor, limit, userId, order)
+    const dto = new RequestListRequestDto(cursor, limit, userId, order);
     const data = await this.profileService.getRequests(dto);
     return new ResponseHandler(data);
   }
@@ -395,19 +418,15 @@ export class ProfileController extends Controller {
    */
   @Get('{id}')
   @SuccessResponse(200, '프로필 정보 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: 'Owner ID: {id}'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: 'Owner ID: {id}'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<ProfileInfoResponse>>({
     resultType: 'SUCCESS',
@@ -441,19 +460,15 @@ export class ProfileController extends Controller {
    */
   @Get('{id}/feed')
   @SuccessResponse(200, '피드 목록 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: 'Owner ID: {id}'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: 'Owner ID: {id}'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileFeed(
     @Path() id: string,
@@ -479,19 +494,15 @@ export class ProfileController extends Controller {
    */
   @Get('{id}/item')
   @SuccessResponse(200, '판매 상품 목록 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: 'Owner ID: {id}'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: 'Owner ID: {id}'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileItems(
     @Path() id: string,
@@ -520,19 +531,15 @@ export class ProfileController extends Controller {
    */
   @Get('{id}/proposal')
   @SuccessResponse(200, '주문제작 목록 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: 'Owner ID: {id}'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: 'Owner ID: {id}'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileProposals(
     @Path() id: string,
@@ -561,19 +568,15 @@ export class ProfileController extends Controller {
    */
   @Get('{id}/review')
   @SuccessResponse(200, '리뷰 목록 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '프로필을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'OWNER-NOT-FOUND',
-        reason: '프로필을 찾을 수 없습니다.',
-        data: 'Owner ID: {id}'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'OWNER-NOT-FOUND',
+      reason: '프로필을 찾을 수 없습니다.',
+      data: 'Owner ID: {id}'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileReviews(
     @Path() id: string,
