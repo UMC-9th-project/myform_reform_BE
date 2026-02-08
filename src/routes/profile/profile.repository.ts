@@ -784,8 +784,68 @@ export class ProfileRepository {
         dueDate: request.due_date,
         createdAt: request.created_at,
         reformRequestPhotoId: photo?.reform_request_photo_id ?? null,
-        thumbnail: photo?.content ?? '' 
+        thumbnail: photo?.content ?? ''
       };
     });
+  }
+
+  async checkItemOwner(ownerId: string, itemId: string): Promise<boolean> {
+    return (
+      (await prisma.item.findFirst({
+        where: {
+          owner_id: ownerId,
+          item_id: itemId
+        }
+      })) !== null
+    );
+  }
+
+  async updateItem(
+    itemId: string,
+    updateData: {
+      title?: string;
+      content?: string;
+      price?: number;
+      delivery?: number;
+      category_id?: string;
+    }
+  ) {
+    return await prisma.item.update({
+      where: { item_id: itemId },
+      data: updateData
+    });
+  }
+
+  async deleteItemPhotos(itemId: string) {
+    await prisma.item_photo.deleteMany({
+      where: { item_id: itemId }
+    });
+  }
+
+  async createItemPhotos(itemId: string, images: string[]) {
+    await prisma.item_photo.createMany({
+      data: images.map((content, index) => ({
+        item_id: itemId,
+        content,
+        photo_order: index + 1
+      }))
+    });
+  }
+
+  async deleteOptionsByItemId(itemId: string) {
+    const existingGroups = await prisma.option_group.findMany({
+      where: { item_id: itemId },
+      select: { option_group_id: true }
+    });
+    const groupIds = existingGroups.map((g) => g.option_group_id);
+
+    if (groupIds.length > 0) {
+      await prisma.option_item.deleteMany({
+        where: { option_group_id: { in: groupIds } }
+      });
+      await prisma.option_group.deleteMany({
+        where: { item_id: itemId }
+      });
+    }
   }
 }

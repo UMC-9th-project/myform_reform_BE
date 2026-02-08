@@ -37,6 +37,23 @@ export class AddItemRequestDto {
   imageUrls!: string[];
 }
 
+// 판매 상품 수정 요청 DTO (클라이언트 → Controller)
+export interface UpdateItemRequest {
+  /** @example ["https://example.com/images/denim-jacket-front.jpg"] */
+  imageUrls?: string[];
+  /** @example "빈티지 데님 자켓 수정" */
+  title?: string;
+  /** @example "수정된 상품 설명입니다." */
+  content?: string;
+  /** @example 50000 */
+  price?: number;
+  /** @example 3500 */
+  delivery?: number;
+  option?: OptionGroup[];
+  /** @example {"major" : "의류", "sub" : "상의"} */
+  category?: Category;
+}
+
 // 주문제작 상품 등록 요청 DTO (클라이언트 → Controller)
 export class AddReformRequestDto {
   /** @example "청바지 리폼 - 와이드 팬츠 변경" */
@@ -137,7 +154,7 @@ export class OrderRequestDto {
   }
 }
 
-export class RequestListRequestDto{
+export class RequestListRequestDto {
   cursor: string;
   limit: number;
   userId: UUID;
