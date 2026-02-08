@@ -123,7 +123,8 @@ export class AuthService {
         user: {
           kakaoId: user.kakaoId,
           email: user.email,
-          role: user.role        
+          role: user.role,
+          redirectUrl: user.redirectUrl
         }
       } as KakaoSignupResponse;
     }

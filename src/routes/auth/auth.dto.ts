@@ -49,6 +49,7 @@ export interface KakaoSignupResponse {
     kakaoId: string;
     email: string;
     role: string;
+    redirectUrl?: string;
   };
 }
 
@@ -81,6 +82,7 @@ export interface PassportUserInfo {
   email?: string;
   id?: string;
   auth_status?: AuthStatus;
+  redirectUrl?: string;
 }
 
 // 로그인 응답 데이터 (Service -> Controller)
