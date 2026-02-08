@@ -6,6 +6,8 @@ import {
 import type { Prisma } from '@prisma/client';
 import { Prisma as PrismaClient } from '@prisma/client';
 import type {
+  CategoryTreeItemDto,
+  GetCategoriesResponseDto,
   GetItemListResponseDto,
   GetItemDetailResponseDto,
   GetItemReviewsResponseDto,
@@ -21,6 +23,42 @@ export class MarketService {
   private static readonly DEFAULT_DELIVERY_INFO = '평균 3일 이내 배송 시작';
   private static readonly MAX_PREVIEW_PHOTOS = 7;
   private static readonly DEFAULT_REVIEW_LIMIT = 5;
+
+  /**
+   * 카테고리 목록 조회
+   */
+  async getCategories(): Promise<GetCategoriesResponseDto> {
+    const rows = await this.repository.findCategories();
+    const flat = rows.map((row) => ({
+      categoryId: row.category_id,
+      name: row.name,
+      parentId: row.parent_id,
+      depth: row.depth,
+      sortOrder: row.sort_order
+    }));
+
+    const roots = flat.filter((c) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder);
+    const byParent = new Map<string | null, typeof flat>();
+    for (const c of flat) {
+      const key = c.parentId;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(c);
+    }
+
+    const buildTree = (parentId: string | null): CategoryTreeItemDto[] => {
+      const items = (byParent.get(parentId) ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+      return items.map((item) => ({
+        categoryId: item.categoryId,
+        name: item.name,
+        sortOrder: item.sortOrder,
+        children: buildTree(item.categoryId)
+      }));
+    };
+
+    return {
+      categories: buildTree(null)
+    };
+  }
 
   /**
    * 상품 목록 조회
@@ -110,7 +148,10 @@ export class MarketService {
       const isWished = await this.checkItemWished(userId, itemId);
       const images = this.extractItemImages(item);
       const optionGroups = this.transformOptionGroups(item);
-      const reviewData = await this.getReviewDataForItem(itemId);
+      const [reviewData, starRecent3m] = await Promise.all([
+        this.getReviewDataForItem(itemId),
+        this.repository.findAvgStarRecent3MonthsByOwnerId(item.owner.owner_id)
+      ]);
       const itemThumbnail = await this.getItemThumbnail(itemId);
       const reviews = await this.transformReviews(reviewData.allReviews, itemThumbnail);
 
@@ -127,6 +168,7 @@ export class MarketService {
           profile_image: item.owner.profile_photo,
           nickname: item.owner.nickname,
           star: item.owner.avg_star ? Number(item.owner.avg_star) : 0,
+          star_recent_3m: starRecent3m ?? 0,
           order_count: item.owner.trade_count || 0
         },
         is_wished: isWished,

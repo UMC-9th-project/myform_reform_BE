@@ -1,3 +1,22 @@
+export interface CategoryItemDto {
+  categoryId: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  sortOrder: number;
+}
+
+export interface CategoryTreeItemDto {
+  categoryId: string;
+  name: string;
+  sortOrder: number;
+  children: CategoryTreeItemDto[];
+}
+
+export interface GetCategoriesResponseDto {
+  categories: CategoryTreeItemDto[];
+}
+
 export interface GetItemListResponseDto {
   items: Array<{
     item_id: string;
@@ -37,6 +56,7 @@ export interface GetItemDetailResponseDto {
     profile_image: string | null;
     nickname: string | null;
     star: number;
+    star_recent_3m: number;
     order_count: number;
   };
   is_wished: boolean;

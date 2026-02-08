@@ -107,3 +107,13 @@ export class ReformerDetailInfoResponseDto {
     this.totalSales = props.trade_count ?? 0;
   }
 }
+
+export interface UserProfileResponseDto{
+  userId: string,
+  email: string,
+  name: string,
+  nickName: string,
+  phone: string,
+  profilePhoto: string,
+  role: Role
+}

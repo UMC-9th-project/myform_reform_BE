@@ -1,11 +1,41 @@
-import { CheckNicknameResponse, UpdateUserProfileResponseDto, UsersInfoResponse, UpdateReformerProfileResponseDto, UserDetailInfoResponseDto, ReformerDetailInfoResponseDto } from './dto/users.res.dto.js';
-import { UpdateReformerStatusRequest, UpdateUserProfileParams, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto, UpdateReformerProfileParams } from './dto/users.req.dto.js';
+import { 
+  CheckNicknameResponse, 
+  UpdateUserProfileResponseDto, 
+  UsersInfoResponse, 
+  UpdateReformerProfileResponseDto, 
+  UserDetailInfoResponseDto, 
+  ReformerDetailInfoResponseDto 
+} from './dto/users.res.dto.js';
+import { SolapiMessageService} from 'solapi';
+import { 
+  UpdateReformerStatusRequest, 
+  UpdateUserProfileParams, 
+  UpdateUserProfileRequestDto,
+  UpdateReformerProfileRequestDto, 
+  UpdateReformerProfileParams 
+} from './dto/users.req.dto.js';
 import { validateNickname } from '../../utils/validators.js';
-import { UsersModel } from './users.model.js';
-import { EmailDuplicateError, UnknownAuthError, AccountNotFoundError } from '../auth/auth.error.js';
-import { NicknameDuplicateError, PhoneNumberDuplicateError } from './users.error.js';
+import { 
+  UsersModel, 
+  UserProfile 
+} from './users.model.js';
+import { 
+  EmailDuplicateError,
+  UnknownAuthError, 
+  AccountNotFoundError, 
+  SmsProviderError
+} from '../auth/auth.error.js';
+import { 
+  NicknameDuplicateError, 
+  PhoneNumberDuplicateError 
+} from './users.error.js';
 import { UsersRepository } from './users.repository.js';
 import { AuthStatus } from '../auth/auth.dto.js';
+
+const messageService = new SolapiMessageService(
+  process.env.SOLAPI_API_KEY || '',
+  process.env.SOLAPI_API_SECRET || ''
+);
 
 export class UsersService {
 
@@ -18,7 +48,18 @@ export class UsersService {
 
   // 리폼러 상태 업데이트
   async updateReformerStatus(reformerId: string, requestBody: UpdateReformerStatusRequest): Promise<UsersInfoResponse> {
+    const reformer = await this.usersRepository.findReformerbyReformerId(reformerId);
+    if (!reformer) {
+      throw new AccountNotFoundError('리폼러의 계정이 존재하지 않습니다.')
+    }
     const result = await this.usersModel.updateReformerStatus(reformerId, requestBody);
+    
+    
+    if (result.auth_status && reformer.status !== result.auth_status) {
+      this.sendNotificationSms(reformer.phone, result.auth_status).catch(err => {
+        console.error(`[SMS 전송 실패] ID: ${reformerId}, Error: ${err.message}`)
+      })
+    }
     return result as UsersInfoResponse;
   }
 
@@ -121,5 +162,37 @@ export class UsersService {
       return reformerDetailInfo;
     }
     throw new AccountNotFoundError('존재하지 않는 리폼러입니다.');
+  }
+
+  // 일반 유저 프로필 조회
+  async getUserProfile(userId: string): Promise<UserProfile> {
+    const userProfile = await this.usersRepository.getUserProfile(userId);
+    if (!userProfile){
+      throw new AccountNotFoundError('존재하지 않는 유저 계정입니다.')
+    }
+    return UserProfile.create(userProfile)
+  }
+
+  private async sendNotificationSms(phone: string | null, status: string) {
+    if (!phone) return;
+
+    const statusMap: Record<string, string> = {
+      'APPROVED': '승인',
+      'REJECTED': '승인 거부',
+      'PENDING': '대기 상태로 변경'
+    };
+
+    const resultStatus = statusMap[status] || '처리';
+    const textMessage = `[내폼리폼] 프로필 검토 결과 ${resultStatus}되었음을 알려드립니다.`;
+
+    try {
+      await messageService.send({
+        to: phone,
+        from: process.env.SOLAPI_PHONE_NUMBER!,
+        text: textMessage
+      });
+    } catch (error: any) {
+      throw new SmsProviderError(`SMS API 요청 실패 : ${error.message}`);
+    }
   }
 }

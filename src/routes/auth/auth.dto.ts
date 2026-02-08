@@ -134,6 +134,7 @@ export interface UserCreateResponseDto {
 export interface ReformerSignupRequest extends UserSignupRequest {
   businessNumber: string;
   description: string;
+  portfolioPhotos: string[];  
 }
 
 // 리폼러 db 생성 요청 데이터 (Service -> Model)

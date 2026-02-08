@@ -223,9 +223,9 @@ export class ChatRepository {
       image: isFeed ? opponent?.profile_photo || '' : payload?.image || '',
       title: isFeed ? opponent?.nickname || '' : payload?.title || '주문 상세',
       roomType: row.type,
-      messageType: (lastMessage?.message_type as any) || 'TEXT',
+      messageType: (lastMessage?.message_type as any) || 'undefined',
       type: isFeed ? 'INQUIRY' : 'ORDER',
-      lastMessage: lastMessage?.text_content || '',
+      lastMessage: lastMessage?.text_content || null,
       lastMessageAt: lastMessage?.created_at || row.created_at,
       unreadCount: isOwner ? row.owner_unread_count : row.requester_unread_count
     };

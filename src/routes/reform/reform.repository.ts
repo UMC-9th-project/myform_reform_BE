@@ -1,6 +1,5 @@
 import prisma from '../../config/prisma.config.js';
 import { ReformFilter } from './dto/reform.req.dto.js';
-import { Category } from '../../@types/item.js';
 import {
   RawProposalDetail,
   RawProposalDetailImages,
@@ -73,40 +72,40 @@ export class ReformRepository {
     });
   }
 
-  async getCategoryIds(category: Category): Promise<string[]> {
-    // 소분류가 있으면 해당 소분류 ID만 반환
-    if (category.sub) {
-      const subCategory = await this.prisma.category.findFirst({
-        where: {
-          name: category.sub
-        },
-        select: { category_id: true }
-      });
-      return subCategory ? [subCategory.category_id] : [];
-    }
-
-    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
-    const majorCategory = await this.prisma.category.findFirst({
+  async findMajorCategory(
+    name: string
+  ): Promise<{ category_id: string } | null> {
+    return this.prisma.category.findFirst({
       where: {
-        name: category.major,
+        name,
         parent_id: null
       },
       select: { category_id: true }
     });
+  }
 
-    if (!majorCategory) return [];
-
-    const subCategories = await this.prisma.category.findMany({
+  async findSubCategory(
+    name: string,
+    parentId: string
+  ): Promise<{ category_id: string } | null> {
+    return this.prisma.category.findFirst({
       where: {
-        parent_id: majorCategory.category_id
+        name,
+        parent_id: parentId
       },
       select: { category_id: true }
     });
+  }
 
-    return [
-      majorCategory.category_id,
-      ...subCategories.map((c) => c.category_id)
-    ];
+  async findSubCategories(
+    parentId: string
+  ): Promise<{ category_id: string }[]> {
+    return this.prisma.category.findMany({
+      where: {
+        parent_id: parentId
+      },
+      select: { category_id: true }
+    });
   }
 
   async getRequestByRecent(
@@ -382,6 +381,7 @@ export class ReformRepository {
           price: true,
           delivery: true,
           expected_working: true,
+          owner_id: true,
           owner: {
             select: {
               name: true,
@@ -392,6 +392,19 @@ export class ReformRepository {
       })
     ]);
     return { images, body };
+  }
+
+  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await this.prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   async updateRequest(
@@ -439,6 +452,23 @@ export class ReformRepository {
       return data.requestId;
     });
     return result;
+  }
+
+  async deleteRequestPhotos(requestId: string) {
+    await this.prisma.reform_request_photo.deleteMany({
+      where: {
+        reform_request_id: requestId
+      }
+    });
+  }
+
+  async deleteRequest(requestId: string, userId: string) {
+    await this.prisma.reform_request.deleteMany({
+      where: {
+        reform_request_id: requestId,
+        user_id: userId
+      }
+    });
   }
 
   async updateProposal(
@@ -525,5 +555,19 @@ export class ReformRepository {
         order_id: true
       }
     });
+  }
+  async checkIsWishUser(targetId: UUID, userId: UUID) {
+    return (
+      (await prisma.user_wish.findFirst({
+        where: { target_id: targetId, user_id: userId }
+      })) !== null
+    );
+  }
+  async checkIsWishReformer(targetId: UUID, ownerId: UUID) {
+    return (
+      (await prisma.owner_wish.findFirst({
+        where: { reform_request_id: targetId, owner_id: ownerId }
+      })) !== null
+    );
   }
 }

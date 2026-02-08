@@ -14,6 +14,22 @@ export class MarketRepository {
   }
 
   /**
+   * 카테고리 전체 목록 조회 (sort_order, depth 기준 정렬)
+   */
+  async findCategories() {
+    return await prisma.category.findMany({
+      orderBy: [{ depth: 'asc' }, { sort_order: 'asc' }],
+      select: {
+        category_id: true,
+        name: true,
+        parent_id: true,
+        depth: true,
+        sort_order: true
+      }
+    });
+  }
+
+  /**
    * 상품 목록 조회 (필터 및 정렬 적용)
    */
   async findItemsWithFilters(
@@ -201,6 +217,22 @@ export class MarketRepository {
       },
       _avg: { star: true }
     });
+  }
+
+  /**
+   * 해당 오너(리폼러)의 최근 3개월 리뷰 평균 별점
+   */
+  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   /**

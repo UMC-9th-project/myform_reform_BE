@@ -13,7 +13,11 @@ import {
 } from 'tsoa';
 import type { Request as ExRequest } from 'express';
 import { ReviewsService } from './reviews.service.js';
-import { ReviewResponseDto } from './reviews.model.js';
+import {
+  ReviewResponseDto,
+  ProposalReviewListResponseDto,
+  ProposalReviewSortBy
+} from './reviews.model.js';
 import {
   ErrorResponse,
   ResponseHandler,
@@ -80,9 +84,36 @@ export class ReviewsController extends Controller {
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async deleteReview(
     @Request() req: ExRequest,
-    @Path() reviewId: string): Promise<TsoaResponse<string>> {
+    @Path() reviewId: string
+  ): Promise<TsoaResponse<string>> {
     const userId = this.requireUserId(req.user?.id);
     const result = await this.reviewService.deleteReview(userId, reviewId);
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * @summary 리폼러의 전체 리뷰 목록을 조회합니다.
+   * @param reformerId 리폼러 ID (owner_id)
+   * @param cursor 페이지네이션 커서 (선택)
+   * @param limit 한 번에 조회할 개수
+   * @param sortBy 정렬 방식 (recent: 최신순, high_rating: 평점 높은 순, low_rating: 평점 낮은 순)
+   * @returns 리폼러 리뷰 목록 (총 리뷰 수, 평균 별점, 사진 후기 수, 리뷰 목록)
+   */
+  @Get('/reformer/{reformerId}')
+  @SuccessResponse(200, '리폼러 리뷰 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getReformerReviews(
+    @Path() reformerId: string,
+    @Query() cursor?: string,
+    @Query() limit: number = 10,
+    @Query() sortBy: ProposalReviewSortBy = 'recent'
+  ): Promise<TsoaResponse<ProposalReviewListResponseDto>> {
+    const result = await this.reviewService.getReviewsByReformerId(
+      reformerId,
+      limit,
+      cursor,
+      sortBy
+    );
     return new ResponseHandler(result);
   }
 }

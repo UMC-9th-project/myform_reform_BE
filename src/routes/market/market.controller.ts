@@ -22,6 +22,7 @@ import {
 } from './dto/market.req.dto.js';
 import type { Request as ExpressRequest } from 'express';
 import type {
+  GetCategoriesResponseDto,
   GetItemListResponseDto,
   GetItemDetailResponseDto,
   GetItemReviewsResponseDto,
@@ -40,6 +41,22 @@ export class MarketController extends Controller {
     this.marketService = new MarketService();
   }
 
+  /**
+   * 카테고리 목록 조회
+   * @summary 마켓 필터용 카테고리 목록을 조회합니다
+   * @returns 카테고리 목록 (categoryId, name, parentId, depth, sortOrder)
+   */
+  @Get('categories')
+  @SuccessResponse(200, '카테고리 목록 조회 성공')
+  @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  public async getCategories(): Promise<TsoaResponse<GetCategoriesResponseDto>> {
+    const result = await this.marketService.getCategories();
+    return {
+      resultType: 'SUCCESS',
+      error: null,
+      success: result
+    };
+  }
 
   /**
    * 상품 목록 조회
@@ -202,6 +219,7 @@ export class MarketController extends Controller {
         profile_image: 'https://example.com/profile.jpg',
         nickname: '리포머닉네임',
         star: 4.8,
+        star_recent_3m: 4.5,
         order_count: 500
       },
       is_wished: false,

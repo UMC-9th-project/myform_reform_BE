@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Example,
   Get,
   Patch,
@@ -21,7 +22,6 @@ import {
   ResponseHandler,
   TsoaResponse
 } from '../../config/tsoaResponse.js';
-// import RequestHandler from 'express';
 import { Request as ExRequest } from 'express';
 import {
   ModifyProposalRequest,
@@ -56,10 +56,14 @@ export class ReformController extends Controller {
    * @return 최신순 요청서 3개, 최신순 제안서 3개
    */
   @Get('/')
+  @Security('jwt_optional')
   @SuccessResponse(200, '조회 성공')
   @Response<ErrorResponse>(500, '데이터베이스 오류')
-  public async findAll(): Promise<TsoaResponse<ReformHomeResponse>> {
-    const ans = await this.reformService.selectHomeReform();
+  public async findAll(
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<ReformHomeResponse>> {
+    const payload = req.user ?? null;
+    const ans = await this.reformService.selectHomeReform(payload);
     return new ResponseHandler(ans);
   }
 
@@ -72,15 +76,18 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/request')
+  @Security('jwt_optional')
   async getRequest(
+    @Request() req: ExRequest,
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
     @Query() limit: number = 15,
     @Query() category?: string,
     @Query() subcategory?: string
   ) {
+    const payload = req.user ?? null;
     const dto = new ReformFilter(sortBy, page, limit, category, subcategory);
-    const ans = await this.reformService.getRequest(dto);
+    const ans = await this.reformService.getRequest(dto, payload);
     return new ResponseHandler(ans);
   }
 
@@ -88,8 +95,6 @@ export class ReformController extends Controller {
    *
    *
    * @summary 새로운 리폼요청서를 작성합니다
-   * @param body JSON stringify된 객체 {"title":"청바지 기장 수선 요청합니다","contents":"너무 길어서 기장을 5cm 정도 줄이고 싶습니다.","minBudget":15000,"maxBudget":30000,"dueDate":"2026-01-20T00:00:00.000Z","category":{"major":"의류","sub":"하의"}}
-   * @param images 리폼 요청에 첨부할 이미지 파일 배열
    * @returns 생성 성공 메시지
    */
   @Post('/request')
@@ -171,7 +176,25 @@ export class ReformController extends Controller {
   }
 
   /**
-   * @summary 요청서 목록을 보여줍니다.
+   * @summary 특정 리폼 요청을 삭제합니다.
+   * @param id 삭제하려는 리폼 요청글 ID (UUID)
+   * @returns 리폼 요청 삭제 성공 여부
+   */
+  @Delete('/request/:id')
+  @Security('jwt')
+  @SuccessResponse(200, '삭제 성공')
+  public async deleteRequest(
+    @Path() id: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const ans = await this.reformService.deleteRequest(id, userId);
+    return new ResponseHandler(ans);
+  }
+
+  /**
+   * @summary 제안서 목록을 보여줍니다.
    * @param sortBy 정렬 기준
    * @param page 현재 페이지, 기본값 1
    * @param limit 보여줄 최대 아이템 갯수 기본값 15
@@ -179,15 +202,18 @@ export class ReformController extends Controller {
    * @param subcategory 카테고리 소분류
    */
   @Get('/proposal')
+  @Security('jwt_optional')
   async getProposal(
+    @Request() req: ExRequest,
     @Query() sortBy: 'RECENT' | 'POPULAR',
     @Query() page: number = 1,
     @Query() limit: number = 15,
     @Query() category?: string,
     @Query() subcategory?: string
   ) {
+    const payload = req.user ?? null;
     const dto = new ReformFilter(sortBy, page, limit, category, subcategory);
-    const ans = await this.reformService.getProposal(dto);
+    const ans = await this.reformService.getProposal(dto, payload);
     return new ResponseHandler(ans);
   }
 
@@ -198,30 +224,13 @@ export class ReformController extends Controller {
    */
   @Get('/proposal/:id')
   @Security('jwt_optional')
-  @Example<ReformDetailProposalResponseDto>({
-    isOwner: true,
-    reformProposalId: 'bb1a025b-2b3e-4218-85a0-454c05de22ce',
-    title: '맞춤 자켓 제작',
-    content: '고객님의 사이즈에 맞춰 자켓을 제작해드립니다',
-    price: 150000,
-    delivery: 3000,
-    expectedWorking: 14,
-    ownerName: '리폼장인',
-    ownerProfile: '',
-    images: [
-      {
-        photo: 'https://image.png',
-        photo_order: 1
-      }
-    ]
-  })
   @SuccessResponse(200, '조회 성공')
   public async findDetailProposal(
     @Path() id: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<ReformDetailProposalResponseDto>> {
     const payload = req.user ?? null;
-    
+
     const ans = (
       await this.reformService.findDetailProposal(payload, id)
     ).toDto();

@@ -10,7 +10,8 @@ import {
   Body,
   Query,
   Security,
-  Request
+  Request,
+  Example
 } from 'tsoa';
 import type { Request as ExpressRequest } from 'express';
 import { ProfileService } from './profile.service.js';
@@ -24,7 +25,9 @@ import {
   AddFeedRequestDto,
   AddItemRequestDto,
   AddReformRequestDto,
-  SaleRequestDto
+  SaleRequestDto,
+  OrderRequestDto,
+  RequestListRequestDto
 } from './dto/profile.req.dto.js';
 import {
   AddFeedResponseDto,
@@ -34,7 +37,10 @@ import {
   FeedListResponse,
   MarketListResponse,
   ProposalListResponse,
-  ReviewListResponse
+  ReviewListResponse,
+  OrderDetailResponseDto,
+  OrderListResponseDto,
+  RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { Item, Reform } from './profile.model.js';
@@ -305,10 +311,90 @@ export class ProfileController extends Controller {
   }
 
   /**
+   * 구매 목록 조회
+   * @summary 사용자의 전체 구매이력 목록을 조회합니다
+   * @returns 구매이력 목록
+   * @param type 주문제작 or 판매상품 선택
+   * @param cursor 페이지네이션 커서
+   * @param limit 한 번에 보여줄 목록 수
+   * @param OnlyReviewAvailable 리뷰 가능한 주문 목록만 조회하기 (리뷰 가능 조건 : PENDING이 아닐 때, 작성된 리뷰가 없을 때)
+   */
+  @Security('jwt', ['user'])
+  @Get('orders')
+  @SuccessResponse(200, '구매이력 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getOrders(
+    @Query() type: 'ITEM' | 'REFORM' | 'ALL',
+    @Request() req: ExRequest,
+    @Query() cursor?: string,
+    @Query() limit: number = 20,
+    @Query() order: 'asc' | 'desc' = 'desc',
+    @Query() OnlyReviewAvailable: boolean = false,
+  ): Promise<TsoaResponse<OrderListResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    // console.log(userId);
+    const dto = new OrderRequestDto(type, cursor, limit, userId, OnlyReviewAvailable, order); 
+    const { orders, nextCursor, hasNext } = await this.profileService.getOrders(dto);
+    const ordersRes = orders.map((o) => o.toResponse());
+    const res: OrderListResponseDto = {
+      orders: ordersRes,
+      nextCursor,
+      hasNext
+    };
+    return new ResponseHandler(res);
+  }
+
+  
+  /**
+   * 구매 목록 상세 조회
+   * @summary 구매 목록 ID로 해당 목록의 상세 정보를 조회합니다
+   * @param id 구매 목록 ID (order_id)
+   * @returns 구매 목록 상세 정보
+   */
+  @Get('orders/:id')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '구매 목록 상세 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getOrderDetail(
+    @Path() id: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<OrderDetailResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const data = await this.profileService.getOrderDetail(userId, id);
+    return new ResponseHandler(data);
+  }
+
+  /**
+   * 일반 유저 작성한 요청 글목록 조회
+   * @summary 작성한 요청글 목록을 조회합니다. (일반 유저, 자신의 글만 조회 가능)
+   * @param cursor 페이지네이션 커서 (optional)
+   * @param limit 한 번에 보여줄 목록 수 (기본 값 20)
+   * @return 사용자가 작성한 요청글 목록
+   */
+  @Get('requests')
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '작성 요청글 조회 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async getRequests(
+    @Request() req: ExRequest,
+    @Query() cursor?: string,
+    @Query() limit: number = 20,
+    @Query() order: 'asc' | 'desc' = 'desc',
+  ): Promise<TsoaResponse<RequestsListResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const dto = new RequestListRequestDto(cursor, limit, userId, order)
+    const data = await this.profileService.getRequests(dto);
+    return new ResponseHandler(data);
+  }
+
+  /**
    * 프로필 기본 정보 조회
-   * @summary owner ID로 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다
-   * @param id owner UUID
-   * @returns 프로필 정보
+   * @summary 리폼러 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다. owner UUID 또는 닉네임으로 조회할 수 있습니다.
+   * @param id owner UUID 또는 리폼러 닉네임
+   * @returns 프로필 정보 (ownerId, avgStarRecent3m 포함)
    */
   @Get('{id}')
   @SuccessResponse(200, '프로필 정보 조회 성공')
@@ -326,6 +412,21 @@ export class ProfileController extends Controller {
     }
   )
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
+  @Example<TsoaResponse<ProfileInfoResponse>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      ownerId: '880e8400-e29b-41d4-a716-446655440000',
+      profilePhoto: 'https://example.com/profile.jpg',
+      nickname: '리폼러닉네임',
+      avgStar: 4.5,
+      avgStarRecent3m: 4.2,
+      reviewCount: 120,
+      totalSaleCount: 45,
+      keywords: ['리폼', '수선'],
+      bio: '프로필 소개글입니다.'
+    }
+  })
   public async getProfileInfo(
     @Path() id: string
   ): Promise<TsoaResponse<ProfileInfoResponse>> {
@@ -373,8 +474,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 판매 상품 목록 조회 (cursor 기반)
-   * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
-   * @param id owner UUID
+   * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 판매 상품 목록
@@ -414,8 +515,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 주문제작 목록 조회 (cursor 기반)
-   * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함)
-   * @param id owner UUID
+   * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 주문제작 목록
@@ -455,8 +556,8 @@ export class ProfileController extends Controller {
 
   /**
    * 프로필 리뷰 목록 조회 (cursor 기반)
-   * @summary owner에 대한 리뷰 목록을 조회합니다 (공개)
-   * @param id owner UUID
+   * @summary owner에 대한 리뷰 목록을 조회합니다 (공개). id는 owner UUID 또는 닉네임입니다.
+   * @param id owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 리뷰 목록

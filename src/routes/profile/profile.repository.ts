@@ -4,7 +4,7 @@
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
-import { SaleRequestDto } from './dto/profile.req.dto.js';
+import { OrderRequestDto, RequestListRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -12,9 +12,15 @@ import {
   RawSaleData,
   RawSaleDetailData,
   Reform,
-  ReformDto
+  ReformDto,
+  RawOrderData,
+  RawOrderDetailData,
+  RawOptionItemsWithGroup,
+  RequestData,
+  RawRequestData
 } from './profile.model.js';
 import { OptionGroup } from '../../@types/item.js';
+import { target_type_enum } from '@prisma/client';
 
 export class ProfileRepository {
   private prisma: PrismaClient;
@@ -418,6 +424,27 @@ export class ProfileRepository {
     }));
   }
 
+  async getRequestInfos(requestIds: string[]) {
+    if (requestIds.length === 0) return [];
+    const requests = await this.prisma.reform_request.findMany({
+      where: { reform_request_id: { in: requestIds } },
+      select: {
+        reform_request_id: true,
+        title: true,
+        min_budget: true,
+        max_budget: true,
+        reform_request_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+      }
+    });
+    return requests.map((request: (typeof requests)[number]) => ({
+      reform_request_id: request.reform_request_id,
+      title: request.title,
+      minBudget: request.min_budget !== null ? Number(request.min_budget) : null,
+      maxBudget: request.max_budget !== null ? Number(request.max_budget) : null,
+      photo: request.reform_request_photo[0]?.content ?? null
+    }));
+  }
+
   async getOrderDetail(
     ownerId: string,
     orderId: string
@@ -511,6 +538,7 @@ export class ProfileRepository {
     return await this.prisma.owner.findUnique({
       where: { owner_id: ownerId },
       select: {
+        owner_id: true,
         profile_photo: true,
         nickname: true,
         avg_star: true,
@@ -519,6 +547,34 @@ export class ProfileRepository {
         bio: true
       }
     });
+  }
+
+  async findOwnerByNickname(nickname: string) {
+    return await this.prisma.owner.findUnique({
+      where: { nickname },
+      select: {
+        owner_id: true,
+        profile_photo: true,
+        nickname: true,
+        avg_star: true,
+        review_count: true,
+        keywords: true,
+        bio: true
+      }
+    });
+  }
+
+  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await this.prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   async countSaleByOwnerId(ownerId: string): Promise<number> {
@@ -683,6 +739,192 @@ export class ProfileRepository {
         nickname: true,
         profile_photo: true
       }
+    });
+  }
+
+  async getOrdersByUserId(dto: OrderRequestDto): Promise<RawOrderData[]> {
+    const { userId, type, cursor, limit, order, onlyReviewAvailable } = dto;
+    const targetTypeFilter = {
+      REFORM: { in: ['REQUEST', 'PROPOSAL'] },
+      ITEM: 'ITEM',
+      ALL: undefined
+    };
+    const whereClause : any = {
+      user_id: userId,
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined
+    };
+    
+    if (onlyReviewAvailable) {
+      whereClause.review = { none: {} };
+      whereClause.status = { not: 'PENDING' };
+    }
+
+    const orders = await this.prisma.order.findMany({
+      where: whereClause,
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { order_id: cursor } : undefined,
+      orderBy: [
+        {
+          receipt: {
+            created_at: order
+          }
+        },
+        {
+          order_id: order
+        }
+      ],
+      select: {
+        order_id: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        target_type: true,
+        quantity: true,
+        tracking_number: true,
+        owner: {
+          select: {
+            nickname: true
+          }
+        },
+        receipt: {
+          select: {
+            created_at: true,
+            receipt_number: true
+          }
+        },
+        review: {
+          select: {
+            review_id: true,
+          }
+        }
+      }
+    });
+    return orders;
+  }
+
+  async getOrderDetailByOrderId(orderId: string): Promise<RawOrderDetailData> {
+    return await prisma.order.findFirstOrThrow({
+      where: { order_id: orderId },
+      select: {
+        order_id: true,
+        user_id: true,
+        target_type: true,
+        target_id: true,
+        status: true,
+        price: true,
+        delivery_fee: true,
+        tracking_number: true,
+        receipt: {
+          select: {
+            created_at: true,
+            receipt_number: true,
+            delivery_address: true,
+            delivery_address_detail: true,
+            delivery_address_name: true,
+            delivery_phone: true,
+            delivery_postal_code: true,
+            delivery_recipient_name: true,
+          }
+        },
+      }
+    })
+  }
+
+  async getOptionIdsByOrderId(orderId: string): Promise<string[]> {
+    const optionIds = await prisma.order_option.findMany({
+      where: { order_id: orderId },
+      orderBy: [
+        {
+          option_item: {
+            sort_order: 'asc'
+          }
+        }
+      ],
+      select: {
+        option_item: {
+          select: {
+            option_item_id: true
+          }
+        }
+      },
+    });
+    return optionIds.map((optionId: (typeof optionIds)[number]) => 
+      optionId.option_item.option_item_id)
+  }
+
+  async getOptionItemsWithGroup(optionItemIds: string[] | undefined ): Promise<RawOptionItemsWithGroup[]> {
+    return await prisma.option_group.findMany({
+      orderBy: {
+        sort_order: 'asc'
+      },
+      select: {
+        option_group_id: true,
+        name: true,
+        option_item: {
+          where: { option_item_id: { in: optionItemIds } },
+          orderBy: {
+            sort_order: 'asc'
+          },
+          select: {
+            option_item_id: true,
+            name: true,
+            extra_price: true
+          }
+        }
+      }
+    })
+  }
+
+  async getRequestsByUserId(dto: RequestListRequestDto): Promise<RequestData[]> {
+    const { cursor, limit, userId, order } = dto;
+    const requests: RawRequestData[] = await this.prisma.reform_request.findMany({
+      where: {
+        user_id: userId
+      },
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { reform_request_id : cursor } : undefined,
+      orderBy: [
+        { created_at: order },
+        { reform_request_id: order }
+      ],
+      select: {
+        reform_request_id: true,
+        user_id: true,
+        title: true,
+        min_budget: true,
+        max_budget: true,
+        due_date: true,
+        created_at: true,
+        reform_request_photo: {
+          select: {
+            reform_request_photo_id: true,
+            content: true,
+          },
+          orderBy:  [
+              { photo_order: 'asc' },
+              { reform_request_photo_id : 'asc'}
+            ],
+          take: 1
+        }
+      }
+    })
+    return requests.map((request) => {
+      const photo = request.reform_request_photo[0];
+
+      return {
+        reformRequestId: request.reform_request_id,
+        userId: request.user_id ?? userId,
+        title: request.title ?? '',
+        minBudget: request.min_budget ? Number(request.min_budget) : null,
+        maxBudget: request.max_budget ? Number(request.max_budget) : null,
+        dueDate: request.due_date,
+        createdAt: request.created_at,
+        reformRequestPhotoId: photo?.reform_request_photo_id ?? null,
+        thumbnail: photo?.content ?? '' 
+      };
     });
   }
 }

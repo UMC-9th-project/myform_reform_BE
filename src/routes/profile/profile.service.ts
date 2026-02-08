@@ -3,16 +3,22 @@ import {
   CategoryNotExist,
   ItemAddError,
   OrderItemError,
-  OwnerNotFound
+  OwnerNotFound,
+  ForbiddenAccessError
 } from './profile.error.js';
-import { AddFeedRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
+import {
+  OrderNotFoundError
+} from '../orders/orders.error.js';
+import { AddFeedRequestDto, OrderRequestDto, RequestListRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
+  Order,
   Reform,
   ReformDto,
   Sale,
-  SaleDetail
+  SaleDetail,
+  OrderDetail,
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -20,7 +26,9 @@ import type {
   FeedListResponse,
   MarketListResponse,
   ProposalListResponse,
-  ReviewListResponse
+  ReviewListResponse,
+  OrderDetailResponseDto,
+  RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
@@ -130,27 +138,41 @@ export class ProfileService {
     return SaleDetail.create(order, option, title, { thumbnailOverride });
   }
 
-  async getProfileInfo(id: string): Promise<ProfileInfoResponse> {
-    const owner = await this.profileRepository.findOwnerById(id);
-    if (!owner) {
-      throw new OwnerNotFound(id);
-    }
+  private async resolveOwner(idOrNickname: string) {
+    const trimmed = idOrNickname.trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
+    const owner = isUuid
+      ? await this.profileRepository.findOwnerById(trimmed)
+      : await this.profileRepository.findOwnerByNickname(trimmed);
+    if (!owner) throw new OwnerNotFound(idOrNickname);
+    return owner;
+  }
+
+  async getProfileInfo(idOrNickname: string): Promise<ProfileInfoResponse> {
+    const owner = await this.resolveOwner(idOrNickname);
+    const ownerId = owner.owner_id;
 
     let avgStar = owner.avg_star ? Number(owner.avg_star) : null;
     let reviewCount = owner.review_count;
 
     if (avgStar === null || reviewCount === null) {
-      const stats = await this.profileRepository.findReviewStatsByOwnerId(id);
+      const stats = await this.profileRepository.findReviewStatsByOwnerId(ownerId);
       avgStar = stats._avg.star !== null ? Number(stats._avg.star) : null;
       reviewCount = stats._count.review_id ?? 0;
     }
 
-    const totalSaleCount = await this.profileRepository.countSaleByOwnerId(id);
+    const [totalSaleCount, avgStarRecent3mRaw] = await Promise.all([
+      this.profileRepository.countSaleByOwnerId(ownerId),
+      this.profileRepository.findAvgStarRecent3MonthsByOwnerId(ownerId)
+    ]);
+    const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
 
     return {
+      ownerId: owner.owner_id,
       profilePhoto: owner.profile_photo,
       nickname: owner.nickname,
       avgStar,
+      avgStarRecent3m,
       reviewCount,
       totalSaleCount,
       keywords: owner.keywords ?? [],
@@ -163,13 +185,11 @@ export class ProfileService {
     cursor: string | undefined,
     limit: number
   ): Promise<FeedListResponse> {
-    const owner = await this.profileRepository.findOwnerById(id);
-    if (!owner) {
-      throw new OwnerNotFound(id);
-    }
+    const owner = await this.resolveOwner(id);
+    const ownerId = owner.owner_id;
 
     const take = Math.min(limit, 50);
-    const feeds = await this.profileRepository.findFeedsByOwnerId(id, cursor, take);
+    const feeds = await this.profileRepository.findFeedsByOwnerId(ownerId, cursor, take);
     const hasNext = feeds.length > take;
     const actualFeeds = hasNext ? feeds.slice(0, take) : feeds;
 
@@ -203,13 +223,11 @@ export class ProfileService {
     limit: number,
     userId: string | undefined
   ): Promise<MarketListResponse> {
-    const owner = await this.profileRepository.findOwnerById(id);
-    if (!owner) {
-      throw new OwnerNotFound(id);
-    }
+    const owner = await this.resolveOwner(id);
+    const ownerId = owner.owner_id;
 
     const take = Math.min(limit, 50);
-    const items = await this.profileRepository.findItemsByOwnerId(id, cursor, take);
+    const items = await this.profileRepository.findItemsByOwnerId(ownerId, cursor, take);
     const hasNext = items.length > take;
     const actualItems = hasNext ? items.slice(0, take) : items;
 
@@ -261,14 +279,12 @@ export class ProfileService {
     limit: number,
     userId: string | undefined
   ): Promise<ProposalListResponse> {
-    const owner = await this.profileRepository.findOwnerById(id);
-    if (!owner) {
-      throw new OwnerNotFound(id);
-    }
+    const owner = await this.resolveOwner(id);
+    const ownerId = owner.owner_id;
 
     const take = Math.min(limit, 50);
     const proposals = await this.profileRepository.findProposalsByOwnerId(
-      id,
+      ownerId,
       cursor,
       take
     );
@@ -324,13 +340,11 @@ export class ProfileService {
     cursor: string | undefined,
     limit: number
   ): Promise<ReviewListResponse> {
-    const owner = await this.profileRepository.findOwnerById(id);
-    if (!owner) {
-      throw new OwnerNotFound(id);
-    }
+    const owner = await this.resolveOwner(id);
+    const ownerId = owner.owner_id;
 
     const take = Math.min(limit, 50);
-    const reviews = await this.profileRepository.findReviewsByOwnerId(id, cursor, take);
+    const reviews = await this.profileRepository.findReviewsByOwnerId(ownerId, cursor, take);
     const hasNext = reviews.length > take;
     const actualReviews = hasNext ? reviews.slice(0, take) : reviews;
 
@@ -440,5 +454,113 @@ export class ProfileService {
       nextCursor,
       hasNext
     };
+  }
+
+  // 주문 목록 조회
+  async getOrders(dto: OrderRequestDto): Promise<{ orders: Order[], nextCursor: string | null, hasNext: boolean }> {
+    // 1. 초기 조건에 맞는 주문 목록 조회
+    const orders = await this.profileRepository.getOrdersByUserId(dto);
+    
+    // 1.1 다음 페이지 여부 확인
+    const hasNext = orders.length > dto.limit;
+    const actualOrders = hasNext ? orders.slice(0, dto.limit) : orders;
+    
+    // 2. ID 수집 (Set을 사용해 중복 제거)
+    const itemIds = new Set<string>();
+    const requestIds = new Set<string>();
+    const proposalIds = new Set<string>();
+
+    actualOrders.forEach(o => {
+      if (!o.target_id) return;
+      if (o.target_type === 'ITEM') itemIds.add(o.target_id);
+      else if (o.target_type === 'REQUEST') requestIds.add(o.target_id);
+      else if (o.target_type === 'PROPOSAL') proposalIds.add(o.target_id);
+    });
+
+    
+    // 3. title 과 thumbnail(photo) 조회
+    const [itemInfos, reqInfos, propInfos] = await Promise.all([
+      this.profileRepository.getItemInfos(Array.from(itemIds)),
+      this.profileRepository.getRequestInfos(Array.from(requestIds)),
+      this.profileRepository.getProposalInfos(Array.from(proposalIds))
+    ]);
+
+    const infoMap = new Map<string, { title: string, thumbnail: string }>();
+    const addToMap = (list: any[], idKey: string) => {
+      list.forEach(data => {
+        infoMap.set(data[idKey], { title: data.title, thumbnail: data.photo });
+      });
+    };
+
+    addToMap(itemInfos, 'item_id');
+    addToMap(reqInfos, 'reform_request_id');
+    addToMap(propInfos, 'reform_proposal_id');
+
+  // 4. 모든 주문 목록 preview 생성
+  const ordersPreview = actualOrders.map((order) => {
+    const info = infoMap.get(order.target_id ?? '') ?? { title: '', thumbnail: '' };
+    return Order.create(order, info.title, info.thumbnail);
+  });
+
+  const nextCursor = hasNext ? actualOrders[actualOrders.length - 1].order_id : null;
+
+  return {
+    orders: ordersPreview,
+    nextCursor,
+    hasNext
+    };
+  }
+
+  async getOrderDetail(userId: string, orderId: string): Promise<OrderDetailResponseDto> {
+    //1. 주문 조회
+    const order = await this.profileRepository.getOrderDetailByOrderId(orderId);
+    if (!order) {
+      throw new OrderNotFoundError(orderId)
+    }
+    if (order.user_id !== userId){
+      throw new ForbiddenAccessError(orderId)
+    }
+
+    // 2. 옵션 조회
+    const [info, optionItemIds] = await Promise.all([
+      this.getTargetInfo(order.target_type, order.target_id),
+      this.profileRepository.getOptionIdsByOrderId(orderId)
+    ])
+    const optionItemsWithGroup = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    
+    // 3. 결과값 리턴
+    const orderDetail = OrderDetail.create(order,info?.title, info?.thumbnail, optionItemsWithGroup)
+    return orderDetail.toResponse()
+  }
+
+  private async getTargetInfo(type: string | null, id: string | null) {
+    if (!type || !id) return undefined;
+  
+    switch (type) {
+      case 'ITEM':
+        const items = await this.profileRepository.getItemInfos([id]);
+        return items[0] ? { title: items[0].title ?? '', thumbnail: items[0].photo ?? ''} : undefined;
+      case 'PROPOSAL':
+        const proposals = await this.profileRepository.getProposalInfos([id]);
+        return proposals[0] ? { title: proposals[0].title ?? '', thumbnail: proposals[0].photo ?? ''} : undefined;
+      case 'REQUEST':
+        const requests = await this.profileRepository.getRequestInfos([id]);
+        return requests[0] ? { title: requests[0].title ?? '', thumbnail: requests[0].photo ?? ''} : undefined;
+      default:
+        return undefined;
+    }
+  }
+  
+
+  async getRequests(dto: RequestListRequestDto): Promise< RequestsListResponseDto >{
+    const requests = await this.profileRepository.getRequestsByUserId(dto);
+    const hasNext = requests.length > dto.limit;
+    const actualRequests = hasNext ? requests.slice(0, dto.limit) : requests
+    const nextCursor = hasNext ? actualRequests[actualRequests.length - 1].reformRequestId : null
+    return {
+      requestData: actualRequests,
+      nextCursor,
+      hasNext
+    }
   }
 }
