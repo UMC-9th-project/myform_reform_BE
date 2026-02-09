@@ -183,9 +183,9 @@ export class AuthService {
         hashedPassword: hashedPassword,
         phoneNumber: cleanPhoneNumber,
         role: 'reformer' as Role,
-        businessNumber: this.getCleanBusinessNumber(rest.businessNumber),
-        description: requestBody.description,
-        portfolioPhotos: requestBody.portfolioPhotos
+        businessNumber: rest.businessNumber,
+        description: rest.description,
+        portfolioPhotos: rest.portfolioPhotos
       };
       return await this.authModel.createOwner(ownerDto);
     });
@@ -381,7 +381,9 @@ export class AuthService {
   // 리폼러 회원가입시 입력한 정보 유효성 검증
   private async validateReformerSignupRequest(requestBody: ReformerSignupRequest): Promise<void> {
     await this.validateSignupRequest(requestBody, 'reformer');
-    validateBusinessNumber(requestBody.businessNumber);
+    if (requestBody.businessNumber){
+      validateBusinessNumber(requestBody.businessNumber);
+    }    
     validateDescription(requestBody.description);
     validatePortfolioPhotos(requestBody.portfolioPhotos);
   }
@@ -389,11 +391,6 @@ export class AuthService {
   // 전화번호 숫자만 추출
   private getCleanPhoneNumber(phoneNumber: string): string {
     return phoneNumber.replace(/[^0-9]/g, '');
-  }
-
-  // 사업자번호 숫자만 추출
-  private getCleanBusinessNumber(businessNumber: string): string {
-    return businessNumber.replace(/[^0-9]/g, '');
   }
 
   // 휴대폰 인증 확인

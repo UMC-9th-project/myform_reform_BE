@@ -76,7 +76,7 @@ export const validateRegistrationType = (
 };
 
 export const validateBusinessNumber = (businessNumber: string): void => {
-  if (!/^[0-9]{3}-[0-9]{2}-[0-9]{5}$/.test(businessNumber)){
+  if (!/^[0-9]{10}$/.test(businessNumber)){
     throw new InvalidBusinessNumberError(`${businessNumber} 는 올바른 사업자 번호 형식이 아닙니다.`);
   }
 };

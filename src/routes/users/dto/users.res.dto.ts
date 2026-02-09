@@ -1,5 +1,6 @@
 import { AuthStatus, Role } from '../../auth/auth.dto.js';
 import { owner, user } from '@prisma/client';
+import { rawReformerPortfolio } from '../users.model.js';
 
 // 닉네임 중복 검사 응답 데이터
 export interface CheckNicknameResponse {
@@ -116,4 +117,50 @@ export interface UserProfileResponseDto{
   phone: string,
   profilePhoto: string,
   role: Role
+}
+
+export class ReformerPortfolioDto {
+  owner_id: string;
+  name: string | null;
+  nickname: string | null;
+  email: string | null;
+  phone: string | null;
+  introduction: string | null;
+  photos: string[] | null;
+  business_number: string | null;
+
+  constructor(data: {
+    owner_id: string;
+    name: string | null;
+    nickname: string | null;
+    email: string | null;
+    phone: string | null;
+    portfolio: string | null;
+    photos: string[] | null;
+    business_number: string | null;
+  }) {
+    this.owner_id = data.owner_id;
+    this.name = data.name;
+    this.nickname = data.nickname;
+    this.email = data.email;
+    this.phone = data.phone;
+    this.introduction = data.portfolio;
+    this.photos = data.photos;
+    this.business_number = data.business_number;
+  }
+
+  static fromRaw(raw: rawReformerPortfolio): ReformerPortfolioDto {
+    const auth = raw.reformer_auth?.[0];
+
+    return new ReformerPortfolioDto({
+      owner_id: raw.owner_id,
+      name: raw.name,
+      nickname: raw.nickname,
+      email: raw.email,
+      phone: raw.phone,
+      portfolio: auth?.portfolio ?? null,
+      photos: auth?.photo ?? [],
+      business_number: auth?.business_number ?? null,
+    });
+  }
 }

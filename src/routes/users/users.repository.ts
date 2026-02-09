@@ -2,7 +2,8 @@ import { DatabaseError } from "./users.error.js";
 import { UpdateReformerProfileParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
 import prisma from "../../config/prisma.config.js";
 import { user, owner } from "@prisma/client";
-import { RawUserPorfile } from './users.model.js'
+import { RawUserPorfile, rawReformerPortfolio } from './users.model.js';
+import { reformer_status_enum } from '@prisma/client';
 
 export class UsersRepository {
   async updateUserProfile(updateUserProfileParams: UpdateUserProfileParams): Promise<user> {
@@ -73,5 +74,28 @@ export class UsersRepository {
       }
     })
     return userProfile
+  }
+
+  async getReformerPortfolios(status: reformer_status_enum): Promise<rawReformerPortfolio[]> {
+    return await prisma.owner.findMany({
+      where: {
+        status: status
+      },
+      select: {
+        owner_id: true,
+        status: true,
+        email: true,
+        name: true,
+        nickname: true,
+        phone: true,
+        reformer_auth: {
+          select: {
+            portfolio: true,
+            photo: true,
+            business_number: true
+          }
+        }
+      }
+    });
   }
 }
