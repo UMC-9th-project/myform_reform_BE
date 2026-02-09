@@ -654,8 +654,9 @@ export class OrdersController extends Controller {
    * @returns 성공 응답
    * @description 포트원 서버에서 결제 상태 변경 시 자동으로 호출됩니다.
    *              결제 정보를 검증하고 주문 상태를 업데이트합니다.
-   *              보안: 포트원 IP 화이트리스트 검증 포함
+   *              보안: 토큰 없이 접근 가능(jwt_optional), 포트원 IP 화이트리스트로 검증
    */
+  @Security('jwt_optional')
   @Post('/webhook')
   @SuccessResponse(200, '웹훅 처리 성공')
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
