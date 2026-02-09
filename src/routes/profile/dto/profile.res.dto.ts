@@ -36,9 +36,11 @@ export interface SaleDetailResponseDto extends SaleResponseDto {
 // --- 5 GET 응답 타입 (profile/{id}, feed, item, proposal, review) ---
 
 export interface ProfileInfoResponse {
+  ownerId: string;
   profilePhoto: string | null;
   nickname: string | null;
   avgStar: number | null;
+  avgStarRecent3m: number;
   reviewCount: number | null;
   totalSaleCount: number;
   keywords: string[];

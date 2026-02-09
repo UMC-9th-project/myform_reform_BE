@@ -1,5 +1,5 @@
 import { UUID } from '../../@types/common.js';
-import { ChatRoomFilter } from './chat.model.js';
+import { ChatRoomFilter, MessageType } from './chat.model.js';
 
 /**
  * @pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
@@ -145,7 +145,7 @@ export interface ChatRoomPreviewDTO {
      * 마지막 메시지 타입
      * @example "TEXT"
      */
-    messageType: 'TEXT' | 'IMAGE' | 'OTHER';
+    messageType: MessageType;
     /**
      * 채팅방 분류
      * - INQUIRY: 문의 채팅
@@ -365,6 +365,11 @@ export interface CreateChatProposalDTO {
      */
     expectedWorking: number;
     /**
+     * 본문 내용
+     * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+     */
+    content: string;
+    /**
      * 제안서 이미지 URL 목록
      * @example ["https://s3.example.com/proposal1.jpg", "https://s3.example.com/proposal2.jpg"]
      */
@@ -394,6 +399,11 @@ export interface UpdateChatProposalDTO {
      * @minimum 1
      */
     expectedWorking?: number;
+    /**
+     * 본문 내용 (선택)
+     * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+     */
+    content?: string;
     /**
      * 제안서 이미지 URL 목록 (선택)
      * @example ["https://s3.example.com/proposal1.jpg"]
@@ -459,6 +469,11 @@ export interface ChatProposalResponseDTO {
          * @example 7
          */
         expectedWorking : number;
+        /**
+         * 본문 내용
+         * @example "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다."
+         */
+        content : string;   
         /**
          * 제안서 이미지 URL 목록
          * @example ["https://s3.example.com/proposal1.jpg"]

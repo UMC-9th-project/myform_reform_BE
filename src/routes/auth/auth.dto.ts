@@ -49,6 +49,7 @@ export interface KakaoSignupResponse {
     kakaoId: string;
     email: string;
     role: string;
+    redirectUrl?: string;
   };
 }
 
@@ -81,6 +82,7 @@ export interface PassportUserInfo {
   email?: string;
   id?: string;
   auth_status?: AuthStatus;
+  redirectUrl?: string;
 }
 
 // 로그인 응답 데이터 (Service -> Controller)
@@ -132,14 +134,14 @@ export interface UserCreateResponseDto {
 
 // 리폼러 회원가입 요청 데이터 (Controller -> Service)
 export interface ReformerSignupRequest extends UserSignupRequest {
-  businessNumber: string;
+  businessNumber?: string;
   description: string;
   portfolioPhotos: string[];  
 }
 
 // 리폼러 db 생성 요청 데이터 (Service -> Model)
 export interface OwnerCreateDto extends UserCreateDto {
-  businessNumber: string;
+  businessNumber?: string;
   description: string;
   portfolioPhotos: string[];
 }

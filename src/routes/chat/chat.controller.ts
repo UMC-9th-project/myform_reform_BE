@@ -92,7 +92,7 @@ export class ChatController extends Controller {
           image: "https://s3.example.com/thumb.jpg",
           title: "리폼마스터",
           roomType: "FEED",
-          messageType: "TEXT",
+          messageType: "text",
           type: "INQUIRY",
           lastMessage: "안녕하세요, 문의드립니다.",
           lastMessageAt: new Date(),
@@ -275,6 +275,7 @@ export class ChatController extends Controller {
         price: 45000,
         delivery: 3000,
         expectedWorking: 7,
+        content: "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다.",
         images: ["https://s3.example.com/proposal-image1.jpg"]
       },
       createdAt: new Date()
@@ -295,8 +296,7 @@ export class ChatController extends Controller {
    * @description 이미 생성된 채팅 제안서의 내용을 수정합니다. 
    * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
    * 
-   * **수정 가능 필드:** 제안 가격, 배송비, 예상 작업 일수
-   * !!! 주의 이미지 수정은 현재 지원하지 않습니다 !!!
+   * **수정 가능 필드:** 제안 가격, 배송비, 예상 작업 일수, 본문 내용, 첨부 이미지
    * **사용 시나리오:** 리폼러가 견적을 재조정하거나 작업 기간을 변경할 때
    * 
    * @param proposalId 채팅 제안서의 고유 아이디

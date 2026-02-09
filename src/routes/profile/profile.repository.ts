@@ -423,6 +423,7 @@ export class ProfileRepository {
     return await this.prisma.owner.findUnique({
       where: { owner_id: ownerId },
       select: {
+        owner_id: true,
         profile_photo: true,
         nickname: true,
         avg_star: true,
@@ -431,6 +432,34 @@ export class ProfileRepository {
         bio: true
       }
     });
+  }
+
+  async findOwnerByNickname(nickname: string) {
+    return await this.prisma.owner.findUnique({
+      where: { nickname },
+      select: {
+        owner_id: true,
+        profile_photo: true,
+        nickname: true,
+        avg_star: true,
+        review_count: true,
+        keywords: true,
+        bio: true
+      }
+    });
+  }
+
+  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await this.prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
   }
 
   async countSaleByOwnerId(ownerId: string): Promise<number> {
@@ -788,8 +817,68 @@ export class ProfileRepository {
         dueDate: request.due_date,
         createdAt: request.created_at,
         reformRequestPhotoId: photo?.reform_request_photo_id ?? null,
-        thumbnail: photo?.content ?? '' 
+        thumbnail: photo?.content ?? ''
       };
     });
+  }
+
+  async checkItemOwner(ownerId: string, itemId: string): Promise<boolean> {
+    return (
+      (await prisma.item.findFirst({
+        where: {
+          owner_id: ownerId,
+          item_id: itemId
+        }
+      })) !== null
+    );
+  }
+
+  async updateItem(
+    itemId: string,
+    updateData: {
+      title?: string;
+      content?: string;
+      price?: number;
+      delivery?: number;
+      category_id?: string;
+    }
+  ) {
+    return await prisma.item.update({
+      where: { item_id: itemId },
+      data: updateData
+    });
+  }
+
+  async deleteItemPhotos(itemId: string) {
+    await prisma.item_photo.deleteMany({
+      where: { item_id: itemId }
+    });
+  }
+
+  async createItemPhotos(itemId: string, images: string[]) {
+    await prisma.item_photo.createMany({
+      data: images.map((content, index) => ({
+        item_id: itemId,
+        content,
+        photo_order: index + 1
+      }))
+    });
+  }
+
+  async deleteOptionsByItemId(itemId: string) {
+    const existingGroups = await prisma.option_group.findMany({
+      where: { item_id: itemId },
+      select: { option_group_id: true }
+    });
+    const groupIds = existingGroups.map((g) => g.option_group_id);
+
+    if (groupIds.length > 0) {
+      await prisma.option_item.deleteMany({
+        where: { option_group_id: { in: groupIds } }
+      });
+      await prisma.option_group.deleteMany({
+        where: { item_id: itemId }
+      });
+    }
   }
 }

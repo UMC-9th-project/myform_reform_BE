@@ -89,11 +89,20 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')  
   @Get('kakao')
-  public async loginWithKakao(@Request() request: express.Request, @Query() mode: Role): Promise<void> {
+  public async loginWithKakao(
+    @Request() request: express.Request, 
+    @Query() mode: Role,
+    @Query() redirectUrl?: string
+  ): Promise<void> {
     const res = (request as any).res as express.Response;
     const next = (request as any).next as express.NextFunction;
+    const stateData = {
+      mode,
+      redirectUrl
+    }
+    const state = JSON.stringify(stateData);
     // 카카오 로그인 페이지로 리다이렉트, state에 mode 값을 전달하여 로그인 모드 구분
-    passport.authenticate('kakao', { session: false, state: mode })(request, res, next);
+    passport.authenticate('kakao', { session: false, state: state})(request, res, next);
   }
 
   /**
@@ -115,32 +124,36 @@ export class AuthController extends Controller {
       if (result.status == 'login'){
         res.cookie('refreshToken', result.refreshToken, {
           httpOnly: true, 
-          secure: process.env.NODE_ENV === 'production', 
+          secure: true, 
           maxAge: 60 * 60 * 24 * 14 * 1000, 
           path: '/', 
           sameSite: 'none'
         });
         res.cookie('accessToken', result.accessToken, {
           httpOnly: false, 
-          secure: process.env.NODE_ENV === 'production',
+          secure: true,
           maxAge: 5 * 60 * 1000, 
           path: '/', 
           sameSite: 'none'
         });
-        return res.redirect(process.env.FRONTEND_URL_LOGIN!);
+        const redirectUrl = (user.redirectUrl) 
+          ? `${process.env.FRONTENT_BASE_URL}${user.redirectUrl}`
+          : process.env.FRONTEND_BASE_URL
+        return res.redirect(redirectUrl!);
       }
 
       if (result.status == 'signup'){
-        const { role, kakaoId, email } = result.user;
-        // 회원가입 페이지로 리다이렉트, role, kakaoId, email 정보를 전달
-        res.cookie('signupInfo', JSON.stringify({ role, kakaoId, email }), {
+        const { role, kakaoId, email, redirectUrl } = result.user;
+        // 회원가입 페이지로 리다이렉트, role, kakaoId, email, redirectUrl 정보를 전달
+        res.cookie('signupInfo', JSON.stringify({ role, kakaoId, email, redirectUrl }), {
           httpOnly: false, 
-          secure: process.env.NODE_ENV === 'production',
+          secure: true,
           maxAge: 5 * 60 * 1000, 
           path: '/', 
           sameSite: 'none'
         });
-        return res.redirect(process.env.FRONTEND_URL_SIGNUP!);
+        const signupUrl = `${process.env.FRONTEND_BASE_URL}/kakao/signup`
+        return res.redirect(signupUrl);
       }
     } catch (error) {
       throw new KakaoAuthError('카카오 로그인 처리 중 오류가 발생했습니다.');

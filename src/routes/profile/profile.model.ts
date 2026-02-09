@@ -8,7 +8,8 @@ import {
 } from './dto/profile.res.dto.js';
 import {
   AddItemRequestDto,
-  AddReformRequestDto
+  AddReformRequestDto,
+  UpdateItemRequest
 } from './dto/profile.req.dto.js';
 import { Category, OptionGroup } from '../../@types/item.js';
 
@@ -123,6 +124,18 @@ export type ReformDto = {
   expectedWorking: number;
   category: Category;
 };
+
+export type ItemUpdateData = {
+  itemId: string;
+  ownerId: string;
+  images?: string[];
+  title?: string;
+  content?: string;
+  price?: number;
+  delivery?: number;
+  option?: OptionGroup[];
+  category?: Category;
+};
 export class Sale {
   private props: SaleResponseDto;
 
@@ -218,6 +231,36 @@ export class Item {
   }
 }
 
+export class ItemUpdate {
+  private readonly data: ItemUpdateData;
+
+  constructor(data: ItemUpdateData) {
+    this.data = data;
+  }
+
+  toUpdateData(): ItemUpdateData {
+    return { ...this.data };
+  }
+
+  static createFromUpdateRequest(
+    req: UpdateItemRequest,
+    itemId: string,
+    ownerId: string
+  ): ItemUpdate {
+    return new ItemUpdate({
+      itemId,
+      ownerId,
+      images: req.imageUrls,
+      title: req.title,
+      content: req.content,
+      price: req.price,
+      delivery: req.delivery,
+      option: req.option,
+      category: req.category
+    });
+  }
+}
+
 export class Reform {
   private props: ReformDto;
 
@@ -286,7 +329,8 @@ export class Order {
   static create(raw: RawOrderData, title: string, thumbnail: string): Order {
     const price = raw.price ? raw.price.toNumber() : 0;
     const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
-    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
+    const totalPrice =
+      price + delivery_fee ? (price + delivery_fee).toString() : '0';
     const isPending = raw.status === 'PENDING';
     const hasReview = raw.review.length > 0;
     const reviewAvailable = !isPending && !hasReview;
@@ -343,16 +387,14 @@ export type RawOrderDetailData = Prisma.orderGetPayload<{
 export type RawOptionItemsWithGroup = {
   option_group_id: string;
   name: string | null;
-  option_item: RawOptionItem[]
-}
+  option_item: RawOptionItem[];
+};
 
 export type RawOptionItem = {
   name: string | null;
   option_item_id: string;
   extra_price: number | null;
-}
-
-
+};
 
 export class OrderDetail {
   private props: OrderDetailResponseDto;
@@ -361,10 +403,16 @@ export class OrderDetail {
     this.props = props;
   }
 
-  static create(raw: RawOrderDetailData, title: string | undefined, thumbnail: string | undefined, options : RawOptionItemsWithGroup[]): OrderDetail {
+  static create(
+    raw: RawOrderDetailData,
+    title: string | undefined,
+    thumbnail: string | undefined,
+    options: RawOptionItemsWithGroup[]
+  ): OrderDetail {
     const price = raw.price ? raw.price.toNumber() : 0;
     const delivery_fee = raw.delivery_fee ? raw.delivery_fee.toNumber() : 0;
-    const totalPrice = (price + delivery_fee) ? (price + delivery_fee).toString() : '0' ;
+    const totalPrice =
+      price + delivery_fee ? (price + delivery_fee).toString() : '0';
     return new OrderDetail({
       title: title ?? '',
       thumbnail: thumbnail ?? '',
@@ -384,13 +432,13 @@ export class OrderDetail {
       deliveryRecipientName: raw.receipt?.delivery_recipient_name ?? '',
       deliveryPhone: raw.receipt?.delivery_phone ?? '',
       deliveryAddressName: raw.receipt?.delivery_address_name ?? '',
-      options : options
+      options: options
     });
   }
 
   toResponse(): OrderDetailResponseDto {
     return { ...this.props };
-  }  
+  }
 }
 
 export type RawRequestData = Prisma.reform_requestGetPayload<{
@@ -413,7 +461,7 @@ export type RawRequestData = Prisma.reform_requestGetPayload<{
 }>;
 
 export type RequestData = {
-  reformRequestId:UUID;
+  reformRequestId: UUID;
   userId: UUID;
   title: string;
   minBudget: number | null;
@@ -422,4 +470,4 @@ export type RequestData = {
   createdAt: Date | null;
   reformRequestPhotoId: UUID;
   thumbnail: string | null;
-}
+};

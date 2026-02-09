@@ -219,6 +219,7 @@ export class MarketController extends Controller {
         profile_image: 'https://example.com/profile.jpg',
         nickname: '리포머닉네임',
         star: 4.8,
+        star_recent_3m: 4.5,
         order_count: 500
       },
       is_wished: false,

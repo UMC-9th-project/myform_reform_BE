@@ -34,26 +34,54 @@ export class WebSocketServer {
 
     this.chatEventHandler = new ChatEventHandler(this.io);
 
-    // JWT 토큰 기반 인증 미들웨어
     this.io.use((socket, next) => {
-      const token = socket.handshake.headers['auth'] as string;
+      // 토큰 로직 추출
+      const authHeader = 
+        socket.handshake.headers['auth'] as string ||           // 기본 방식
+        socket.handshake.auth?.token ||                         // 공식 표준, 포스트맨에서 테스트 불가
+        socket.handshake.headers['authorization'] as string;    // 공식 방식 안된다면 사용
+
       const jwtSecret = process.env.JWT_SECRET || '';
 
-      if (!token) {
+      if (!authHeader) {
         return next(new ChatWebSocketAuthError('인증 토큰이 필요합니다.'));
       }
 
+      //'Bearer ' 접두사가 있을 경우 제거
+      const token = authHeader.startsWith('Bearer ') 
+        ? authHeader.split(' ')[1] 
+        : authHeader;
+
       try {
-        // JWT 검증
-        const decoded = jwt.verify(token, jwtSecret) as any;
+        const decoded = jwt.verify(token, jwtSecret) as { id: string; role: string; exp: number };
         
-        // socket.data에 사용자 정보 저장
         socket.data.userId = decoded.id;
         socket.data.type = decoded.role === 'reformer' ? 'OWNER' : 'USER';
+
+        // 만료 시간 기반 자동 연결 종료
+        if (decoded.exp) {
+          const remainingTime = (decoded.exp * 1000) - Date.now();
+
+          if (remainingTime <= 0) {
+            return next(new ChatWebSocketAuthError('만료된 토큰입니다.'));
+          }
+
+          // 만료 시점에 서버가 먼저 끊고 알림
+          const expiryTimer = setTimeout(() => {
+            // 프론트엔드가 감지할 수 있도록 이벤트 전송
+            socket.emit('token_expired', { message: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+            socket.disconnect(true); 
+          }, remainingTime);
+
+          // 연결 종료 시 타이머 제거
+          socket.on('disconnect', () => {
+            clearTimeout(expiryTimer);
+          });
+        }
         
         next();
       } catch (error) {
-        next(new ChatWebSocketAuthError('유효하지 않은 토큰입니다.'));
+        next(new ChatWebSocketAuthError('유효하지 않거나 만료된 토큰입니다.'));
       }
     });
 

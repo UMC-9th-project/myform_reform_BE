@@ -17,10 +17,15 @@ import {
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { CheckNicknameResponse, UpdateReformerProfileResponseDto, UserProfileResponseDto, UsersInfoResponse } from './dto/users.res.dto.js';
 import { UpdateReformerStatusRequest, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
-import { UpdateUserProfileResponseDto, UserDetailInfoResponseDto, ReformerDetailInfoResponseDto } from './dto/users.res.dto.js';
+import { 
+  UpdateUserProfileResponseDto, 
+  UserDetailInfoResponseDto, 
+  ReformerDetailInfoResponseDto,
+  ReformerPortfolioDto } from './dto/users.res.dto.js';
 import { UsersService } from './users.service.js';
 import { UnauthorizedError } from '../auth/auth.error.js';
 import { Request as ExRequest } from 'express';
+import { reformer_status_enum } from '@prisma/client';
 
 @Route('users')
 @Tags('Users')
@@ -215,5 +220,21 @@ export class UsersController extends Controller {
     const userProfile =  await this.usersService.getUserProfile(userId);
     const userProfileDto = userProfile.toDto();
     return new ResponseHandler<UserProfileResponseDto>(userProfileDto);
+  }
+
+  /**
+   * 인증 상태 별 리폼러 가입 시 입력 정보 불러오기
+   * @summary 인증 상태 별로 리폼러의 포트폴리오 정보를 불러옵니다.
+   * @returns 리폼러 회원 정보 및 회원가입 시 입력 내용
+   */
+  @SuccessResponse(200, '리폼러 포트폴리오 정보 조회 성공')
+  @Response<ErrorResponse>('500', '서버 오류')
+  @Get('reformers')
+  public async getReformersPortfolio(
+    @Query() status: reformer_status_enum,
+  )
+  : Promise<TsoaResponse<ReformerPortfolioDto[]>> {
+    const reformerPortfolios = await this.usersService.getReformerPortfolios(status);
+    return new ResponseHandler<ReformerPortfolioDto[]>(reformerPortfolios)
   }
 }
