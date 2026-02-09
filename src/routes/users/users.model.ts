@@ -3,6 +3,7 @@ import { UpdateUserProfileResponseDto, UsersInfoResponse, UserProfileResponseDto
 import { UpdateReformerStatusRequest } from './dto/users.req.dto.js';
 import { account_role, owner, provider_type, social_account, user } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { UUID } from '../../@types/common.js';
 export class UsersModel {
   private prisma;
 
@@ -228,3 +229,22 @@ export class UserProfile {
     return { ...this.props };
   }
 }
+
+export type rawReformerPortfolio = Prisma.ownerGetPayload<{
+  select: {
+    owner_id: true,
+    status: true,
+    email: true,
+    name: true,
+    nickname: true,
+    phone: true,
+    reformer_auth: {
+      select: {
+        portfolio: true,
+        photo: true,
+        business_number: true
+      }
+    }
+  }  
+}>
+

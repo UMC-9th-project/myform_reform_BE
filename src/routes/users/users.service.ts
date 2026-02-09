@@ -4,7 +4,8 @@ import {
   UsersInfoResponse, 
   UpdateReformerProfileResponseDto, 
   UserDetailInfoResponseDto, 
-  ReformerDetailInfoResponseDto 
+  ReformerDetailInfoResponseDto,
+  ReformerPortfolioDto
 } from './dto/users.res.dto.js';
 import { SolapiMessageService} from 'solapi';
 import { 
@@ -17,7 +18,7 @@ import {
 import { validateNickname } from '../../utils/validators.js';
 import { 
   UsersModel, 
-  UserProfile 
+  UserProfile
 } from './users.model.js';
 import { 
   EmailDuplicateError,
@@ -31,6 +32,7 @@ import {
 } from './users.error.js';
 import { UsersRepository } from './users.repository.js';
 import { AuthStatus } from '../auth/auth.dto.js';
+import { reformer_status_enum } from '@prisma/client';
 
 const messageService = new SolapiMessageService(
   process.env.SOLAPI_API_KEY || '',
@@ -171,6 +173,15 @@ export class UsersService {
       throw new AccountNotFoundError('존재하지 않는 유저 계정입니다.')
     }
     return UserProfile.create(userProfile)
+  }
+
+  // 리폼러 포트폴리오 정보 조회
+  async getReformerPortfolios(status: reformer_status_enum): Promise<ReformerPortfolioDto[]> {
+    const reformerPortfolios = await this.usersRepository.getReformerPortfolios(status);
+    const dtos : ReformerPortfolioDto[] = reformerPortfolios.map((item) => {
+      return ReformerPortfolioDto.fromRaw(item)
+    })
+    return dtos
   }
 
   private async sendNotificationSms(phone: string | null, status: string) {
