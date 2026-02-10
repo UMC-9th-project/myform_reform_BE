@@ -46,8 +46,7 @@ import {
 } from './auth.model.js'
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
-import { UsersModel } from '../users/users.model.js';
-import { UsersInfoResponse } from '../users/dto/users.res.dto.js';
+import { UsersInfoResponseDto } from '../users/dto/users.res.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
 import { 
   NicknameDuplicateError, 
@@ -72,12 +71,10 @@ const messageService = new SolapiMessageService(
 export class AuthService {
   // 솔트 라운드 10으로 고정
   private readonly SALT_ROUNDS = 10;
-  private usersModel: UsersModel;
   private usersRepository: UsersRepository;
   private authRepository: AuthRepository;
 
   constructor() {
-    this.usersModel = new UsersModel();
     this.usersRepository = new UsersRepository();
     this.authRepository = new AuthRepository();
   }
@@ -319,8 +316,8 @@ export class AuthService {
       }
       
       const account = (role === 'user'
-        ? await this.usersModel.findUserById(userId)
-        : await this.usersModel.findReformerById(userId)) as UsersInfoResponse;
+        ? await this.usersRepository.findUserById(userId)
+        : await this.usersRepository.findReformerById(userId)) as UsersInfoResponseDto;
       
       if (!account){
         throw new AccountNotFoundError('존재하지 않는 유저입니다.');
@@ -402,27 +399,29 @@ export class AuthService {
     validateTermsAgreement(over14YearsOld, termsOfService);
     validateRegistrationType(registration_type, oauthId, password);
     await this.ensurePhoneVerified(phoneNumber);
-    if (await this.usersModel.isNicknameDuplicate(nickname)){
+    if (await this.usersRepository.isUserNicknameDuplicate(nickname)
+      || await this.usersRepository.isReformerNicknameDuplicate(nickname)  
+    ){
       throw new NicknameDuplicateError('이미 존재하는 사용자 닉네임입니다.');
     }
     
     const emailExists = role === 'user'
-      ? await this.usersModel.findUserByEmail(email)
-      : await this.usersModel.findReformerByEmail(email);
+      ? await this.usersRepository.findUserByEmail(email)
+      : await this.usersRepository.findReformerByEmail(email);
     if (emailExists){
       throw new EmailDuplicateError('이미 존재하는 사용자 이메일입니다.');
     }
 
     const phoneNumberExists = role === 'user'
-      ? await this.usersModel.findUserByPhoneNumber(phoneNumber)
-      : await this.usersModel.findReformerByPhoneNumber(phoneNumber);
+      ? await this.usersRepository.findUserByPhoneNumber(phoneNumber)
+      : await this.usersRepository.findReformerByPhoneNumber(phoneNumber);
     if (phoneNumberExists){
       throw new PhoneNumberDuplicateError('이미 존재하는 사용자 전화번호입니다.');
     }
 
     if (registration_type !== 'LOCAL' && oauthId) {
       const dbRole = role === 'user' ? 'USER' : 'OWNER';
-      const socialAccount = await this.usersModel.findSocialAccountByProviderIdAndProviderTypeAndRole(oauthId, registration_type, dbRole);
+      const socialAccount = await this.usersRepository.findSocialAccountByProviderIdAndProviderTypeAndRole(oauthId, registration_type, dbRole);
       if (socialAccount){
         throw new SocialAccountDuplicateError('이미 존재하는 소셜 계정입니다.');
       }

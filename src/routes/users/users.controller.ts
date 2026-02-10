@@ -15,8 +15,8 @@ import {
   Get 
 } from 'tsoa';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
-import { CheckNicknameResponse, UpdateReformerProfileResponseDto, UserProfileResponseDto, UsersInfoResponse } from './dto/users.res.dto.js';
-import { UpdateReformerStatusRequest, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
+import { CheckNicknameResponseDto, UpdateReformerProfileResponseDto, UserProfileResponseDto, UsersInfoResponseDto } from './dto/users.res.dto.js';
+import { UpdateReformerStatusRequestDto, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
 import { 
   UpdateUserProfileResponseDto, 
   UserDetailInfoResponseDto, 
@@ -40,7 +40,7 @@ export class UsersController extends Controller {
    * @returns 닉네임 중복 검사 결과 (사용 가능 여부, 닉네임, 메시지)
    */
   @SuccessResponse(200, '닉네임 중복 검사 성공')
-  @Example<ResponseHandler<CheckNicknameResponse>>({
+  @Example<ResponseHandler<CheckNicknameResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -54,9 +54,9 @@ export class UsersController extends Controller {
   @Post('nickname-check')
   public async checkNickname(
     @Query() nickname: string
-  ): Promise<TsoaResponse<CheckNicknameResponse>> {
+  ): Promise<TsoaResponse<CheckNicknameResponseDto>> {
     const result = await this.usersService.checkNickname(nickname);
-    return new ResponseHandler<CheckNicknameResponse>(result);
+    return new ResponseHandler<CheckNicknameResponseDto>(result);
   }
 
   /**
@@ -66,7 +66,7 @@ export class UsersController extends Controller {
    * @returns 리폼러 상태 업데이트 결과
    */
   @SuccessResponse(200, '리폼러 상태 업데이트 성공')
-  @Example<ResponseHandler<UsersInfoResponse>>({
+  @Example<ResponseHandler<UsersInfoResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -82,10 +82,10 @@ export class UsersController extends Controller {
   @Patch('reformer/{reformerId}/status')
   public async updateReformerStatus(
     @Path() reformerId: string,
-    @Body() requestBody: UpdateReformerStatusRequest
-  ): Promise<TsoaResponse<UsersInfoResponse>> {
+    @Body() requestBody: UpdateReformerStatusRequestDto
+  ): Promise<TsoaResponse<UsersInfoResponseDto>> {
     const result = await this.usersService.updateReformerStatus(reformerId, requestBody);
-    return new ResponseHandler<UsersInfoResponse>(result);
+    return new ResponseHandler<UsersInfoResponseDto>(result);
   }
 
   /**

@@ -1,22 +1,48 @@
 import { AuthStatus, Role } from '../../auth/dto/auth.dto.js';
-import { owner, user } from '@prisma/client';
+import { owner, user, reformer_status_enum } from '@prisma/client';
 import { rawReformerPortfolio } from '../users.model.js';
 
 // 닉네임 중복 검사 응답 데이터
-export interface CheckNicknameResponse {
+export class CheckNicknameResponseDto {
   isAvailable: boolean;
   nickname: string;
   message: string;
+
+  constructor(
+    isAvailable: boolean,
+    nickname: string,
+    message: string
+  ){
+    this.isAvailable = isAvailable,
+    this.nickname = nickname,
+    this.message = message
+  }
 }
 
 // 유저 정보 응답 데이터
-export interface UsersInfoResponse {
+export class UsersInfoResponseDto {
   id: string;
   email: string;
   nickname: string;
   hashed?: string;
   role: Role;
-  auth_status?: AuthStatus;
+  auth_status?: reformer_status_enum;
+
+  constructor(
+    id: string,
+    email: string,
+    nickname: string,
+    role: Role,
+    hashed?: string,
+    auth_status?: reformer_status_enum,
+  ) {
+    this.id = id,
+    this.email = email,
+    this.nickname = nickname,
+    this.hashed = hashed,
+    this.role = role,
+    this.auth_status = auth_status
+  }
 }
 
 // 리폼러 프로필 업데이트 응답 데이터 (Service -> Controller)
