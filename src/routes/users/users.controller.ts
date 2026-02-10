@@ -222,19 +222,25 @@ export class UsersController extends Controller {
     return new ResponseHandler<UserProfileResponseDto>(userProfileDto);
   }
 
-  /**
+/**
    * 인증 상태 별 리폼러 가입 시 입력 정보 불러오기
    * @summary 인증 상태 별로 리폼러의 포트폴리오 정보를 불러옵니다.
+   * @param status 리폼러의 인증 상태 (ALL: 전체, PENDING: 대기, APPROVED: 승인, REJECTED: 반려)
+   * @param page 조회할 페이지 번호 (기본값: 1)
+   * @param limit 한 페이지에 표시할 아이템 개수 (기본값: 10)
+   * @param order 정렬 기준 (desc: 최신순, asc: 오래된순) (기본값: 최신순)
    * @returns 리폼러 회원 정보 및 회원가입 시 입력 내용
    */
   @SuccessResponse(200, '리폼러 포트폴리오 정보 조회 성공')
   @Response<ErrorResponse>('500', '서버 오류')
   @Get('reformers')
   public async getReformersPortfolio(
-    @Query() status: reformer_status_enum,
-  )
-  : Promise<TsoaResponse<ReformerPortfolioDto[]>> {
-    const reformerPortfolios = await this.usersService.getReformerPortfolios(status);
-    return new ResponseHandler<ReformerPortfolioDto[]>(reformerPortfolios)
+    @Query() status: reformer_status_enum | 'ALL',
+    @Query() page: number = 1,
+    @Query() limit: number = 10,
+    @Query() order: 'desc' | 'asc' = 'desc'
+  ): Promise<TsoaResponse< {totalCount: number, data: ReformerPortfolioDto[]}>> {
+    const result = await this.usersService.getReformerPortfolios(status, page, limit, order);
+    return new ResponseHandler< { totalCount: number; data: ReformerPortfolioDto[]}>(result)
   }
 }
