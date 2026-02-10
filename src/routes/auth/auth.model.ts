@@ -51,3 +51,40 @@ export interface OwnerCreateResponse {
   role: Role;
   auth_status: reformer_status_enum
 }
+
+// 리프레시 토큰 갱신 요청 데이터 (Controller -> Service)
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// 카카오 로그인 후 응답 데이터
+export interface PassportUserInfo {
+  status: 'signup' | 'login';
+  role: Role;
+  kakaoId?: string;
+  email?: string;
+  id?: string;
+  auth_status?: reformer_status_enum;
+  redirectUrl?: string;
+}
+
+// 카카오 회원가입 응답 데이터
+export interface KakaoSignupResponse {
+  status: 'signup';
+  user: {
+    kakaoId: string;
+    email: string;
+    role: string;
+    redirectUrl?: string;
+  };
+}
+
+// 카카오 로그인 데이터
+export interface KakaoLoginResponse {
+  status: 'login';
+  accessToken: string;
+  refreshToken: string;
+}
+
+// 카카오 인증 응답 데이터
+export type KakaoAuthResponse = KakaoSignupResponse | KakaoLoginResponse

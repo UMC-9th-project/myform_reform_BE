@@ -19,7 +19,6 @@ import {
 } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
 import { 
-  PassportUserInfo, 
   Role 
 } from './dto/auth.dto.js';
 import { 
@@ -33,7 +32,9 @@ import {
   ReformerSignupRequestDto,
   UserSignupRequestDto
 } from './dto/auth.req.dto.js';
-
+import {
+  PassportUserInfo
+} from './auth.model.js';
 import { Request as ExRequest } from 'express';
 import { 
   VerifySmsRequestDto, 
@@ -161,7 +162,7 @@ export class AuthController extends Controller {
           sameSite: 'none'
         });
         const redirectUrl = (user.redirectUrl) 
-          ? `${process.env.FRONTENT_BASE_URL}${user.redirectUrl}`
+          ? `${process.env.FRONTEND_BASE_URL}${user.redirectUrl}`
           : process.env.FRONTEND_BASE_URL
         return res.redirect(redirectUrl!);
       }

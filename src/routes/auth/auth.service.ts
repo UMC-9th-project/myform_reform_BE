@@ -29,12 +29,8 @@ import {
   validateName
 } from '../../utils/validators.js';
 import jwt from 'jsonwebtoken';
-import { 
-  KakaoSignupResponse, 
-  KakaoLoginResponse, 
-  KakaoAuthResponse, 
+import {
   AuthStatus, 
-  RefreshTokenRequest, 
   Role 
 } from './dto/auth.dto.js';
 import { 
@@ -42,14 +38,21 @@ import {
   UserCreateInput,
   UserCreateResponse,
   OwnerCreateResponse,
-  OwnerCreateInput
+  OwnerCreateInput,
+  RefreshTokenRequest,
+  KakaoSignupResponse, 
+  KakaoLoginResponse, 
+  KakaoAuthResponse
 } from './auth.model.js'
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { UsersModel } from '../users/users.model.js';
 import { UsersInfoResponse } from '../users/dto/users.res.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
-import { NicknameDuplicateError, PhoneNumberDuplicateError } from '../users/users.error.js';
+import { 
+  NicknameDuplicateError, 
+  PhoneNumberDuplicateError 
+} from '../users/users.error.js';
 import { UsersRepository } from '../users/users.repository.js';
 import { 
   ReformerSignupRequestDto, 
