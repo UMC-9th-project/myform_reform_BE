@@ -76,6 +76,7 @@ export async function getPortonePayment(impUid: string): Promise<PortonePaymentI
     const response = await axios.get(
       `${PORTONE_API_BASE_URL}/payments/${impUid}`,
       {
+        params: { include_sandbox: true },
         headers: {
           Authorization: `Bearer ${accessToken}`
         }

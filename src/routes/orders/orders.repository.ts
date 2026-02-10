@@ -543,9 +543,10 @@ export class OrdersRepository {
   /**
    * 리폼(채팅) 주문의 채팅방 정보 조회 (결제 완료 후 알림용)
    * target_type REQUEST/PROPOSAL/FEED 이고 chat_room_id가 있는 order만
+   * 채팅 기반 리폼 주문은 하나의 receipt에 하나의 order만 존재
    */
-  async findReformOrderChatRoomsByReceiptId(receiptId: string): Promise<{ chat_room_id: string; owner_id: string }[]> {
-    const orders = await prisma.order.findMany({
+  async findReformOrderChatRoomsByReceiptId(receiptId: string): Promise<{ chat_room_id: string; owner_id: string } | null> {
+    const order = await prisma.order.findFirst({
       where: {
         receipt_id: receiptId,
         chat_room_id: { not: null },
@@ -553,9 +554,8 @@ export class OrdersRepository {
       },
       select: { chat_room_id: true, owner_id: true }
     });
-    return orders
-      .filter((o): o is { chat_room_id: string; owner_id: string } => o.chat_room_id != null)
-      .map((o) => ({ chat_room_id: o.chat_room_id!, owner_id: o.owner_id }));
+    if (!order || !order.chat_room_id) return null;
+    return { chat_room_id: order.chat_room_id, owner_id: order.owner_id };
   }
 
   /**

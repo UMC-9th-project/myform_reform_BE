@@ -21,6 +21,7 @@ import type {
   CreateOrderResponse,
   OrderResponse,
   OrderItemInfo,
+  ChatResultPayload
 } from './orders.model.js';
 import type { GetOrderResponseDto } from './dto/orders.res.dto.js';
 import { OrdersRepository } from './orders.repository.js';
@@ -1413,7 +1414,7 @@ export class OrdersService {
    */
   async getReformOrderChatRoomsByReceiptId(
     receiptId: string
-  ): Promise<{ chat_room_id: string; owner_id: string }[]> {
+  ): Promise<{ chat_room_id: string; owner_id: string } | null> {
     return this.repository.findReformOrderChatRoomsByReceiptId(receiptId);
   }
 
