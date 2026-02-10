@@ -195,6 +195,8 @@ export class MarketController extends Controller {
     success: {
       item_id: '550e8400-e29b-41d4-a716-446655440000',
       title: '상품명',
+      category_major: '의류',
+      category_sub: '상의',
       images: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
       price: 50000,
       delivery: 3000,
@@ -222,6 +224,7 @@ export class MarketController extends Controller {
         star_recent_3m: 4.5,
         order_count: 500
       },
+      content: '상품 설명 내용',
       is_wished: false,
       review_summary: {
         total_review_count: 123,
