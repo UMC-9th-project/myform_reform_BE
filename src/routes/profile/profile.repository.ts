@@ -4,7 +4,11 @@
 import prisma from '../../config/prisma.config.js';
 import { PrismaClient } from '@prisma/client/extension';
 import { CategoryNotExist } from './profile.error.js';
-import { OrderRequestDto, RequestListRequestDto, SaleRequestDto } from './dto/profile.req.dto.js';
+import {
+  OrderRequestDto,
+  RequestListRequestDto,
+  SaleRequestDto
+} from './dto/profile.req.dto.js';
 import {
   Item,
   ItemDto,
@@ -182,7 +186,9 @@ export class ProfileRepository {
     return rows.map((r) => ({
       reform_request_id: r.reform_request_id,
       title: r.title,
-      images: (r.reform_request_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+      images: (r.reform_request_photo ?? [])
+        .map((p) => p.content ?? '')
+        .filter(Boolean)
     }));
   }
 
@@ -200,7 +206,9 @@ export class ProfileRepository {
     if (!row) return null;
     return {
       title: row.title,
-      images: (row.reform_request_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+      images: (row.reform_request_photo ?? [])
+        .map((p) => p.content ?? '')
+        .filter(Boolean)
     };
   }
 
@@ -220,7 +228,9 @@ export class ProfileRepository {
     return rows.map((p) => ({
       reform_proposal_id: p.reform_proposal_id,
       title: p.title,
-      images: (p.reform_proposal_photo ?? []).map((ph) => ph.content ?? '').filter(Boolean)
+      images: (p.reform_proposal_photo ?? [])
+        .map((ph) => ph.content ?? '')
+        .filter(Boolean)
     }));
   }
 
@@ -238,7 +248,9 @@ export class ProfileRepository {
     if (!row) return null;
     return {
       title: row.title,
-      images: (row.reform_proposal_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+      images: (row.reform_proposal_photo ?? [])
+        .map((p) => p.content ?? '')
+        .filter(Boolean)
     };
   }
 
@@ -433,14 +445,20 @@ export class ProfileRepository {
         title: true,
         min_budget: true,
         max_budget: true,
-        reform_request_photo: { select: { content: true }, orderBy: { photo_order: 'asc' }, take: 1 }
+        reform_request_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' },
+          take: 1
+        }
       }
     });
     return requests.map((request: (typeof requests)[number]) => ({
       reform_request_id: request.reform_request_id,
       title: request.title,
-      minBudget: request.min_budget !== null ? Number(request.min_budget) : null,
-      maxBudget: request.max_budget !== null ? Number(request.max_budget) : null,
+      minBudget:
+        request.min_budget !== null ? Number(request.min_budget) : null,
+      maxBudget:
+        request.max_budget !== null ? Number(request.max_budget) : null,
       photo: request.reform_request_photo[0]?.content ?? null
     }));
   }
@@ -564,7 +582,9 @@ export class ProfileRepository {
     });
   }
 
-  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+  async findAvgStarRecent3MonthsByOwnerId(
+    ownerId: string
+  ): Promise<number | null> {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const result = await this.prisma.review.aggregate({
@@ -694,6 +714,12 @@ export class ProfileRepository {
       take: take + 1,
       orderBy: { created_at: 'desc' },
       include: {
+        category: {
+          select: {
+            category_id: true,
+            parent_id: true
+          }
+        },
         reform_proposal_photo: {
           orderBy: { photo_order: 'asc' },
           take: 1
@@ -749,11 +775,13 @@ export class ProfileRepository {
       ITEM: 'ITEM',
       ALL: undefined
     };
-    const whereClause : any = {
+    const whereClause: any = {
       user_id: userId,
-      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as
+        | target_type_enum
+        | undefined
     };
-    
+
     if (onlyReviewAvailable) {
       whereClause.review = { none: {} };
       whereClause.status = { not: 'PENDING' };
@@ -796,7 +824,7 @@ export class ProfileRepository {
         },
         review: {
           select: {
-            review_id: true,
+            review_id: true
           }
         }
       }
@@ -825,11 +853,11 @@ export class ProfileRepository {
             delivery_address_name: true,
             delivery_phone: true,
             delivery_postal_code: true,
-            delivery_recipient_name: true,
+            delivery_recipient_name: true
           }
-        },
+        }
       }
-    })
+    });
   }
 
   async getOptionIdsByOrderId(orderId: string): Promise<string[]> {
@@ -848,13 +876,17 @@ export class ProfileRepository {
             option_item_id: true
           }
         }
-      },
+      }
     });
-    return optionIds.map((optionId: (typeof optionIds)[number]) => 
-      optionId.option_item.option_item_id)
+    return optionIds.map(
+      (optionId: (typeof optionIds)[number]) =>
+        optionId.option_item.option_item_id
+    );
   }
 
-  async getOptionItemsWithGroup(optionItemIds: string[] | undefined ): Promise<RawOptionItemsWithGroup[]> {
+  async getOptionItemsWithGroup(
+    optionItemIds: string[] | undefined
+  ): Promise<RawOptionItemsWithGroup[]> {
     return await prisma.option_group.findMany({
       orderBy: {
         sort_order: 'asc'
@@ -874,43 +906,43 @@ export class ProfileRepository {
           }
         }
       }
-    })
+    });
   }
 
-  async getRequestsByUserId(dto: RequestListRequestDto): Promise<RequestData[]> {
+  async getRequestsByUserId(
+    dto: RequestListRequestDto
+  ): Promise<RequestData[]> {
     const { cursor, limit, userId, order } = dto;
-    const requests: RawRequestData[] = await this.prisma.reform_request.findMany({
-      where: {
-        user_id: userId
-      },
-      take: limit + 1,
-      skip: cursor ? 1 : 0,
-      cursor: cursor ? { reform_request_id : cursor } : undefined,
-      orderBy: [
-        { created_at: order },
-        { reform_request_id: order }
-      ],
-      select: {
-        reform_request_id: true,
-        user_id: true,
-        title: true,
-        min_budget: true,
-        max_budget: true,
-        due_date: true,
-        created_at: true,
-        reform_request_photo: {
-          select: {
-            reform_request_photo_id: true,
-            content: true,
-          },
-          orderBy:  [
+    const requests: RawRequestData[] =
+      await this.prisma.reform_request.findMany({
+        where: {
+          user_id: userId
+        },
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        cursor: cursor ? { reform_request_id: cursor } : undefined,
+        orderBy: [{ created_at: order }, { reform_request_id: order }],
+        select: {
+          reform_request_id: true,
+          user_id: true,
+          title: true,
+          min_budget: true,
+          max_budget: true,
+          due_date: true,
+          created_at: true,
+          reform_request_photo: {
+            select: {
+              reform_request_photo_id: true,
+              content: true
+            },
+            orderBy: [
               { photo_order: 'asc' },
-              { reform_request_photo_id : 'asc'}
+              { reform_request_photo_id: 'asc' }
             ],
-          take: 1
+            take: 1
+          }
         }
-      }
-    })
+      });
     return requests.map((request) => {
       const photo = request.reform_request_photo[0];
 
