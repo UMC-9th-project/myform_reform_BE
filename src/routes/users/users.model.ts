@@ -247,5 +247,3 @@ export type rawReformerPortfolio = Prisma.ownerGetPayload<{
     }
   }  
 }>
-
-export type reformerPotfolioStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'
