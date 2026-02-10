@@ -14,6 +14,7 @@ export interface ReformProposalResponseDto {
   avgStar: number;
   reviewCount: number;
   ownerName: string;
+  isCompleted?: boolean;
 }
 
 export interface ReformRequestResponseDto {
@@ -23,6 +24,7 @@ export interface ReformRequestResponseDto {
   title: string;
   minBudget: number;
   maxBudget: number;
+  isCompleted?: boolean;
 }
 
 export interface ReformDetailRequestResponseDto {
@@ -39,6 +41,7 @@ export interface ReformDetailRequestResponseDto {
   dueDate: Date;
   name: string;
   profile: string;
+  isCompleted?: boolean;
 }
 
 export interface ReformDetailProposalResponseDto {
@@ -65,4 +68,5 @@ export interface ReformDetailProposalResponseDto {
     keywords: string[];
     bio: string;
   };
+  isCompleted?: boolean;
 }

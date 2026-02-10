@@ -11,7 +11,8 @@ import {
   Max,
   ArrayMaxSize,
   IsUrl,
-  ValidateIf
+  ValidateIf,
+  Matches
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -124,8 +125,14 @@ export class CreateOrderRequestDto {
   merchant_uid!: string;
 }
 
+
+const ORDER_ID_OR_RECEIPT_PATTERN = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\d{12})$/;
+
 export class VerifyPaymentRequestDto {
-  @IsUUID()
+  @IsString()
+  @Matches(ORDER_ID_OR_RECEIPT_PATTERN, {
+    message: 'order_id는 UUID 또는 receipt_number(12자리 숫자)여야 합니다.'
+  })
   order_id!: string;
 
   @IsString()

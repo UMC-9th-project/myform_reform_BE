@@ -12,7 +12,11 @@ import {
   Tags,
   Request
 } from 'tsoa';
-import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
+import {
+  TsoaResponse,
+  ErrorResponse,
+  commonError
+} from '../../config/tsoaResponse.js';
 import { MarketService } from './market.service.js';
 import {
   GetItemListRequestDto,
@@ -49,7 +53,9 @@ export class MarketController extends Controller {
   @Get('categories')
   @SuccessResponse(200, '카테고리 목록 조회 성공')
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
-  public async getCategories(): Promise<TsoaResponse<GetCategoriesResponseDto>> {
+  public async getCategories(): Promise<
+    TsoaResponse<GetCategoriesResponseDto>
+  > {
     const result = await this.marketService.getCategories();
     return {
       resultType: 'SUCCESS',
@@ -62,44 +68,52 @@ export class MarketController extends Controller {
    * 상품 목록 조회
    * @summary 마켓 상품 목록을 조회합니다
    * @param categoryId 카테고리 ID (선택)
-   * @param sort 정렬 기준 (popular/latest, 기본: popular)
+   * @param sort 정렬 기준 (popular/latest/rating, 기본: popular)
    * @param page 페이지 번호 (기본: 1)
    * @param limit 페이지당 개수 (기본: 15)
    * @returns 상품 목록 조회 결과
    */
   @Get('/')
   @SuccessResponse(200, '상품 목록 조회 성공')
-  @Response<ErrorResponse>(
-    400,
-    '입력값 검증 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-VALIDATION',
-        reason: '입력값 검증 실패',
-        data: [
-          { field: 'categoryId', value: 'invalid', messages: 'categoryId는 UUID 형식이어야 합니다' },
-          { field: 'sort', value: 'invalid', messages: 'sort는 popular 또는 latest여야 합니다' },
-          { field: 'page', value: 0, messages: 'page는 1 이상의 정수여야 합니다' },
-          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' }
-        ]
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '상품 목록 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'MARKET-ERROR',
-        reason: '상품 목록 조회 실패',
-        data: '상품 목록 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '입력값 검증 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-VALIDATION',
+      reason: '입력값 검증 실패',
+      data: [
+        {
+          field: 'categoryId',
+          value: 'invalid',
+          messages: 'categoryId는 UUID 형식이어야 합니다'
+        },
+        {
+          field: 'sort',
+          value: 'invalid',
+          messages: 'sort는 popular, latest, rating 중 하나여야 합니다'
+        },
+        {
+          field: 'page',
+          value: 0,
+          messages: 'page는 1 이상의 정수여야 합니다'
+        },
+        {
+          field: 'limit',
+          value: 101,
+          messages: 'limit는 1 이상 100 이하의 정수여야 합니다'
+        }
+      ]
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '상품 목록 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'MARKET-ERROR',
+      reason: '상품 목록 조회 실패',
+      data: '상품 목록 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Security('jwt_optional')
   @Example<TsoaResponse<GetItemListResponseDto>>({
@@ -126,7 +140,7 @@ export class MarketController extends Controller {
   public async getItemList(
     @Request() req: ExpressRequest,
     @Query() categoryId?: string,
-    @Query() sort: 'popular' | 'latest' = 'popular',
+    @Query() sort: 'popular' | 'latest' | 'rating' = 'popular',
     @Query() page: number = 1,
     @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemListResponseDto>> {
@@ -161,32 +175,24 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}')
   @SuccessResponse(200, '상품 상세 조회 성공')
-  @Response<ErrorResponse>(
-    404,
-    '상품을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ITEM-NOT-FOUND',
-        reason: '상품을 찾을 수 없습니다.',
-        data: 'Item ID: {itemId}'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '상품 상세 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'MARKET-ERROR',
-        reason: '상품 상세 조회 실패',
-        data: '상품 상세 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ITEM-NOT-FOUND',
+      reason: '상품을 찾을 수 없습니다.',
+      data: 'Item ID: {itemId}'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '상품 상세 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'MARKET-ERROR',
+      reason: '상품 상세 조회 실패',
+      data: '상품 상세 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Security('jwt_optional')
   @Example<TsoaResponse<GetItemDetailResponseDto>>({
@@ -195,7 +201,15 @@ export class MarketController extends Controller {
     success: {
       item_id: '550e8400-e29b-41d4-a716-446655440000',
       title: '상품명',
-      images: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+      category: {
+        major: '의류',
+        sub: '상의'
+      },
+
+      images: [
+        'https://example.com/image1.jpg',
+        'https://example.com/image2.jpg'
+      ],
       price: 50000,
       delivery: 3000,
       delivery_info: '배송 정보',
@@ -222,6 +236,7 @@ export class MarketController extends Controller {
         star_recent_3m: 4.5,
         order_count: 500
       },
+      content: '상품 설명 내용',
       is_wished: false,
       review_summary: {
         total_review_count: 123,
@@ -275,49 +290,49 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews')
   @SuccessResponse(200, '리뷰 목록 조회 성공')
-  @Response<ErrorResponse>(
-    400,
-    '입력값 검증 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-VALIDATION',
-        reason: '입력값 검증 실패',
-        data: [
-          { field: 'page', value: 0, messages: 'page는 1 이상의 정수여야 합니다' },
-          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' },
-          { field: 'sort', value: 'invalid', messages: 'sort는 latest, star_high, star_low 중 하나여야 합니다' }
-        ]
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    404,
-    '상품을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ITEM-NOT-FOUND',
-        reason: '상품을 찾을 수 없습니다.',
-        data: 'Item ID: {itemId}'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '리뷰 목록 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'MARKET-ERROR',
-        reason: '리뷰 목록 조회 실패',
-        data: '리뷰 목록 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '입력값 검증 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-VALIDATION',
+      reason: '입력값 검증 실패',
+      data: [
+        {
+          field: 'page',
+          value: 0,
+          messages: 'page는 1 이상의 정수여야 합니다'
+        },
+        {
+          field: 'limit',
+          value: 101,
+          messages: 'limit는 1 이상 100 이하의 정수여야 합니다'
+        },
+        {
+          field: 'sort',
+          value: 'invalid',
+          messages: 'sort는 latest, star_high, star_low 중 하나여야 합니다'
+        }
+      ]
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ITEM-NOT-FOUND',
+      reason: '상품을 찾을 수 없습니다.',
+      data: 'Item ID: {itemId}'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '리뷰 목록 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'MARKET-ERROR',
+      reason: '리뷰 목록 조회 실패',
+      data: '리뷰 목록 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemReviewsResponseDto>>({
     resultType: 'SUCCESS',
@@ -350,9 +365,18 @@ export class MarketController extends Controller {
     @Query() limit: number = 4,
     @Query() sort: 'latest' | 'star_high' | 'star_low' = 'latest'
   ): Promise<TsoaResponse<GetItemReviewsResponseDto>> {
-    const dto = await validateDto(GetItemReviewsRequestDto, { page, limit, sort });
+    const dto = await validateDto(GetItemReviewsRequestDto, {
+      page,
+      limit,
+      sort
+    });
 
-    const result = await this.marketService.getItemReviews(itemId, page, limit, sort);
+    const result = await this.marketService.getItemReviews(
+      itemId,
+      page,
+      limit,
+      sort
+    );
 
     return {
       resultType: 'SUCCESS',
@@ -371,48 +395,44 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews/photos')
   @SuccessResponse(200, '사진 후기 조회 성공')
-  @Response<ErrorResponse>(
-    400,
-    '입력값 검증 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-VALIDATION',
-        reason: '입력값 검증 실패',
-        data: [
-          { field: 'offset', value: -1, messages: 'offset는 0 이상의 정수여야 합니다' },
-          { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' }
-        ]
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    404,
-    '상품을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ITEM-NOT-FOUND',
-        reason: '상품을 찾을 수 없습니다.',
-        data: 'Item ID: {itemId}'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '사진 후기 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'MARKET-ERROR',
-        reason: '사진 후기 조회 실패',
-        data: '사진 후기 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '입력값 검증 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-VALIDATION',
+      reason: '입력값 검증 실패',
+      data: [
+        {
+          field: 'offset',
+          value: -1,
+          messages: 'offset는 0 이상의 정수여야 합니다'
+        },
+        {
+          field: 'limit',
+          value: 101,
+          messages: 'limit는 1 이상 100 이하의 정수여야 합니다'
+        }
+      ]
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ITEM-NOT-FOUND',
+      reason: '상품을 찾을 수 없습니다.',
+      data: 'Item ID: {itemId}'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '사진 후기 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'MARKET-ERROR',
+      reason: '사진 후기 조회 실패',
+      data: '사진 후기 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetItemReviewPhotosResponseDto>>({
     resultType: 'SUCCESS',
@@ -437,7 +457,10 @@ export class MarketController extends Controller {
     @Query() offset: number = 0,
     @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemReviewPhotosResponseDto>> {
-    const dto = await validateDto(GetItemReviewPhotosRequestDto, { offset, limit });
+    const dto = await validateDto(GetItemReviewPhotosRequestDto, {
+      offset,
+      limit
+    });
 
     const result = await this.marketService.getItemReviewPhotos(
       itemId,
@@ -464,60 +487,48 @@ export class MarketController extends Controller {
    */
   @Get('/{itemId}/reviews/{reviewId}')
   @SuccessResponse(200, '리뷰 상세 조회 성공')
-  @Response<ErrorResponse>(
-    400,
-    '입력값 검증 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-VALIDATION',
-        reason: '입력값 검증 실패',
-        data: [
-          { field: 'photoIndex', value: -1, messages: 'photoIndex는 0 이상의 정수여야 합니다' }
-        ]
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    404,
-    '상품을 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ITEM-NOT-FOUND',
-        reason: '상품을 찾을 수 없습니다.',
-        data: 'Item ID: {itemId}'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    404,
-    '리뷰를 찾을 수 없습니다.',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'REVIEW-NOT-FOUND',
-        reason: '리뷰를 찾을 수 없습니다.',
-        data: 'Review ID: {reviewId}'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '리뷰 상세 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'MARKET-ERROR',
-        reason: '리뷰 상세 조회 실패',
-        data: '리뷰 상세 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(400, '입력값 검증 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-VALIDATION',
+      reason: '입력값 검증 실패',
+      data: [
+        {
+          field: 'photoIndex',
+          value: -1,
+          messages: 'photoIndex는 0 이상의 정수여야 합니다'
+        }
+      ]
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(404, '상품을 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ITEM-NOT-FOUND',
+      reason: '상품을 찾을 수 없습니다.',
+      data: 'Item ID: {itemId}'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(404, '리뷰를 찾을 수 없습니다.', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'REVIEW-NOT-FOUND',
+      reason: '리뷰를 찾을 수 없습니다.',
+      data: 'Review ID: {reviewId}'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '리뷰 상세 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'MARKET-ERROR',
+      reason: '리뷰 상세 조회 실패',
+      data: '리뷰 상세 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   @Example<TsoaResponse<GetReviewDetailResponseDto>>({
     resultType: 'SUCCESS',
@@ -529,7 +540,10 @@ export class MarketController extends Controller {
       star: 5,
       created_at: new Date('2024-12-01T10:30:00Z'),
       content: '리뷰 내용',
-      photo_urls: ['https://example.com/review1.jpg', 'https://example.com/review2.jpg'],
+      photo_urls: [
+        'https://example.com/review1.jpg',
+        'https://example.com/review2.jpg'
+      ],
       product_thumbnail: 'https://example.com/product.jpg',
       current_photo_index: 0,
       total_photo_count: 2,

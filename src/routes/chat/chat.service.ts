@@ -6,13 +6,15 @@ import { runInTransaction } from '../../config/prisma.config.js';
 import { v4, v7 } from 'uuid';
 import { UploadService } from '../common/upload.service.js';
 import { ImageUrls } from '../common/upload.dto.js';
+import { OrdersService } from '../orders/orders.service.js';
 
 export class ChatService {
   
   constructor(
     private chatRepository = new ChatRepository(),
     private targetRepository = new TargetRepository(),
-    private uploadService = new UploadService()
+    private uploadService = new UploadService(),
+    private ordersService = new OrdersService()
   ) {}
   
   // 채팅방 생성
@@ -114,9 +116,44 @@ export class ChatService {
     
     // 트랜젝션 시작
     return await runInTransaction(async () => {
+      let createParams = { ...params };
+
+      // payment 메시지 + OWNER 발신: receipt/order 생성 후 payload에 receipt_number 포함
+      if (params.messageType === 'payment' && params.senderType === 'OWNER' && params.content) {
+        const room = await this.chatRepository.getChatRoomById(params.chatRoomId);
+        if (!room) throw new CreateTargetNotFoundError('채팅방을 찾을 수 없습니다.');
+        let targetId: string | null;
+        if (room.type === 'FEED') {
+          const chatRequestId = await this.chatRepository.getLatestChatRequestIdByChatRoomId(params.chatRoomId);
+          if (!chatRequestId) throw new CreateTargetNotFoundError('문의하기 거래는 요청서가 있어야 결제할 수 있습니다.');
+          targetId = chatRequestId;
+        } else {
+          const targetPayload = room.target_payload as { id?: string } | null;
+          targetId = targetPayload?.id ?? null;
+        }
+        const price = Number(params.content.price) || 0;
+        const deliveryFee = Number(params.content.delivery) ?? 0;
+        const result = await this.ordersService.createReformOrderFromChat({
+          chatRoomId: params.chatRoomId,
+          userId: room.requester_id,
+          ownerId: room.owner_id,
+          targetType: room.type,
+          targetId,
+          price,
+          deliveryFee
+        });
+        createParams = {
+          ...params,
+          content: {
+            ...params.content,
+            receiptNumber: result.receipt_number,
+            orderId: result.order_id
+          }
+        };
+      }
 
       // 메세지 분류 및 저장
-      const message = await this.createMessage(params)
+      const message = await this.createMessage(createParams)
 
       // 수신자 조회(ID ,닉네임)
       const receiver = await this.chatRepository.getChatRoomOtherParticipant(params.chatRoomId, params.senderType as 'OWNER' | 'USER');
@@ -139,6 +176,35 @@ export class ChatService {
     });
   }
 
+  /**
+   * 결제 검증 완료 후 리폼(채팅) 주문의 채팅방에 결제 완료 메시지 전송
+   * content: { completed: true, receiptNumber, totalAmount, currency, paymentMethod, approvedAt }
+   */
+  async notifyPaymentCompleteForReceipt(receiptId: string): Promise<any> {
+    const room = await this.ordersService.getReformOrderChatRoomsByReceiptId(receiptId);
+    if (!room) return;
+
+    const paymentSummary = await this.ordersService.getReceiptPaymentSummaryByReceiptId(receiptId);
+    const content = paymentSummary
+      ? { completed: true, ...paymentSummary }
+      : { completed: true };
+
+    try {
+      const {receiverInfo, message} = await this.processSendMessage({
+        chatRoomId: room.chat_room_id,
+        senderId: room.owner_id,
+        senderType: 'OWNER',
+        messageType: 'result',
+        content
+      });
+      return {receiverInfo, message};
+    } catch (err) {
+      console.error(
+        `채팅방 결제 완료 메시지 전송 실패 (chat_room_id: ${room.chat_room_id}):`,
+        err
+      );
+    }
+  }
 
   // 읽음 처리 이벤트
   async readChatRoomEvent(
@@ -438,7 +504,7 @@ export class ChatService {
       
       if (data.price !== undefined) updateData.price = data.price;
       if (data.delivery !== undefined) updateData.delivery = data.delivery;
-      if (data.expectedWorking !== undefined) updateData.expected_working = data.expectedWorking;
+      if (data.expectedWorking !== undefined) updateData.expectedWorking = data.expectedWorking;
       if (data.content !== undefined) updateData.content = data.content;
 
       // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
@@ -469,7 +535,7 @@ export class ChatService {
             ...currentPayload,
             ...(data.price !== undefined && { price: data.price }),
             ...(data.delivery !== undefined && { delivery: data.delivery }),
-            ...(data.expectedWorking !== undefined && { expected_working: data.expectedWorking })
+            ...(data.expectedWorking !== undefined && { expectedWorking: data.expectedWorking })
           };
 
           // 메시지 payload 업데이트
