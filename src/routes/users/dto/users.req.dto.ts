@@ -1,5 +1,5 @@
 import { processKeywords, validateBio, validateEmail, validateNickname, validatePhoneNumber } from '../../../utils/validators.js';
-import { AuthStatus } from '../../auth/auth.dto.js';
+import { AuthStatus } from '../../auth/dto/auth.dto.js';
 
 // 리폼러 상태 업데이트 요청 데이터 (Controller -> Service)
 export interface UpdateReformerStatusRequest {

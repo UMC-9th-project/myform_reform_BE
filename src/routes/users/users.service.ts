@@ -31,7 +31,7 @@ import {
   PhoneNumberDuplicateError 
 } from './users.error.js';
 import { UsersRepository } from './users.repository.js';
-import { AuthStatus } from '../auth/auth.dto.js';
+import { AuthStatus } from '../auth/dto/auth.dto.js';
 import { reformer_status_enum } from '@prisma/client';
 
 const messageService = new SolapiMessageService(

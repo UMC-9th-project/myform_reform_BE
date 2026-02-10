@@ -1,4 +1,4 @@
-import { AuthStatus, Role } from '../../auth/auth.dto.js';
+import { AuthStatus, Role } from '../../auth/dto/auth.dto.js';
 import { owner, user } from '@prisma/client';
 import { rawReformerPortfolio } from '../users.model.js';
 

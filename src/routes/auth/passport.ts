@@ -3,7 +3,7 @@ import { Strategy as KakaoStrategy } from 'passport-kakao';
 import express from 'express';
 import { account_role } from '@prisma/client';
 import { UnknownAuthError } from './auth.error.js';
-import { Role } from './auth.dto.js';
+import { Role } from './dto/auth.dto.js';
 import { UsersModel } from '../users/users.model.js';
 
 const usersModel = new UsersModel();

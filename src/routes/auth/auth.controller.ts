@@ -10,13 +10,16 @@ import {
   Tags,
   Request,
   Query,
-  FormField,
-  UploadedFiles,
   Security
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { SendSmsRequest, VerifySmsRequest, SendSmsResponse, VerifySmsResponse, LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, LocalLoginRequest, AuthPublicResponse, RefreshTokenPublicResponse, Role } from './auth.dto.js';
+import { LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, LocalLoginRequest, AuthPublicResponse, RefreshTokenPublicResponse, Role } from './dto/auth.dto.js';
+import { VerifySmsResponseDto, SendSmsResponseDto } from './dto/auth.res.dto.js';
+import { 
+  VerifySmsRequestDto, 
+  SendSmsRequestDto
+} from './dto/auth.req.dto.js';
 import express from 'express';
 import passport from './passport.js';
 import { KakaoAuthError } from './auth.error.js';
@@ -32,7 +35,7 @@ export class AuthController extends Controller {
    *
    */
   @SuccessResponse(200, 'SMS 전송 완료')
-  @Example<ResponseHandler<SendSmsResponse>>({
+  @Example<ResponseHandler<SendSmsResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {statusCode: 200, message: 'SMS 전송이 완료되었습니다.'}
@@ -44,9 +47,9 @@ export class AuthController extends Controller {
   
   @Post('sms/send') 
   public async sendSms(
-    @Body() requestBody: SendSmsRequest): Promise<TsoaResponse<SendSmsResponse>> {
+    @Body() requestBody: SendSmsRequestDto): Promise<TsoaResponse<SendSmsResponseDto>> {
     await this.authService.sendSms(requestBody.phoneNumber);
-    return new ResponseHandler<SendSmsResponse>({
+    return new ResponseHandler<SendSmsResponseDto>({
       statusCode: 200,
       message: 'SMS 전송이 완료되었습니다.'
     });
@@ -59,7 +62,7 @@ export class AuthController extends Controller {
    *
    */
   @SuccessResponse(200, '인증 코드 검증 성공')
-  @Example<ResponseHandler<VerifySmsResponse>>({
+  @Example<ResponseHandler<VerifySmsResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {statusCode: 200, message: '인증이 성공적으로 완료되었습니다.'}
@@ -69,9 +72,9 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('sms/verify')
   public async verifySms(
-    @Body() requestBody: VerifySmsRequest): Promise<TsoaResponse<VerifySmsResponse>> {
+    @Body() requestBody: VerifySmsRequestDto): Promise<TsoaResponse<VerifySmsResponseDto>> {
     await this.authService.verifySms(requestBody.phoneNumber, requestBody.code);
-    return new ResponseHandler<VerifySmsResponse>({
+    return new ResponseHandler<VerifySmsResponseDto>({
       statusCode: 200,
       message: '인증이 성공적으로 완료되었습니다.'
     });

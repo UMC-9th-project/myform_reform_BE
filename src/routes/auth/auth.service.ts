@@ -3,7 +3,7 @@ import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos, validateName} from '../../utils/validators.js';
 import jwt from 'jsonwebtoken';
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './auth.dto.js';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './dto/auth.dto.js';
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { runInTransaction } from '../../config/prisma.config.js';

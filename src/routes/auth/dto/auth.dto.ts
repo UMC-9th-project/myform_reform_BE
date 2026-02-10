@@ -32,16 +32,6 @@ export type AuthStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type Role = 'user' | 'reformer';
 export type RegistrationType = 'LOCAL' | 'KAKAO';
 
-export interface SendSmsResponse {
-  statusCode: number;
-  message: string;
-}
-
-export interface VerifySmsResponse {
-  statusCode: number;
-  message: string;
-}
-
 // 카카오 회원가입 응답 데이터
 export interface KakaoSignupResponse {
   status: 'signup';

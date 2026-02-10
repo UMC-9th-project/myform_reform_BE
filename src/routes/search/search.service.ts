@@ -3,7 +3,7 @@ import prisma from '../../config/prisma.config.js';
 import { CursorUtil } from '../../utils/cursorUtil.js';
 import { SearchResDTO, SearchListResDTO } from './search.res.dto.js';
 import type { target_type_enum } from '@prisma/client';
-import { Role } from '../auth/auth.dto.js';
+import { Role } from '../auth/dto/auth.dto.js';
 
 type UserTargetType = Exclude<target_type_enum, 'REQUEST'>;
 type SearchCursor = [number, number, string]; // [score, createdAt, id]
