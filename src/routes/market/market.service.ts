@@ -65,7 +65,7 @@ export class MarketService {
    */
   async getItemList(
     categoryId: string | undefined,
-    sort: 'popular' | 'latest',
+    sort: 'popular' | 'latest' | 'rating',
     page: number,
     limit: number,
     userId: string | undefined
@@ -73,16 +73,31 @@ export class MarketService {
     try {
       const skip = (page - 1) * limit;
 
-      const categoryFilter = categoryId ? { category_id: categoryId } : {};
+      let categoryFilter: Prisma.itemWhereInput;
+      if (categoryId) {
+        const categoryIds = await this.repository.findDescendantCategoryIds(categoryId);
+        categoryFilter =
+          categoryIds.length <= 1
+            ? { category_id: categoryId }
+            : { category_id: { in: categoryIds } };
+      } else {
+        categoryFilter = {};
+      }
 
       const orderBy =
         sort === 'latest'
           ? { created_at: 'desc' as const }
-          : [
-              { review_count: 'desc' as const },
-              { avg_star: 'desc' as const },
-              { created_at: 'desc' as const }
-            ];
+          : sort === 'rating'
+            ? [
+                { avg_star: 'desc' as const },
+                { review_count: 'desc' as const },
+                { created_at: 'desc' as const }
+              ]
+            : [
+                { review_count: 'desc' as const },
+                { avg_star: 'desc' as const },
+                { created_at: 'desc' as const }
+              ];
 
       const [items, totalCount] = await Promise.all([
         this.repository.findItemsWithFilters(categoryFilter, orderBy, skip, limit),

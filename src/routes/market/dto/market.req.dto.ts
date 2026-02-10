@@ -6,8 +6,8 @@ export class GetItemListRequestDto {
   category_id?: string;
 
   @IsOptional()
-  @IsIn(['popular', 'latest'])
-  sort?: 'popular' | 'latest';
+  @IsIn(['popular', 'latest', 'rating'])
+  sort?: 'popular' | 'latest' | 'rating';
 
   @IsOptional()
   @IsInt()

@@ -14,6 +14,24 @@ export class MarketRepository {
   }
 
   /**
+   * 해당 카테고리 ID 및 모든 하위 카테고리 ID 목록 조회
+   */
+  async findDescendantCategoryIds(parentId: string): Promise<string[]> {
+    const rows = await this.findCategories();
+    const byParent = new Map<string | null, typeof rows>();
+    for (const r of rows) {
+      const key = r.parent_id;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(r);
+    }
+    const collect = (id: string): string[] => {
+      const children = byParent.get(id) ?? [];
+      return [id, ...children.flatMap((c) => collect(c.category_id))];
+    };
+    return collect(parentId);
+  }
+
+  /**
    * 카테고리 전체 목록 조회 (sort_order, depth 기준 정렬)
    */
   async findCategories() {
@@ -33,7 +51,7 @@ export class MarketRepository {
    * 상품 목록 조회 (필터 및 정렬 적용)
    */
   async findItemsWithFilters(
-    categoryFilter: { category_id?: string } | {},
+    categoryFilter: Prisma.itemWhereInput,
     orderBy: Prisma.itemOrderByWithRelationInput | Prisma.itemOrderByWithRelationInput[],
     skip: number,
     take: number
@@ -66,7 +84,7 @@ export class MarketRepository {
   /**
    * 상품 개수 조회
    */
-  async countItems(categoryFilter: { category_id?: string } | {}): Promise<number> {
+  async countItems(categoryFilter: Prisma.itemWhereInput): Promise<number> {
     return await prisma.item.count({
       where: categoryFilter
     });
