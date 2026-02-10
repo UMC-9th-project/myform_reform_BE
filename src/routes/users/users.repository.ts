@@ -76,26 +76,39 @@ export class UsersRepository {
     return userProfile
   }
 
-  async getReformerPortfolios(status: reformer_status_enum): Promise<rawReformerPortfolio[]> {
-    return await prisma.owner.findMany({
-      where: {
-        status: status
-      },
-      select: {
-        owner_id: true,
-        status: true,
-        email: true,
-        name: true,
-        nickname: true,
-        phone: true,
-        reformer_auth: {
-          select: {
-            portfolio: true,
-            photo: true,
-            business_number: true
+  async getReformerPortfolios(
+    status: reformer_status_enum | 'ALL',
+    page: number,
+    limit: number,
+    order: 'asc' | 'desc'
+  ): Promise<{ totalCount: number; items: rawReformerPortfolio[] }> {
+    const whereCondition = status !== 'ALL' ? { status } : {};
+    const [totalCount, items] = await Promise.all([
+      prisma.owner.count({ where : whereCondition }),
+      prisma.owner.findMany({
+        where: whereCondition,
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          owner_id: true,
+          status: true,
+          email: true,
+          name: true,
+          nickname: true,
+          phone: true,
+          reformer_auth: {
+            select: {
+              portfolio: true,
+              photo: true,
+              business_number: true
+            }
           }
+        },
+        orderBy: {
+          created_at: order
         }
-      }
-    });
+      })
+    ])
+    return { totalCount, items };
   }
 }

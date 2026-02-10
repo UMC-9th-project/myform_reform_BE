@@ -247,4 +247,3 @@ export type rawReformerPortfolio = Prisma.ownerGetPayload<{
     }
   }  
 }>
-

@@ -137,7 +137,7 @@ export class AuthController extends Controller {
           sameSite: 'none'
         });
         const redirectUrl = (user.redirectUrl) 
-          ? `${process.env.FRONTENT_BASE_URL}${user.redirectUrl}`
+          ? `${process.env.FRONTEND_BASE_URL}${user.redirectUrl}`
           : process.env.FRONTEND_BASE_URL
         return res.redirect(redirectUrl!);
       }
