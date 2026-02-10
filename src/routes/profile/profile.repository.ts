@@ -463,6 +463,30 @@ export class ProfileRepository {
     }));
   }
 
+  async getFeedInfos(feedIds: string[]) {
+    if(feedIds.length === 0) return [];
+    const feeds = await this.prisma.chat_request.findMany({
+      where: { chat_request_id: { in : feedIds } },
+      select: {
+        chat_request_id: true,
+        message_id: true,
+        title: true,
+        image: true,
+        min_budget: true,
+        max_budget: true
+      }
+    });
+    return feeds.map((feed: (typeof feeds)[number]) => ({
+      chatRequestId: feed.chat_request_id,
+      messageId: feed.message_id,
+      title: feed.title,
+      photo: feed.image[0],
+      min_budget: feed.min_budget,
+      max_budget: feed.max_budget,
+      expectedWorking: feed.expected_working,
+    }))
+  }
+
   async getOrderDetail(
     ownerId: string,
     orderId: string
@@ -771,20 +795,18 @@ export class ProfileRepository {
   async getOrdersByUserId(dto: OrderRequestDto): Promise<RawOrderData[]> {
     const { userId, type, cursor, limit, order, onlyReviewAvailable } = dto;
     const targetTypeFilter = {
-      REFORM: { in: ['REQUEST', 'PROPOSAL'] },
+      REFORM: { in: ['REQUEST', 'PROPOSAL', 'FEED'] },
       ITEM: 'ITEM',
       ALL: undefined
     };
     const whereClause: any = {
       user_id: userId,
-      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as
-        | target_type_enum
-        | undefined
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter],
+      status: { not: 'PENDING' }
     };
 
     if (onlyReviewAvailable) {
       whereClause.review = { none: {} };
-      whereClause.status = { not: 'PENDING' };
     }
 
     const orders = await this.prisma.order.findMany({
@@ -811,6 +833,7 @@ export class ProfileRepository {
         target_type: true,
         quantity: true,
         tracking_number: true,
+        chat_room_id: true,
         owner: {
           select: {
             nickname: true
@@ -861,6 +884,7 @@ export class ProfileRepository {
   }
 
   async getOptionIdsByOrderId(orderId: string): Promise<string[]> {
+    if (!orderId) return [];
     const optionIds = await prisma.order_option.findMany({
       where: { order_id: orderId },
       orderBy: [
@@ -888,6 +912,13 @@ export class ProfileRepository {
     optionItemIds: string[] | undefined
   ): Promise<RawOptionItemsWithGroup[]> {
     return await prisma.option_group.findMany({
+      where: {
+        option_item: {
+          some: {
+            option_item_id: { in: optionItemIds }
+          }
+        }
+      },
       orderBy: {
         sort_order: 'asc'
       },
