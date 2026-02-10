@@ -1219,7 +1219,7 @@ export class OrdersService {
             '일부 주문이 PENDING 상태가 아닙니다.'
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const paymentInfo = await this.fetchPaymentInfoWithRetry(impUid);

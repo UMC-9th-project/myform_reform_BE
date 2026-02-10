@@ -118,7 +118,7 @@ export class ChatRoom {
 
 export class ChatMessageFactory {
 
-  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result', 'image'];
+  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'result', 'image'];
 
   private static assemble(
     chatRoomId : string, 
@@ -199,7 +199,7 @@ export class ChatMessageFactory {
     return {
       price: target.price,
       delivery: target.delivery,
-      expectedWorking: target.expected_working ?? target.expectedWorking ?? 0,
+      expectedWorking: target.expectedWorking ?? target.expectedWorking ?? 0,
       ...(target.receiptNumber != null && { receiptNumber: target.receiptNumber }),
       ...(target.orderId != null && { orderId: target.orderId })
     };
