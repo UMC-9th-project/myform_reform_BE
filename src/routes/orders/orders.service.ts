@@ -21,6 +21,7 @@ import type {
   CreateOrderResponse,
   OrderResponse,
   OrderItemInfo,
+  ChatResultPayload
 } from './orders.model.js';
 import type { GetOrderResponseDto } from './dto/orders.res.dto.js';
 import { OrdersRepository } from './orders.repository.js';
@@ -275,6 +276,52 @@ export class OrdersService {
         '주문번호 생성 중 데이터베이스 오류가 발생했습니다.'
       );
     }
+  }
+
+  /**
+   * 채팅 기반 리폼 주문 생성 (내부/채팅 연동용)
+   * receipt 생성 후 order 1건 생성.
+   * @returns { receipt, order, receipt_number }
+   */
+  async createReformOrderFromChat(params: {
+    chatRoomId: string;
+    userId: string;
+    ownerId: string;
+    targetType: 'FEED' | 'REQUEST' | 'PROPOSAL';
+    targetId: string | null;
+    price: number;
+    deliveryFee: number;
+  }): Promise<{ receipt_number: string; receipt_id: string; order_id: string }> {
+    const receiptNumber = await this.generateReceiptNumber();
+    const totalAmount = params.price + params.deliveryFee;
+
+    const receipt = await this.repository.createReceipt({
+      receipt_number: receiptNumber,
+      total_amount: totalAmount,
+      payment_status: 'PENDING',
+      payment_method: null,
+      payment_gateway: 'CHAT',
+      transaction: null
+    });
+
+    const order = await this.repository.createReformOrderFromChat({
+      receipt_id: receipt.receipt_id,
+      user_id: params.userId,
+      owner_id: params.ownerId,
+      target_type: params.targetType,
+      target_id: params.targetId,
+      price: params.price,
+      delivery_fee: params.deliveryFee,
+      quantity: 1,
+      status: order_status_enum.PENDING,
+      chat_room_id: params.chatRoomId
+    });
+
+    return {
+      receipt_number: receiptNumber,
+      receipt_id: receipt.receipt_id,
+      order_id: order.order_id
+    };
   }
 
   /**
@@ -974,7 +1021,7 @@ export class OrdersService {
         card_name: cardDetails.card_name,
         masked_card_number: cardDetails.masked_card_number,
         card_info: this.parseCardInfo(receipt.transaction || null),
-        approved_at: receipt.created_at || null
+        approved_at: receipt.approved_at || null
       };
 
       const firstItem = orderItems.length > 0 ? orderItems[0] : null;
@@ -1091,6 +1138,9 @@ export class OrdersService {
    * 결제 검증 및 주문 상태 업데이트 (공통 로직)
    * verifyPayment와 handleWebhook에서 공통으로 사용
    */
+  /**
+   * @returns didUpdate: true면 이번 호출에서 pending → paid 로 갱신함. false면 이미 paid였거나 실패. (채팅 알림은 didUpdate일 때만 1회 전송)
+   */
   private async verifyAndUpdatePayment(
     receipt: {
       receipt_id: string;
@@ -1106,7 +1156,7 @@ export class OrdersService {
     impUid: string,
     merchantUid: string,
     throwOnError: boolean = true
-  ): Promise<boolean> {
+  ): Promise<{ didUpdate: boolean }> {
     try {
       if (receipt.order.length === 0) {
         const paymentInfo = await this.fetchPaymentInfoWithRetry(impUid);
@@ -1134,10 +1184,13 @@ export class OrdersService {
             await this.repository.updateReceipt(receipt.receipt_id, {
               payment_status: 'paid',
               payment_method: 'card',
-              transaction: cardInfo
+              transaction: cardInfo,
+              approved_at: paymentInfo.paid_at
+                ? new Date(paymentInfo.paid_at * 1000)
+                : new Date()
             });
 
-            return true;
+            return { didUpdate: true };
           }
         }
 
@@ -1147,14 +1200,14 @@ export class OrdersService {
             '주문 생성 후 결제 검증을 진행해주세요.'
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const allPaid = receipt.order.every(
         (o) => o.status === order_status_enum.PAID
       );
       if (allPaid) {
-        return true;
+        return { didUpdate: false };
       }
 
       const allPending = receipt.order.every(
@@ -1167,7 +1220,7 @@ export class OrdersService {
             '일부 주문이 PENDING 상태가 아닙니다.'
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const paymentInfo = await this.fetchPaymentInfoWithRetry(impUid);
@@ -1180,7 +1233,7 @@ export class OrdersService {
             `결제 상태: ${paymentInfo.status}`
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       const expectedAmount = receipt.total_amount
@@ -1194,7 +1247,7 @@ export class OrdersService {
             paymentInfo.amount
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       if (paymentInfo.merchant_uid !== merchantUid) {
@@ -1205,7 +1258,7 @@ export class OrdersService {
             `예상 merchant_uid: ${merchantUid}, 실제: ${paymentInfo.merchant_uid}`
           );
         }
-        return false;
+        return { didUpdate: false };
       }
 
       // 트랜잭션으로 상태 업데이트
@@ -1234,38 +1287,75 @@ export class OrdersService {
           payment_status: 'paid',
           payment_method: paymentInfo.pay_method || 'card',
           payment_gateway: paymentInfo.pg_provider || 'portone',
-          transaction: cardInfo
+          transaction: cardInfo,
+          approved_at: paymentInfo.paid_at
+            ? new Date(paymentInfo.paid_at * 1000)
+            : new Date()
         });
       });
 
-      return true;
+      return { didUpdate: true };
     } catch (error) {
       if (throwOnError) {
         throw error;
       }
-      return false;
+      return { didUpdate: false };
     }
   }
 
   /**
    * 결제 검증 및 주문 상태 업데이트 (프론트엔드용)
-   * 포트원 API로 결제 정보를 검증하고 주문 상태를 PAID로 업데이트
+   * order_id: UUID 또는 receipt_number(12자리) 모두 지원. receipt_number로 검증 시 merchant_uid와 동일하게 넣으면 됨.
+   * @returns 성공 시 { receiptId, didUpdate }. didUpdate가 true일 때만 채팅 결제 완료 알림 전송(1회만).
    */
-  async verifyPayment(orderId: string, impUid: string): Promise<void> {
+  async verifyPayment(
+    orderId: string,
+    impUid: string
+  ): Promise<{ receiptId: string; didUpdate: boolean }> {
     try {
-      const order = await this.repository.findOrderByIdForVerification(orderId);
-      if (!order) {
-        throw new OrderNotFoundError(orderId);
+      const isReceiptNumber = /^\d{12}$/.test(orderId);
+      let receiptData: {
+        receipt_id: string;
+        receipt_number: string | null;
+        total_amount: unknown;
+        order: Array<{
+          order_id: string;
+          status: order_status_enum | null;
+          quantity: number | null;
+          order_option?: Array<{ option_item_id: string }>;
+        }>;
+      } | null;
+
+      if (isReceiptNumber) {
+        const byReceipt = await this.repository.findReceiptByReceiptNumberForVerification(orderId);
+        if (!byReceipt) {
+          throw new OrderNotFoundError(orderId);
+        }
+        receiptData = {
+          receipt_id: byReceipt.receipt_id,
+          receipt_number: byReceipt.receipt_number,
+          total_amount: byReceipt.total_amount,
+          order: byReceipt.order.map((o: any) => ({
+            order_id: o.order_id,
+            status: o.status,
+            quantity: o.quantity,
+            order_option: o.order_option
+          }))
+        };
+      } else {
+        const order = await this.repository.findOrderByIdForVerification(orderId);
+        if (!order) {
+          throw new OrderNotFoundError(orderId);
+        }
+        const orderReceipt = (order as any).receipt;
+        if (!orderReceipt) {
+          throw new OrderNotFoundError(orderId);
+        }
+        receiptData = await this.repository.findReceiptByIdWithOrders(
+          orderReceipt.receipt_id
+        );
       }
 
-      const orderReceipt = (order as any).receipt;
-      if (!orderReceipt) {
-        throw new OrderNotFoundError(orderId);
-      }
-
-      const receiptData = await this.repository.findReceiptByIdWithOrders(
-        orderReceipt.receipt_id
-      );
       if (!receiptData) {
         throw new OrderNotFoundError(orderId);
       }
@@ -1286,7 +1376,7 @@ export class OrdersService {
             order_id: o.order_id,
             status: o.status,
             quantity: o.quantity,
-            order_optio: o.order_option?.map(
+            order_option: o.order_option?.map(
               (oo: { option_item_id: string }) => ({
                 option_item_id: oo.option_item_id
               })
@@ -1295,12 +1385,13 @@ export class OrdersService {
         )
       };
 
-      await this.verifyAndUpdatePayment(
+      const { didUpdate } = await this.verifyAndUpdatePayment(
         receipt,
         impUid,
         receipt.receipt_number || '',
         true
       );
+      return { receiptId: receiptData.receipt_id, didUpdate };
     } catch (error) {
       if (
         error instanceof OrderError ||
@@ -1316,6 +1407,48 @@ export class OrdersService {
         error instanceof Error ? error.message : '알 수 없는 오류'
       );
     }
+  }
+
+  /**
+   * 리폼(채팅) 결제 완료 시 알림용 채팅방 목록 조회
+   */
+  async getReformOrderChatRoomsByReceiptId(
+    receiptId: string
+  ): Promise<{ chat_room_id: string; owner_id: string } | null> {
+    return this.repository.findReformOrderChatRoomsByReceiptId(receiptId);
+  }
+
+  /**
+   * receipt_id로 결제 요약 조회 (채팅 결제 완료 메시지용)
+   * 반환 형식: { receiptNumber, totalAmount, currency, paymentMethod: { type, provider, cardNumber }, approvedAt }
+   */
+  async getReceiptPaymentSummaryByReceiptId(receiptId: string): Promise<{
+    receiptNumber: string;
+    totalAmount: number;
+    currency: string;
+    paymentMethod: {
+      type: string;
+      provider: string | null;
+      cardNumber: string | null;
+    };
+    approvedAt: string | null;
+  } | null> {
+    const receipt = await this.repository.findReceiptByIdWithOrders(receiptId);
+    if (!receipt) return null;
+    const cardDetails = this.extractCardDetails(receipt.transaction || null);
+    const paymentMethodType =
+      receipt.payment_method === 'card' ? 'CARD_EASY_PAY' : (receipt.payment_method ?? 'CARD_EASY_PAY');
+    return {
+      receiptNumber: receipt.receipt_number ?? '',
+      totalAmount: receipt.total_amount ? Number(receipt.total_amount) : 0,
+      currency: 'KRW',
+      paymentMethod: {
+        type: paymentMethodType,
+        provider: cardDetails.card_name ?? null,
+        cardNumber: cardDetails.masked_card_number ?? null
+      },
+      approvedAt: receipt.approved_at ? receipt.approved_at.toISOString() : null
+    };
   }
 
   /**
@@ -1370,9 +1503,10 @@ export class OrdersService {
 
   /**
    * 웹훅 처리: 결제 검증 및 주문 상태 업데이트
-   * 프론트엔드 요청과 동일한 검증 로직 사용
+   * 프론트엔드 요청과 동일한 검증 로직 사용.
+   * @returns 검증 완료된 receipt_id (채팅 기반 결제 시 알림용). 실패 시 null.
    */
-  async handleWebhook(impUid: string, merchantUid: string): Promise<void> {
+  async handleWebhook(impUid: string, merchantUid: string): Promise<string | null> {
     try {
       let receiptData =
         await this.repository.findReceiptByReceiptNumberForVerification(
@@ -1434,13 +1568,16 @@ export class OrdersService {
                   await this.repository.updateReceipt(receiptData.receipt_id, {
                     payment_status: 'paid',
                     payment_method: 'card',
-                    transaction: cardInfo
+                    transaction: cardInfo,
+                    approved_at: paymentInfo.paid_at
+                      ? new Date(paymentInfo.paid_at * 1000)
+                      : new Date()
                   });
                 } else {
                   console.error(
                     `웹훅: receipt 생성 실패 후 조회도 실패 (merchantUid: ${merchantUid}, impUid: ${impUid})`
                   );
-                  return;
+                  return null;
                 }
               } else {
                 throw createError;
@@ -1458,14 +1595,14 @@ export class OrdersService {
               console.error(
                 `웹훅: receipt 생성/업데이트 후 조회 실패 (merchantUid: ${merchantUid}, impUid: ${impUid})`
               );
-              return;
+              return null;
             }
           } else {
             // 결제가 완료되지 않았거나 merchant_uid가 일치하지 않음
             console.error(
               `웹훅: 결제 정보 불일치 (merchantUid: ${merchantUid}, impUid: ${impUid}, status: ${paymentInfo.status})`
             );
-            return;
+            return null;
           }
         } catch (error) {
           // 포트원 API 조회 실패 시 로그만 남기고 성공 응답 (재전송 방지)
@@ -1473,7 +1610,7 @@ export class OrdersService {
             `웹훅: receipt를 찾을 수 없고 결제 정보 조회 실패 (merchantUid: ${merchantUid}, impUid: ${impUid}):`,
             error
           );
-          return;
+          return null;
         }
       }
 
@@ -1503,12 +1640,19 @@ export class OrdersService {
         )
       };
 
-      await this.verifyAndUpdatePayment(receipt, impUid, merchantUid, false);
+      const { didUpdate } = await this.verifyAndUpdatePayment(
+        receipt,
+        impUid,
+        merchantUid,
+        false
+      );
+      return didUpdate ? receipt.receipt_id : null;
     } catch (error) {
       console.error(
         `웹훅 처리 실패 (impUid: ${impUid}, merchantUid: ${merchantUid}):`,
         error
       );
+      return null;
     }
   }
 
@@ -2110,7 +2254,7 @@ export class OrdersService {
     if (await this.repository.findReviewByOrderId(orderId)) {
       throw new ReviewAlreadyExistsError('해당 주문에 대한 리뷰가 이미 작성되었습니다.');
     }
-    const createReviewInput = new CreateReviewInput(orderId, userId, requestBody);
+    const createReviewInput = new CreateReviewInput(orderId, userId, order.owner_id, requestBody);
     const review = await this.repository.createReview(createReviewInput);
     const createReviewResponse = new CreateReviewResponseDto(review);
     return createReviewResponse;

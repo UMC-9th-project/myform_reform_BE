@@ -16,7 +16,8 @@ export type ChatMessagePayload =
     | {id: string, price: number, delivery: number, expectedWorking: number }  //제안서
     | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
     | {urls: string[]}                                                        //이미지
-    | {price: number, delivery: number, expectedWorking: number }              //결제정보
+    | { price: number; delivery: number; expectedWorking: number; receiptNumber?: string; orderId?: string }  //결제정보
+    | { receiptNumber: string; totalAmount: number; currency: string; paymentMethod: { type: string; provider: string | null; cardNumber: string | null; }; approvedAt: string | null;}  //결과정보
     | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
@@ -118,7 +119,7 @@ export class ChatRoom {
 
 export class ChatMessageFactory {
 
-  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result', 'image'];
+  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'result', 'image'];
 
   private static assemble(
     chatRoomId : string, 
@@ -197,9 +198,11 @@ export class ChatMessageFactory {
   }  
   static mapToPaymentPayload(target: any): ChatMessagePayload {
     return {
-      price : target.price,
-      delivery : target.delivery,
-      expectedWorking : target.expected_working
+      price: target.price,
+      delivery: target.delivery,
+      expectedWorking: target.expectedWorking ?? target.expectedWorking ?? 0,
+      ...(target.receiptNumber != null && { receiptNumber: target.receiptNumber }),
+      ...(target.orderId != null && { orderId: target.orderId })
     };
   }
 

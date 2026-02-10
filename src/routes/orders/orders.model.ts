@@ -106,13 +106,15 @@ export interface OrderResponse {
 export class CreateReviewInput {
   orderId: string;
   userId: string;
+  ownerId: string;
   star: number;
   content: string;
   photos: string[];
 
-  constructor(orderId: string, userId: string, requestBody: CreateReviewRequestDto) {
+  constructor(orderId: string, userId: string, ownerId: string, requestBody: CreateReviewRequestDto) {
     this.orderId = orderId;
     this.userId = userId;
+    this.ownerId = ownerId;
     this.star = requestBody.star;
     this.content = requestBody.content ?? '';
     this.photos = requestBody.photos ?? [];
@@ -124,3 +126,15 @@ export type RawReviewData = Prisma.reviewGetPayload<{
     review_photo: true;
   };
 }>;
+
+export type ChatResultPayload = {
+    receiptNumber: string;
+    totalAmount: number;
+    currency: string;
+    paymentMethod: {
+      type: string;
+      provider: string | null;
+      cardNumber: string | null;
+    };
+    approvedAt: string | null;
+  } | null;
