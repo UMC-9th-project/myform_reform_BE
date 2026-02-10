@@ -3,7 +3,11 @@ import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
 import { validatePhoneNumber, validateCode, validateEmail, validateNickname, validateTermsAgreement, validateRegistrationType, validatePassword, validateBusinessNumber, validateDescription, validatePortfolioPhotos, validateName} from '../../utils/validators.js';
 import jwt from 'jsonwebtoken';
-import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, LoginResponse, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, AuthLoginResponse, LocalLoginRequest, AuthStatus, RefreshTokenRequest, RefreshTokenResponse, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './dto/auth.dto.js';
+import { KakaoSignupResponse, KakaoLoginResponse, KakaoAuthResponse, JwtPayload, UserSignupRequest, UserCreateDto, ReformerSignupRequest, OwnerCreateDto, LocalLoginRequest, AuthStatus, RefreshTokenRequest, UserCreateResponseDto, OwnerCreateResponseDto, Role } from './dto/auth.dto.js';
+import { 
+  AuthLoginResponse,
+  RefreshTokenResponse
+} from './auth.model.js'
 import dotenv from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { runInTransaction } from '../../config/prisma.config.js';
@@ -13,6 +17,7 @@ import { UsersInfoResponse } from '../users/dto/users.res.dto.js';
 import { REDIS_KEYS } from '../../config/redis.js';
 import { NicknameDuplicateError, PhoneNumberDuplicateError } from '../users/users.error.js';
 import { provider_type } from '@prisma/client';
+import { UsersRepository } from '../users/users.repository.js';
 
 dotenv.config();
 
@@ -26,11 +31,12 @@ export class AuthService {
   private readonly SALT_ROUNDS = 10;
   private authModel: AuthModel;
   private usersModel: UsersModel;
+  private usersRepository: UsersRepository;
 
   constructor() {
     this.authModel = new AuthModel();
-    // UsersService 인스턴스 생성 (checkNicknameDuplicate 사용 목적)
     this.usersModel = new UsersModel();
+    this.usersRepository = new UsersRepository();
   }
 
   async sendSms(phoneNumber: string): Promise<void>{
@@ -221,36 +227,35 @@ export class AuthService {
     validateEmail(email);
     validatePassword(password);
     //DB에서 유저 정보 조회
-    const socialAccount = await this.usersModel.findSocialAccountByEmailAndRole(email, role === 'user' ? 'USER' : 'OWNER');
-    if (socialAccount){
-      const provider = socialAccount.provider as provider_type;
-      throw new InputValidationError(`${provider}의 소셜 로그인으로 가입된 이메일입니다. 소셜 로그인으로 로그인해주세요.`);
-    }
 
     const account = (role === 'user'
-      ? await this.usersModel.findUserByEmail(email)
-      : await this.usersModel.findReformerByEmail(email)) as UsersInfoResponse;
+      ? await this.usersRepository.findUserByEmail(email)
+      : await this.usersRepository.findReformerByEmail(email))
     if (!account){
       throw new AccountNotFoundError('존재하지 않는 유저입니다.');
+    }
+    
+    const socialAccount = (role === 'user'
+      ? await this.usersRepository.findUserSocialAccountById(account.id)
+      : await this.usersRepository.findReformerSocialAccountById(account.id)
+    )
+    if (socialAccount){
+      const provider = socialAccount.provider;
+      throw new InputValidationError(`${provider}의 소셜 로그인으로 가입된 이메일입니다. 소셜 로그인으로 로그인해주세요.`);
     }
 
     const isPasswordValid = await bcrypt.compare(password, account.hashed as string);
     if (!isPasswordValid) {
       throw new passwordInvalidError('비밀번호가 일치하지 않습니다.');
     }
-    // payload에 담길 정보는 id, role, auth_status(리폼러 한정)
+    
     const payload: JwtPayload = {
       id: account.id,
-      role: account.role as 'user' | 'reformer',
-      ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
-    } as JwtPayload;
+      role: account.role,
+      ...(role === 'reformer' && { auth_status: account.auth_status })
+    };
 
-    const { accessToken, refreshToken } = await this.generateAndSaveTokens(payload);
-
-    return {
-      accessToken,
-      refreshToken
-    } as AuthLoginResponse;
+    return await this.generateAndSaveTokens(payload);
   }
 
   // 리프레시 토큰을 입력받아 엑세스 토큰과 리프레시 토큰을 재발급
@@ -282,7 +287,7 @@ export class AuthService {
       } as JwtPayload;
 
       const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
-      return { accessToken, refreshToken: newRefreshToken } as RefreshTokenResponse;
+      return { accessToken, refreshToken: newRefreshToken };
     } catch (error) {
       throw new RefreshTokenError('액세스 토큰 및 리프레시 토큰 재발급에 실패하였습니다.');
     }
@@ -309,7 +314,7 @@ export class AuthService {
   }  
 
   // JWT 토큰 생성 및 Redis에 저장
-  private async generateAndSaveTokens(payload: JwtPayload): Promise<LoginResponse> {
+  private async generateAndSaveTokens(payload: JwtPayload): Promise<AuthLoginResponse> {
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
     const refreshToken = jwt.sign({id: payload.id, role: payload.role}, process.env.JWT_SECRET!, { expiresIn: '14d' });
     // Refresh Token Redis에 저장
@@ -320,7 +325,7 @@ export class AuthService {
       throw new RedisStorageError(`Redis refreshToken 저장 실패 - userId: ${payload.id}의 리프레시 토큰을 저장하지 못했습니다.`);
     }
     // JWT 토큰 반환
-    return { accessToken, refreshToken } as LoginResponse;
+    return { accessToken, refreshToken };
   }
 
   // 회원가입시 입력한 정보 유효성 검증

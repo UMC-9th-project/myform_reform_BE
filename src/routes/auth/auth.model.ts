@@ -92,3 +92,14 @@ export class AuthModel {
     } as OwnerCreateResponseDto;
   }
 }
+
+export interface AuthLoginResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
+// 리프레시 토큰 갱신 응답 데이터 (Service -> Controller)
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+}

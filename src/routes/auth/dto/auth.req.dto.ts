@@ -1,4 +1,5 @@
 import { IsString, Matches, MinLength, MaxLength } from 'class-validator'
+import { Role } from './auth.dto.js'
 
 export class SendSmsRequestDto {
   /**
@@ -45,5 +46,21 @@ export class VerifySmsRequestDto {
   ) {
     this.phoneNumber = phoneNumber;
     this.code = code;
+  }
+}
+
+export class LocalLoginRequestDto {
+  email: string;
+  password: string;
+  role: Role;
+
+  constructor(
+    email: string,
+    password: string,
+    role: Role,
+  ){
+    this.email = email,
+    this.password = password,
+    this.role = role
   }
 }

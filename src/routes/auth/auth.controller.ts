@@ -14,12 +14,13 @@ import {
 } from 'tsoa';
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, LocalLoginRequest, AuthPublicResponse, RefreshTokenPublicResponse, Role } from './dto/auth.dto.js';
-import { VerifySmsResponseDto, SendSmsResponseDto, RefreshTokenResponseDto } from './dto/auth.res.dto.js';
+import { LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, AuthPublicResponse, Role } from './dto/auth.dto.js';
+import { VerifySmsResponseDto, SendSmsResponseDto, AuthPublicResponseDto } from './dto/auth.res.dto.js';
 import { Request as ExRequest } from 'express';
 import { 
   VerifySmsRequestDto, 
-  SendSmsRequestDto
+  SendSmsRequestDto,
+  LocalLoginRequestDto
 } from './dto/auth.req.dto.js';
 import express from 'express';
 import passport from './passport.js';
@@ -275,7 +276,7 @@ export class AuthController extends Controller {
   @SuccessResponse(200, '로컬 로그인 성공')
   @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
   @Response<ErrorResponse>('500', '서버 내부 오류')
-  @Example<ResponseHandler<AuthPublicResponse>>({
+  @Example<ResponseHandler<AuthPublicResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -286,12 +287,12 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('login/local')
   public async localLogin(
-    @Body() requestBody: LocalLoginRequest): Promise<TsoaResponse<AuthPublicResponse>> {
+    @Body() requestBody: LocalLoginRequestDto): Promise<TsoaResponse<AuthPublicResponseDto>> {
     const result = await this.authService.loginLocal(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(200);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
-    return new ResponseHandler<AuthPublicResponse>({
+    return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
   }
@@ -304,7 +305,7 @@ export class AuthController extends Controller {
    */
   @Security('jwt_refresh')
   @SuccessResponse(200, 'Access Token 재발급 성공')
-  @Example<ResponseHandler<RefreshTokenResponseDto>>({
+  @Example<ResponseHandler<AuthPublicResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -316,14 +317,14 @@ export class AuthController extends Controller {
   @Post('reissue/accessToken')
   public async reissueAccessToken(
     @Request() req: ExRequest)
-    : Promise<TsoaResponse<RefreshTokenResponseDto>> {
+    : Promise<TsoaResponse<AuthPublicResponseDto>> {
     const refreshTokenFromCookie = req.cookies.refreshToken;
     const result = await this.authService
       .reissueAccessToken({refreshToken: refreshTokenFromCookie});
     const { accessToken, refreshToken } = result; 
     this.setStatus(200);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
-    return new ResponseHandler<RefreshTokenResponseDto>({
+    return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
   }

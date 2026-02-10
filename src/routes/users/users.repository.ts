@@ -1,7 +1,13 @@
 import { DatabaseError } from "./users.error.js";
-import { UpdateReformerProfileParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
+import { 
+  UpdateReformerProfileParams, 
+  UpdateUserProfileParams 
+} from "./dto/users.req.dto.js";
+import {
+  UsersInfoResponse
+} from "./dto/users.res.dto.js";
 import prisma from "../../config/prisma.config.js";
-import { user, owner } from "@prisma/client";
+import { user, owner, social_account } from "@prisma/client";
 import { RawUserPorfile, rawReformerPortfolio } from './users.model.js';
 import { reformer_status_enum } from '@prisma/client';
 
@@ -97,5 +103,58 @@ export class UsersRepository {
         }
       }
     });
+  }
+
+  async findUserByEmail(email: string): Promise<UsersInfoResponse | null> {
+    const user = await prisma.user.findUnique({
+      where: { email: email }
+    });
+    if (!user){
+      return null;
+    }
+    return{
+      id: user?.user_id as string,
+      email: user?.email as string,
+      nickname: user?.nickname as string,
+      role: 'user',
+      hashed: user?.hashed as string
+    } as UsersInfoResponse;
+  }
+
+  async findReformerByEmail(email: string): Promise<UsersInfoResponse | null> {
+    const reformer = await prisma.owner.findUnique({
+      where: { email: email }
+    });
+    if (!reformer){
+      return null;
+    }
+    return{
+      id: reformer?.owner_id as string,
+      email: reformer?.email as string,
+      nickname: reformer?.nickname as string,
+      role: 'reformer',
+      auth_status: reformer?.status,
+      hashed: reformer?.hashed as string
+    } as UsersInfoResponse;
+  }
+
+  async findUserSocialAccountById(userId: string): Promise<social_account | null>{
+    const socialAccount = await prisma.social_account.findFirst({
+      where: {
+        role: 'USER',
+        user_id : userId
+      }
+    })
+    return socialAccount
+  }
+
+  async findReformerSocialAccountById(reformerId: string): Promise<social_account | null>{
+    const socialAccount = await prisma.social_account.findFirst({
+      where: {
+        role: 'OWNER',
+        user_id : reformerId
+      }
+    })
+    return socialAccount
   }
 }

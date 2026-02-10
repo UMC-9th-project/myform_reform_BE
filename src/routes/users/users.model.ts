@@ -163,36 +163,6 @@ export class UsersModel {
     }
     return socialAccount;
   }
-
-  // Email과 Role을 기반으로 소셜 계정 조회
-  async findSocialAccountByEmailAndRole(email: string, role: account_role ): Promise<social_account | null> {
-    const account = role === 'USER'
-      ? await this.prisma.user.findUnique({
-        where: {
-          email: email
-        }
-      })
-      : await this.prisma.owner.findUnique({
-        where: {
-          email: email
-        }
-      });
-    
-    // 계정이 존재하면 소셜 계정 조회
-    if (account) {
-      const socialAccount = (await this.prisma.social_account.findFirst({
-        where: {
-          role: role as account_role,
-          user_id: role === 'USER' ? (account as user).user_id as string : undefined,
-          owner_id: role === 'OWNER' ? (account as owner).owner_id as string : undefined
-        }
-      })) as social_account;
-      if (socialAccount) {
-        return socialAccount;
-      }
-    }
-    return null;
-  }
 }
 
 export type RawUserPorfile = Prisma.userGetPayload<{

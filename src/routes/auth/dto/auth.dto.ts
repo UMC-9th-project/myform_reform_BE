@@ -44,7 +44,9 @@ export interface KakaoSignupResponse {
 }
 
 // 카카오 로그인 데이터
-export interface KakaoLoginResponse extends AuthLoginResponse {
+export interface KakaoLoginResponse {
+  accessToken: string;
+  refreshToken: string;
   status: 'login';
 }
 
@@ -75,12 +77,6 @@ export interface PassportUserInfo {
   redirectUrl?: string;
 }
 
-// 로그인 응답 데이터 (Service -> Controller)
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 // 일반 회원가입 요청 데이터 (Controller -> Service)
 export interface UserSignupRequest {
   name: string;
@@ -93,12 +89,6 @@ export interface UserSignupRequest {
   over14YearsOld: boolean;
   termsOfService: boolean;
   privacyPolicy: boolean;
-}
-
-// 로그인 응답 데이터 (Service -> Controller)
-export interface AuthLoginResponse {
-  accessToken: string;
-  refreshToken: string;
 }
 
 // 일반 회원가입 요청 데이터 (Controller -> Service)
@@ -150,12 +140,6 @@ export interface LocalLoginRequest {
 
 // 리프레시 토큰 갱신 요청 데이터 (Controller -> Service)
 export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-// 리프레시 토큰 갱신 응답 데이터 (Service -> Controller)
-export interface RefreshTokenResponse {
-  accessToken: string;
   refreshToken: string;
 }
 

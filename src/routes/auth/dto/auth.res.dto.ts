@@ -40,13 +40,12 @@ export class LogoutResponse {
   }
 }
 
-// 액세스토큰 갱신 응답 데이터
-export class RefreshTokenResponseDto{
+// 공통 인증 응답 dto
+export class AuthPublicResponseDto{
   accessToken: string;
   constructor(
     accessToken: string
-  ) {
+  ){
     this.accessToken = accessToken
   }
 }
-
