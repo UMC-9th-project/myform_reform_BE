@@ -310,25 +310,25 @@ export class ProfileRepository {
 
   async getFeedInfos(feedIds: string[]) {
     if(feedIds.length === 0) return [];
-    const feeds = await this.prisma.chat_proposal.findMany({
-      where: { chat_proposal_id: { in : feedIds } },
+    const feeds = await this.prisma.chat_request.findMany({
+      where: { chat_request_id: { in : feedIds } },
       select: {
-        chat_proposal_id: true,
+        chat_request_id: true,
+        message_id: true,
         title: true,
-        price: true,
-        delivery: true,
-        expected_working: true,
-        image: true
+        image: true,
+        min_budget: true,
+        max_budget: true
       }
     });
     return feeds.map((feed: (typeof feeds)[number]) => ({
-      chatProposalId: feed.chat_proposal_id,
-      title: feed.title ?? '',
-      photo : feed.image[0] ?? '',
-      price: feed.price ?? 0,
-      delivery: feed.delivery ?? 0,
-      expectedWorking: feed.expected_working ?? 0,
-      image: feed.image ?? []
+      chatRequestId: feed.chat_request_id,
+      messageId: feed.message_id,
+      title: feed.title,
+      photo: feed.image[0],
+      min_budget: feed.min_budget,
+      max_budget: feed.max_budget,
+      expectedWorking: feed.expected_working,
     }))
   }
 
@@ -636,12 +636,12 @@ export class ProfileRepository {
     };
     const whereClause : any = {
       user_id: userId,
-      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined,
+      status: { not: 'PENDING' }
     };
     
     if (onlyReviewAvailable) {
       whereClause.review = { none: {} };
-      whereClause.status = { not: 'PENDING' };
     }
 
     const orders = await this.prisma.order.findMany({

@@ -346,7 +346,6 @@ export class ProfileController extends Controller {
   ): Promise<TsoaResponse<OrderListResponseDto>> {
     const payload = req.user;
     const userId = payload.id;
-    // console.log(userId);
     const dto = new OrderRequestDto(
       type,
       cursor,

@@ -576,7 +576,7 @@ export class ProfileService {
     addToMap(itemInfos, 'item_id');
     addToMap(reqInfos, 'reform_request_id');
     addToMap(propInfos, 'reform_proposal_id');
-    addToMap(feedInfos, 'chatProposalId')
+    addToMap(feedInfos, 'chatRequestId')
 
     // 4. 모든 주문 목록 preview 생성
     const ordersPreview = actualOrders.map((order) => {
