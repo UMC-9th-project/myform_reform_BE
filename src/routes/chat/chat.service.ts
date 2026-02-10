@@ -359,8 +359,8 @@ export class ChatService {
       
       if (data.title !== undefined) updateData.title = data.title;
       if (data.content !== undefined) updateData.content = data.content;
-      if (data.minBudget !== undefined) updateData.min_budget = data.minBudget;
-      if (data.maxBudget !== undefined) updateData.max_budget = data.maxBudget;
+      if (data.minBudget !== undefined) updateData.minBudget = data.minBudget;
+      if (data.maxBudget !== undefined) updateData.maxBudget = data.maxBudget;
       
       // 이미지 리스트 수정 시 삭제할 이미지 목록 수집
       if (data.image !== undefined) {
