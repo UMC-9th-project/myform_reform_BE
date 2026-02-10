@@ -34,11 +34,14 @@ import type {
   OrderDetailResponseDto,
   RequestsListResponseDto
 } from './dto/profile.res.dto.js';
+import { MarketService } from '../market/market.service.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
+  private marketService: MarketService;
 
   constructor() {
     this.profileRepository = new ProfileRepository();
+    this.marketService = new MarketService();
   }
 
   async addProduct(mode: 'ITEM' | 'REFORM', dto: Item | Reform) {
@@ -326,24 +329,30 @@ export class ProfileService {
       );
     }
 
-    const proposalList = actualProposals.map(
-      (proposal: {
-        reform_proposal_id: string;
-        reform_proposal_photo: Array<{ content: string | null }>;
-        title: string | null;
-        price: unknown;
-        avg_star: unknown;
-        review_count: number | null;
-      }) => ({
-        proposalId: proposal.reform_proposal_id,
-        photo: proposal.reform_proposal_photo[0]?.content ?? null,
-        isWished: wishedProposalIds.includes(proposal.reform_proposal_id),
-        title: proposal.title,
-        price: proposal.price !== null ? Number(proposal.price) : null,
-        avgStar: proposal.avg_star !== null ? Number(proposal.avg_star) : null,
-        reviewCount: proposal.review_count,
-        sellerName: owner.nickname
-      })
+    const proposalList = await Promise.all(
+      actualProposals.map(
+        async (proposal: {
+          reform_proposal_id: string;
+          reform_proposal_photo: Array<{ content: string | null }>;
+          title: string | null;
+          content: string;
+          price: unknown;
+          avg_star: unknown;
+          review_count: number | null;
+          category: { category_id: string; parent_id: string };
+        }) => ({
+          proposalId: proposal.reform_proposal_id,
+          photo: proposal.reform_proposal_photo[0]?.content ?? null,
+          isWished: wishedProposalIds.includes(proposal.reform_proposal_id),
+          title: proposal.title,
+          content: proposal.content,
+          category: await this.marketService.getCategoryName(proposal.category),
+          price: proposal.price !== null ? Number(proposal.price) : null,
+          avgStar: proposal.avg_star !== null ? Number(proposal.avg_star) : null,
+          reviewCount: proposal.review_count,
+          sellerName: owner.nickname,
+        })
+      )
     );
 
     const nextCursor =
