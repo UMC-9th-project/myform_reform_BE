@@ -219,8 +219,8 @@ export class MarketService {
       return {
         item_id: item.item_id,
         title: item.title,
-        category_major: category.major,
-        category_sub: category.sub,
+
+        category: category,
         images,
         price: item.price ? Number(item.price) : 0,
         delivery: item.delivery ? Number(item.delivery) : 0,

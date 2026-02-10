@@ -36,8 +36,10 @@ export interface GetItemListResponseDto {
 export interface GetItemDetailResponseDto {
   item_id: string;
   title: string | null;
-  category_major: string | null;
-  category_sub: string | null;
+  category: {
+    major: string | null;
+    sub: string | null;
+  };
   images: string[];
   price: number;
   delivery: number;
