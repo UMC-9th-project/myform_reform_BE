@@ -126,3 +126,15 @@ export type RawReviewData = Prisma.reviewGetPayload<{
     review_photo: true;
   };
 }>;
+
+export type ChatResultPayload = {
+    receiptNumber: string;
+    totalAmount: number;
+    currency: string;
+    paymentMethod: {
+      type: string;
+      provider: string | null;
+      cardNumber: string | null;
+    };
+    approvedAt: string | null;
+  } | null;
