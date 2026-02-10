@@ -376,7 +376,15 @@ export class OrdersService {
         }
       }
 
-      return transaction;
+      if (cardData.pg_provider && OrdersService.EASY_PAY_LABEL[cardData.pg_provider]) {
+        return OrdersService.EASY_PAY_LABEL[cardData.pg_provider];
+      }
+      if (cardData.pay_method) {
+        const label = OrdersService.EASY_PAY_LABEL[cardData.pay_method] ?? cardData.pay_method;
+        return cardData.pg_provider ? `${label} (${cardData.pg_provider})` : label;
+      }
+      if (cardData.pg_provider) return cardData.pg_provider;
+      return null;
     } catch {
       return transaction;
     }
@@ -387,14 +395,29 @@ export class OrdersService {
    * @param transaction receipt.transaction 필드 값 (JSON 문자열 또는 null)
    * @returns 카드명과 마스킹된 카드번호 객체
    */
+  /** 간편결제 pay_method → 노출용 한글명 */
+  private static EASY_PAY_LABEL: Record<string, string> = {
+    kakaopay: '카카오페이',
+    tosspay: '토스페이',
+    naverpay: '네이버페이',
+    payco: '페이코',
+    ssgpay: 'SSG페이',
+    lpay: 'L.Pay',
+    point: '포인트'
+  };
+
   private extractCardDetails(transaction: string | null): {
     card_name: string | null;
     masked_card_number: string | null;
+    pg_provider: string | null;
+    pay_method: string | null;
   } {
     if (!transaction) {
       return {
         card_name: null,
-        masked_card_number: null
+        masked_card_number: null,
+        pg_provider: null,
+        pay_method: null
       };
     }
 
@@ -404,18 +427,24 @@ export class OrdersService {
       if (cardData.card_name && cardData.card_number) {
         return {
           card_name: cardData.card_name,
-          masked_card_number: this.maskCardNumber(cardData.card_number)
+          masked_card_number: this.maskCardNumber(cardData.card_number),
+          pg_provider: cardData.pg_provider ?? null,
+          pay_method: cardData.pay_method ?? null
         };
       }
 
       return {
         card_name: null,
-        masked_card_number: null
+        masked_card_number: null,
+        pg_provider: cardData.pg_provider ?? null,
+        pay_method: cardData.pay_method ?? null
       };
     } catch {
       return {
         card_name: null,
-        masked_card_number: null
+        masked_card_number: null,
+        pg_provider: null,
+        pay_method: null
       };
     }
   }
@@ -1135,6 +1164,41 @@ export class OrdersService {
   }
 
   /**
+   * 결제 수단별 transaction 필드 값 생성
+   */
+  private buildTransactionPayload(
+    impUid: string,
+    merchantUid: string,
+    paymentInfo: PortonePaymentInfo
+  ): string {
+    const isCard =
+      (paymentInfo.pay_method === 'card' || !paymentInfo.pay_method) &&
+      !!paymentInfo.card_name &&
+      !!paymentInfo.card_number;
+    if (isCard) {
+      return JSON.stringify({
+        imp_uid: impUid,
+        card_name: paymentInfo.card_name,
+        card_number: paymentInfo.card_number,
+        card_code: paymentInfo.card_code || null,
+        card_quota: paymentInfo.card_quota || 0,
+        card_type: paymentInfo.card_type || null
+      });
+    }
+    // 포인트(간편)결제 시 emb_pg_provider 없으면 pg_provider 사용
+    const pgProviderForDb =
+      paymentInfo.pay_method === 'point' && paymentInfo.emb_pg_provider
+        ? paymentInfo.emb_pg_provider
+        : (paymentInfo.pg_provider || 'portone');
+    return JSON.stringify({
+      imp_uid: impUid,
+      merchant_uid: merchantUid,
+      pg_provider: pgProviderForDb,
+      pay_method: paymentInfo.pay_method || 'card'
+    });
+  }
+
+  /**
    * 결제 검증 및 주문 상태 업데이트 (공통 로직)
    * verifyPayment와 handleWebhook에서 공통으로 사용
    */
@@ -1169,22 +1233,17 @@ export class OrdersService {
             paymentInfo.amount === expectedAmount &&
             paymentInfo.merchant_uid === merchantUid
           ) {
-            const cardInfo =
-              paymentInfo.card_name && paymentInfo.card_number
-                ? JSON.stringify({
-                  imp_uid: impUid,
-                  card_name: paymentInfo.card_name,
-                  card_number: paymentInfo.card_number,
-                  card_code: paymentInfo.card_code || null,
-                  card_quota: paymentInfo.card_quota || 0,
-                  card_type: paymentInfo.card_type || null
-                })
-                : impUid;
+            const transactionPayload = this.buildTransactionPayload(
+              impUid,
+              merchantUid,
+              paymentInfo
+            );
 
             await this.repository.updateReceipt(receipt.receipt_id, {
               payment_status: 'paid',
-              payment_method: 'card',
-              transaction: cardInfo,
+              payment_method: paymentInfo.pay_method || 'card',
+              payment_gateway: paymentInfo.pg_provider || 'portone',
+              transaction: transactionPayload,
               approved_at: paymentInfo.paid_at
                 ? new Date(paymentInfo.paid_at * 1000)
                 : new Date()
@@ -1270,24 +1329,17 @@ export class OrdersService {
           order_status_enum.PAID
         );
 
-        // 영수증 업데이트
-        const cardInfo =
-          paymentInfo.card_name && paymentInfo.card_number
-            ? JSON.stringify({
-              imp_uid: impUid,
-              card_name: paymentInfo.card_name,
-              card_number: paymentInfo.card_number,
-              card_code: paymentInfo.card_code || null,
-              card_quota: paymentInfo.card_quota || 0,
-              card_type: paymentInfo.card_type || null
-            })
-            : impUid;
+        const transactionPayload = this.buildTransactionPayload(
+          impUid,
+          merchantUid,
+          paymentInfo
+        );
 
         await this.repository.updateReceipt(receipt.receipt_id, {
           payment_status: 'paid',
           payment_method: paymentInfo.pay_method || 'card',
           payment_gateway: paymentInfo.pg_provider || 'portone',
-          transaction: cardInfo,
+          transaction: transactionPayload,
           approved_at: paymentInfo.paid_at
             ? new Date(paymentInfo.paid_at * 1000)
             : new Date()
@@ -1438,13 +1490,21 @@ export class OrdersService {
     const cardDetails = this.extractCardDetails(receipt.transaction || null);
     const paymentMethodType =
       receipt.payment_method === 'card' ? 'CARD_EASY_PAY' : (receipt.payment_method ?? 'CARD_EASY_PAY');
+    const provider =
+      cardDetails.card_name ??
+      (cardDetails.pg_provider && OrdersService.EASY_PAY_LABEL[cardDetails.pg_provider]) ??
+      (cardDetails.pay_method
+        ? (OrdersService.EASY_PAY_LABEL[cardDetails.pay_method] ?? cardDetails.pay_method)
+        : null) ??
+      cardDetails.pg_provider ??
+      (receipt.payment_gateway ?? null);
     return {
       receiptNumber: receipt.receipt_number ?? '',
       totalAmount: receipt.total_amount ? Number(receipt.total_amount) : 0,
       currency: 'KRW',
       paymentMethod: {
         type: paymentMethodType,
-        provider: cardDetails.card_name ?? null,
+        provider,
         cardNumber: cardDetails.masked_card_number ?? null
       },
       approvedAt: receipt.approved_at ? receipt.approved_at.toISOString() : null
@@ -1522,23 +1582,18 @@ export class OrdersService {
             paymentInfo.merchant_uid === merchantUid
           ) {
             try {
+              const transactionPayload = this.buildTransactionPayload(
+                impUid,
+                merchantUid,
+                paymentInfo
+              );
               await this.repository.createReceipt({
                 receipt_number: merchantUid,
                 total_amount: paymentInfo.amount,
                 payment_status: 'paid',
-                payment_method: 'card',
-                payment_gateway: 'portone',
-                transaction:
-                  paymentInfo.card_name && paymentInfo.card_number
-                    ? JSON.stringify({
-                      imp_uid: impUid,
-                      card_name: paymentInfo.card_name,
-                      card_number: paymentInfo.card_number,
-                      card_code: paymentInfo.card_code || null,
-                      card_quota: paymentInfo.card_quota || 0,
-                      card_type: paymentInfo.card_type || null
-                    })
-                    : impUid
+                payment_method: paymentInfo.pay_method || 'card',
+                payment_gateway: paymentInfo.pg_provider || 'portone',
+                transaction: transactionPayload
               });
             } catch (createError: any) {
               // unique constraint 위반 시 (주문 생성이 먼저 receipt를 생성한 경우)
@@ -1553,22 +1608,17 @@ export class OrdersService {
                   );
                 if (receiptData) {
                   // receipt가 이미 존재하므로 업데이트만 수행
-                  const cardInfo =
-                    paymentInfo.card_name && paymentInfo.card_number
-                      ? JSON.stringify({
-                        imp_uid: impUid,
-                        card_name: paymentInfo.card_name,
-                        card_number: paymentInfo.card_number,
-                        card_code: paymentInfo.card_code || null,
-                        card_quota: paymentInfo.card_quota || 0,
-                        card_type: paymentInfo.card_type || null
-                      })
-                      : impUid;
+                  const transactionPayload = this.buildTransactionPayload(
+                    impUid,
+                    merchantUid,
+                    paymentInfo
+                  );
 
                   await this.repository.updateReceipt(receiptData.receipt_id, {
                     payment_status: 'paid',
-                    payment_method: 'card',
-                    transaction: cardInfo,
+                    payment_method: paymentInfo.pay_method || 'card',
+                    payment_gateway: paymentInfo.pg_provider || 'portone',
+                    transaction: transactionPayload,
                     approved_at: paymentInfo.paid_at
                       ? new Date(paymentInfo.paid_at * 1000)
                       : new Date()
