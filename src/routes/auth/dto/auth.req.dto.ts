@@ -1,5 +1,5 @@
 import { IsString, Matches, MinLength, MaxLength } from 'class-validator'
-import { Role } from './auth.dto.js'
+import { RegistrationType, Role } from './auth.dto.js'
 
 export class SendSmsRequestDto {
   /**
@@ -62,5 +62,88 @@ export class LocalLoginRequestDto {
     this.email = email,
     this.password = password,
     this.role = role
+  }
+}
+
+export class UserSignupRequestDto {
+  name: string;
+  email: string;
+  nickname: string;
+  phoneNumber: string;
+  registration_type: RegistrationType;
+  oauthId?: string;
+  password?: string;
+  over14YearsOld: boolean;
+  termsOfService: boolean;
+  privacyPolicy: boolean;
+
+  constructor(
+    name: string,
+    email: string,
+    nickname: string,
+    phoneNumber: string,
+    registration_type: RegistrationType,
+    over14YearsOld: boolean,
+    termsOfService: boolean,
+    privacyPolicy: boolean,
+    oauthId?: string,
+    password?: string
+  ) {
+    this.name = name;
+    this.email = email;
+    this.nickname = nickname;
+    this.phoneNumber = phoneNumber;
+    this.registration_type = registration_type;
+    this.over14YearsOld = over14YearsOld;
+    this.termsOfService = termsOfService;
+    this.privacyPolicy = privacyPolicy;
+    this.oauthId = oauthId;
+    this.password = password;
+  }
+}
+
+export class ReformerSignupRequestDto{
+  name: string;
+  email: string;
+  nickname: string;
+  phoneNumber: string;
+  registration_type: RegistrationType;
+  oauthId?: string;
+  password?: string;
+  over14YearsOld: boolean;
+  termsOfService: boolean;
+  privacyPolicy: boolean;
+  businessNumber?: string;
+  description: string;
+  portfolioPhotos: string[];
+
+  constructor(
+    name: string,
+    email: string,
+    nickname: string,
+    phoneNumber: string,
+    registration_type: RegistrationType,
+    over14YearsOld: boolean,
+    termsOfService: boolean,
+    privacyPolicy: boolean,
+    description: string,
+    portfolioPhotos: string[],
+    oauthId?: string,
+    password?: string,
+    businessNumber?: string
+  ) {
+    this.name = name;
+    this.email = email;
+    this.nickname = nickname;
+    this.phoneNumber = phoneNumber;
+    this.registration_type = registration_type;
+    this.oauthId = oauthId;
+    this.password = password;
+    this.over14YearsOld = over14YearsOld;
+    this.termsOfService = termsOfService;
+    this.privacyPolicy = privacyPolicy;
+    this.description = description;
+    this.portfolioPhotos = portfolioPhotos;
+    this.businessNumber = businessNumber;
   }
 }

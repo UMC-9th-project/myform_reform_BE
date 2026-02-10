@@ -12,10 +12,28 @@ import {
   Query,
   Security
 } from 'tsoa';
-import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
+import { 
+  TsoaResponse, 
+  ResponseHandler, 
+  ErrorResponse 
+} from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, AuthPublicResponse, Role } from './dto/auth.dto.js';
-import { VerifySmsResponseDto, SendSmsResponseDto, AuthPublicResponseDto } from './dto/auth.res.dto.js';
+import { 
+  PassportUserInfo, 
+  Role 
+} from './dto/auth.dto.js';
+import { 
+  VerifySmsResponseDto, 
+  SendSmsResponseDto, 
+  AuthPublicResponseDto, 
+  LogoutResponseDto
+} from './dto/auth.res.dto.js';
+
+import {
+  ReformerSignupRequestDto,
+  UserSignupRequestDto
+} from './dto/auth.req.dto.js';
+
 import { Request as ExRequest } from 'express';
 import { 
   VerifySmsRequestDto, 
@@ -25,6 +43,7 @@ import {
 import express from 'express';
 import passport from './passport.js';
 import { KakaoAuthError } from './auth.error.js';
+
 @Route('auth')
 @Tags('Auth')
 export class AuthController extends Controller {
@@ -185,7 +204,7 @@ export class AuthController extends Controller {
    */
   @Security('jwt')
   @SuccessResponse(200, '로그아웃 성공')
-  @Example<ResponseHandler<LogoutResponse>>({
+  @Example<ResponseHandler<LogoutResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {statusCode: 200, message: '로그아웃이 성공적으로 완료되었습니다.'}
@@ -195,13 +214,13 @@ export class AuthController extends Controller {
   @Post('logout')
   async logout(
     @Request() req: ExRequest,
-  ): Promise<TsoaResponse<LogoutResponse>> {
+  ): Promise<TsoaResponse<LogoutResponseDto>> {
     const payload = req.user;
     const userId = payload.id;
     await this.authService.logout(userId);
     this.setStatus(200);
     this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
-    return new ResponseHandler<LogoutResponse>({
+    return new ResponseHandler<LogoutResponseDto>({
       statusCode: 200,
       message: '로그아웃이 성공적으로 완료되었습니다.(리프레쉬 토큰 무효화) 쿠키 삭제 후 프론트엔드에서 accessToken 삭제 필요'
     });
@@ -213,7 +232,7 @@ export class AuthController extends Controller {
    * @returns accessToken 발급 (refreshToken 쿠키 설정)
    */
   @SuccessResponse(201, '일반 회원가입 성공')
-  @Example<ResponseHandler<AuthPublicResponse>>({
+  @Example<ResponseHandler<AuthPublicResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -224,13 +243,13 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('signup/user')
   public async signupUser(
-    @Body() requestBody: UserSignupRequest
-  ): Promise<TsoaResponse<AuthPublicResponse>> {
+    @Body() requestBody: UserSignupRequestDto
+  ): Promise<TsoaResponse<AuthPublicResponseDto>> {
     const result = await this.authService.signupUser(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
-    return new ResponseHandler<AuthPublicResponse>({
+    return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
   }
@@ -244,7 +263,7 @@ export class AuthController extends Controller {
    * 
  */
   @SuccessResponse(201, '리폼러 회원가입 성공')
-  @Example<ResponseHandler<AuthPublicResponse>>({
+  @Example<ResponseHandler<AuthPublicResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -255,13 +274,13 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('signup/reformer')
   public async signupReformer(
-    @Body() requestBody: ReformerSignupRequest
-  ): Promise<TsoaResponse<AuthPublicResponse>> {
+    @Body() requestBody: ReformerSignupRequestDto
+  ): Promise<TsoaResponse<AuthPublicResponseDto>> {
     const result = await this.authService.signupReformer(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
-    return new ResponseHandler<AuthPublicResponse>({
+    return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
   }

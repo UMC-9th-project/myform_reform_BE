@@ -27,7 +27,7 @@ export class SendSmsResponseDto {
 }
 
 // 로그아웃 응답 데이터
-export class LogoutResponse {
+export class LogoutResponseDto {
   statusCode: number;
   message: string;
 
