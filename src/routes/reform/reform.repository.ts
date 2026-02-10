@@ -13,6 +13,7 @@ import {
   ReformRequestUpdate
 } from './reform.model.js';
 import { UUID } from '../../@types/common.js';
+import { target_type_enum } from '@prisma/client';
 
 export class ReformRepository {
   private prisma;
@@ -394,7 +395,9 @@ export class ReformRepository {
     return { images, body };
   }
 
-  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+  async findAvgStarRecent3MonthsByOwnerId(
+    ownerId: string
+  ): Promise<number | null> {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const result = await this.prisma.review.aggregate({
@@ -459,6 +462,16 @@ export class ReformRepository {
       where: {
         reform_request_id: requestId
       }
+    });
+  }
+
+  async deleteRequestWishList(requestId: string) {
+    await this.prisma.user_wish.deleteMany({
+      where: { target_type: 'REQUEST', target_id: requestId }
+    });
+
+    await this.prisma.owner_wish.deleteMany({
+      where: { reform_request_id: requestId }
     });
   }
 

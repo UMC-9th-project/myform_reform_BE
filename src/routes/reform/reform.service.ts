@@ -145,8 +145,14 @@ export class ReformService {
         );
 
         const ids = results.map((d) => d.reformRequestId);
-        const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', ids);
-        return results.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformRequestId) }));
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+          'REQUEST',
+          ids
+        );
+        return results.map((d) => ({
+          ...d,
+          isCompleted: paidIds.has(d.reformRequestId)
+        }));
       });
     } catch (err: any) {
       console.error(err);
@@ -212,7 +218,10 @@ export class ReformService {
         images,
         isOwner
       );
-      const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', [requestId]);
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+        'REQUEST',
+        [requestId]
+      );
       return {
         toDto: () => ({ ...dto.toDto(), isCompleted: paidIds.has(requestId) })
       } as ReformDetailRequestResponse;
@@ -286,6 +295,7 @@ export class ReformService {
       return await runInTransaction(async () => {
         await this.reformRepository.deleteRequestPhotos(requestId);
         await this.reformRepository.deleteRequest(requestId, userId);
+        await this.reformRepository.deleteRequestWishList(requestId);
         return '요청글이 성공적으로 삭제되었습니다.';
       });
     } catch (err: any) {
@@ -334,8 +344,14 @@ export class ReformService {
         );
 
         const ids = results.map((d) => d.reformProposalId);
-        const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', ids);
-        return results.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformProposalId) }));
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+          'PROPOSAL',
+          ids
+        );
+        return results.map((d) => ({
+          ...d,
+          isCompleted: paidIds.has(d.reformProposalId)
+        }));
       });
     } catch (err: any) {
       console.error(err);
@@ -384,9 +400,15 @@ export class ReformService {
         );
       });
 
-      const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', [proposalId]);
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+        'PROPOSAL',
+        [proposalId]
+      );
       return {
-        toDto: () => ({ ...detail.toDto(), isCompleted: paidIds.has(proposalId) })
+        toDto: () => ({
+          ...detail.toDto(),
+          isCompleted: paidIds.has(proposalId)
+        })
       } as ReformDetailProposalResponse;
     } catch (err: any) {
       throw new ReformError(err);
