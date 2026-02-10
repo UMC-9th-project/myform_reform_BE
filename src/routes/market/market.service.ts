@@ -49,10 +49,13 @@ export class MarketService {
       const items = (byParent.get(parentId) ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
       return items.map((item) => {
         const subChildren = buildTree(item.categoryId);
-        const children: CategoryTreeItemDto[] = [
-          { categoryId: item.categoryId, name: '전체', sortOrder: 0, children: [] },
-          ...subChildren
-        ];
+        const isSecondDepth = parentId === null;
+        const children: CategoryTreeItemDto[] = isSecondDepth
+          ? [
+              { categoryId: item.categoryId, name: '전체', sortOrder: 0, children: [] },
+              ...subChildren
+            ]
+          : subChildren;
         return {
           categoryId: item.categoryId,
           name: item.name,
