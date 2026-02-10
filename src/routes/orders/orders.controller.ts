@@ -33,16 +33,19 @@ import {
   CreateReviewResponseDto
 } from './dto/orders.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
+import { ChatService } from '../chat/chat.service.js';
 
 @Route('orders')
 @Tags('Orders')
 @Security('jwt')
 export class OrdersController extends Controller {
   private ordersService: OrdersService;
+  private chatService: ChatService;
 
   constructor() {
     super();
     this.ordersService = new OrdersService();
+    this.chatService = new ChatService();
   }
 
   /**
@@ -507,10 +510,18 @@ export class OrdersController extends Controller {
     @Request() req: ExpressRequest
   ): Promise<TsoaResponse<VerifyPaymentResponseDto>> {
     const userId = req.user?.id;
-    const validUserId = this.requireUserId(userId);
+    this.requireUserId(userId);
     const dto = await validateDto(VerifyPaymentRequestDto, requestBody);
 
-    await this.ordersService.verifyPayment(dto.order_id, dto.imp_uid);
+    const { receiptId, didUpdate } = await this.ordersService.verifyPayment(
+      dto.order_id,
+      dto.imp_uid
+    );
+    if (didUpdate && receiptId) {
+      this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
+        console.error('결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
+      });
+    }
 
     return {
       resultType: 'SUCCESS',
@@ -643,8 +654,9 @@ export class OrdersController extends Controller {
    * @returns 성공 응답
    * @description 포트원 서버에서 결제 상태 변경 시 자동으로 호출됩니다.
    *              결제 정보를 검증하고 주문 상태를 업데이트합니다.
-   *              보안: 포트원 IP 화이트리스트 검증 포함
+   *              보안: 토큰 없이 접근 가능(jwt_optional), 포트원 IP 화이트리스트로 검증
    */
+  @Security('jwt_optional')
   @Post('/webhook')
   @SuccessResponse(200, '웹훅 처리 성공')
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
@@ -679,7 +691,15 @@ export class OrdersController extends Controller {
         }
       }
 
-      await this.ordersService.handleWebhook(imp_uid, merchant_uid);
+      const receiptId = await this.ordersService.handleWebhook(
+        imp_uid,
+        merchant_uid
+      );
+      if (receiptId) {
+        this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
+          console.error('웹훅 후 결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
+        });
+      }
 
       return { status: 'ok' };
     } catch (error) {

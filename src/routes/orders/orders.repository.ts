@@ -432,6 +432,38 @@ export class OrdersRepository {
   }
 
   /**
+   * 채팅 기반 리폼 주문 생성
+   * target_id, chat_room_id
+   */
+  async createReformOrderFromChat(data: {
+    receipt_id: string;
+    user_id: string;
+    owner_id: string;
+    target_type: target_type_enum;
+    target_id: string | null;
+    price: number;
+    delivery_fee: number;
+    quantity: number;
+    status: order_status_enum;
+    chat_room_id: string | null;
+  }) {
+    return await prisma.order.create({
+      data: {
+        receipt_id: data.receipt_id,
+        user_id: data.user_id,
+        owner_id: data.owner_id,
+        target_type: data.target_type,
+        target_id: data.target_id,
+        price: data.price,
+        delivery_fee: data.delivery_fee,
+        quantity: data.quantity,
+        status: data.status,
+        chat_room_id: data.chat_room_id
+      }
+    });
+  }
+
+  /**
    * 주문 옵션 생성
    */
   async createOrderOptions(orderId: string, optionItemIds: string[]) {
@@ -509,6 +541,24 @@ export class OrdersRepository {
   }
 
   /**
+   * 리폼(채팅) 주문의 채팅방 정보 조회 (결제 완료 후 알림용)
+   * target_type REQUEST/PROPOSAL/FEED 이고 chat_room_id가 있는 order만
+   */
+  async findReformOrderChatRoomsByReceiptId(receiptId: string): Promise<{ chat_room_id: string; owner_id: string }[]> {
+    const orders = await prisma.order.findMany({
+      where: {
+        receipt_id: receiptId,
+        chat_room_id: { not: null },
+        target_type: { in: ['REQUEST', 'PROPOSAL', 'FEED'] }
+      },
+      select: { chat_room_id: true, owner_id: true }
+    });
+    return orders
+      .filter((o): o is { chat_room_id: string; owner_id: string } => o.chat_room_id != null)
+      .map((o) => ({ chat_room_id: o.chat_room_id!, owner_id: o.owner_id }));
+  }
+
+  /**
    * receipt 총액 업데이트
    */
   async updateReceiptTotalAmount(receiptId: string, totalAmount: number) {
@@ -578,6 +628,7 @@ export class OrdersRepository {
       payment_method?: string;
       payment_gateway?: string;
       transaction?: string | null;
+      approved_at?: Date | null;
       delivery_postal_code?: string | null;
       delivery_address?: string | null;
       delivery_address_detail?: string | null;
@@ -651,6 +702,7 @@ export class OrdersRepository {
       data: {
         order_id: createReviewInput.orderId,
         user_id: createReviewInput.userId,
+        owner_id: createReviewInput.ownerId,
         star: createReviewInput.star,
         content: createReviewInput.content,
         review_photo: {

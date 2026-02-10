@@ -144,7 +144,9 @@ export class ReformService {
           })
         );
 
-        return results;
+        const ids = results.map((d) => d.reformRequestId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', ids);
+        return results.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformRequestId) }));
       });
     } catch (err: any) {
       console.error(err);
@@ -190,19 +192,19 @@ export class ReformService {
 
   async findDetailRequest(
     payload: CustomJwt | null,
-    reqeustId: string
+    requestId: string
   ): Promise<ReformDetailRequestResponse> {
     try {
       let isOwner = false;
       if (payload !== null) {
         isOwner = await this.reformRepository.checkRequestOwner(
           payload.id,
-          reqeustId
+          requestId
         );
       }
 
       const { images, body } =
-        await this.reformRepository.selectDetailRequest(reqeustId);
+        await this.reformRepository.selectDetailRequest(requestId);
       if (body === null) throw new ReformError('존재하지 않는 아이템입니다.');
 
       const dto = ReformRequestFactory.createFromDetailRaw(
@@ -210,8 +212,10 @@ export class ReformService {
         images,
         isOwner
       );
-
-      return dto;
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds('REQUEST', [requestId]);
+      return {
+        toDto: () => ({ ...dto.toDto(), isCompleted: paidIds.has(requestId) })
+      } as ReformDetailRequestResponse;
     } catch (err: any) {
       throw new ReformError(err);
     }
@@ -329,7 +333,9 @@ export class ReformService {
           })
         );
 
-        return results;
+        const ids = results.map((d) => d.reformProposalId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', ids);
+        return results.map((d) => ({ ...d, isCompleted: paidIds.has(d.reformProposalId) }));
       });
     } catch (err: any) {
       console.error(err);
@@ -350,7 +356,7 @@ export class ReformService {
         );
       }
 
-      return runInTransaction(async () => {
+      const detail = await runInTransaction(async () => {
         const { images, body } =
           await this.reformRepository.selectDetailProposal(proposalId);
         if (body === null) throw new ReformError('존재하지 않는 제안서입니다.');
@@ -377,6 +383,11 @@ export class ReformService {
           avgStarRecent3m
         );
       });
+
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds('PROPOSAL', [proposalId]);
+      return {
+        toDto: () => ({ ...detail.toDto(), isCompleted: paidIds.has(proposalId) })
+      } as ReformDetailProposalResponse;
     } catch (err: any) {
       throw new ReformError(err);
     }

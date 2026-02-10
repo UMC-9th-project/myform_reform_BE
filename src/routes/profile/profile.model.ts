@@ -1,6 +1,6 @@
 import { Prisma, order_status_enum } from '@prisma/client';
 import { UUID } from '../../@types/common.js';
-import {
+import type {
   SaleDetailResponseDto,
   SaleResponseDto,
   OrderResponseDto,
@@ -33,6 +33,7 @@ export type RawSaleData = Prisma.orderGetPayload<{
     price: true;
     delivery_fee: true;
     target_type: true;
+    chat_room_id: true;
     user: {
       select: {
         name: true;
@@ -41,6 +42,7 @@ export type RawSaleData = Prisma.orderGetPayload<{
     receipt: {
       select: {
         created_at: true;
+        receipt_number: true;
       };
     };
     quote_photo: {
@@ -63,6 +65,7 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
     price: true;
     delivery_fee: true;
     target_type: true;
+    chat_room_id: true;
     user: {
       select: {
         name: true;
@@ -72,6 +75,7 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
     receipt: {
       select: {
         created_at: true;
+        receipt_number: true;
         delivery_postal_code: true;
         delivery_address: true;
         delivery_address_detail: true;
@@ -143,7 +147,13 @@ export class Sale {
     this.props = props;
   }
 
-  static create(raw: RawSaleData, title: string): Sale {
+  static create(
+    raw: RawSaleData,
+    title: string,
+    options?: { thumbnailOverride?: string }
+  ): Sale {
+    const thumbnail =
+      options?.thumbnailOverride ?? raw.quote_photo[0]?.content ?? '';
     return new Sale({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
@@ -153,7 +163,10 @@ export class Sale {
       userName: raw.user.name ?? '',
       createdAt: raw.receipt!.created_at ?? new Date(),
       title: title ?? '',
-      thumbnail: raw.quote_photo[0]?.content ?? ''
+      thumbnail,
+      receiptNumber: raw.receipt?.receipt_number ?? null,
+      chatRoomId: raw.chat_room_id ?? null,
+      targetType: raw.target_type ?? 'ITEM'
     });
   }
 
@@ -172,9 +185,12 @@ export class SaleDetail {
   static create(
     raw: RawSaleDetailData,
     option: RawOption | null,
-    title: string
+    title: string,
+    options?: { thumbnailOverride?: string }
   ) {
     const receipt = raw.receipt!;
+    const thumbnail =
+      options?.thumbnailOverride ?? raw.quote_photo[0]?.content ?? '';
     return new SaleDetail({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
@@ -184,7 +200,10 @@ export class SaleDetail {
       userName: raw.user.name ?? '',
       createdAt: raw.receipt!.created_at ?? new Date(),
       title: title,
-      thumbnail: raw.quote_photo[0]?.content ?? '',
+      thumbnail,
+      receiptNumber: raw.receipt?.receipt_number ?? null,
+      chatRoomId: raw.chat_room_id ?? null,
+      targetType: raw.target_type ?? 'ITEM',
       phone: raw.user.phone ?? '',
       delivery_address: {
         postal_code: receipt.delivery_postal_code ?? null,
@@ -195,7 +214,7 @@ export class SaleDetail {
         address_name: receipt.delivery_address_name ?? null
       },
       option: option?.option_item?.name ?? '',
-      billNumber: ''
+      billNumber: raw.receipt?.receipt_number ?? ''
     });
   }
   toResponse(): SaleDetailResponseDto {

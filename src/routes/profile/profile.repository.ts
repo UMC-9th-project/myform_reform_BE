@@ -129,7 +129,7 @@ export class ProfileRepository {
       where: {
         owner_id: ownerId,
         target_type:
-          type === 'REFORM' ? { in: ['REQUEST', 'PROPOSAL'] } : 'ITEM'
+          type === 'REFORM' ? { in: ['REQUEST', 'PROPOSAL', 'FEED'] } : 'ITEM'
       },
       take: limit,
       skip: (page - 1) * limit,
@@ -140,6 +140,7 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         target_type: true,
+        chat_room_id: true,
         user: {
           select: {
             name: true
@@ -147,7 +148,8 @@ export class ProfileRepository {
         },
         receipt: {
           select: {
-            created_at: true
+            created_at: true,
+            receipt_number: true
           }
         },
         quote_photo: {
@@ -164,32 +166,167 @@ export class ProfileRepository {
     return orders;
   }
 
-  async getRequestTitles(requestIds: string[]) {
-    return await prisma.reform_request.findMany({
+  async getRequestTitleAndImages(requestIds: string[]) {
+    if (requestIds.length === 0) return [];
+    const rows = await prisma.reform_request.findMany({
       where: { reform_request_id: { in: requestIds } },
-      select: { reform_request_id: true, title: true }
+      select: {
+        reform_request_id: true,
+        title: true,
+        reform_request_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' }
+        }
+      }
     });
+    return rows.map((r) => ({
+      reform_request_id: r.reform_request_id,
+      title: r.title,
+      images: (r.reform_request_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+    }));
   }
 
-  async getRequestTitle(requestId: string) {
-    return await prisma.reform_request.findFirst({
+  async getRequestTitleAndImagesSingle(requestId: string) {
+    const row = await prisma.reform_request.findFirst({
       where: { reform_request_id: requestId },
-      select: { title: true }
+      select: {
+        title: true,
+        reform_request_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' }
+        }
+      }
     });
+    if (!row) return null;
+    return {
+      title: row.title,
+      images: (row.reform_request_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+    };
   }
 
-  async getProposalTitles(proposalIds: string[]) {
-    return await prisma.reform_proposal.findMany({
+  async getProposalTitleAndImages(proposalIds: string[]) {
+    if (proposalIds.length === 0) return [];
+    const rows = await prisma.reform_proposal.findMany({
       where: { reform_proposal_id: { in: proposalIds } },
-      select: { reform_proposal_id: true, title: true }
+      select: {
+        reform_proposal_id: true,
+        title: true,
+        reform_proposal_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' }
+        }
+      }
     });
+    return rows.map((p) => ({
+      reform_proposal_id: p.reform_proposal_id,
+      title: p.title,
+      images: (p.reform_proposal_photo ?? []).map((ph) => ph.content ?? '').filter(Boolean)
+    }));
   }
 
-  async getProposalTitle(proposalId: string) {
-    return await prisma.reform_proposal.findFirst({
+  async getProposalTitleAndImagesSingle(proposalId: string) {
+    const row = await prisma.reform_proposal.findFirst({
       where: { reform_proposal_id: proposalId },
-      select: { title: true }
+      select: {
+        title: true,
+        reform_proposal_photo: {
+          select: { content: true },
+          orderBy: { photo_order: 'asc' }
+        }
+      }
     });
+    if (!row) return null;
+    return {
+      title: row.title,
+      images: (row.reform_proposal_photo ?? []).map((p) => p.content ?? '').filter(Boolean)
+    };
+  }
+
+  /** FEED 주문용: chat_request_id로 요청서 제목·사진 조회 (target_id = chat_request_id) */
+  async getChatRequestTitles(chatRequestIds: string[]) {
+    if (chatRequestIds.length === 0) return [];
+    const rows = await prisma.chat_request.findMany({
+      where: { chat_request_id: { in: chatRequestIds } },
+      select: { chat_request_id: true, title: true, image: true }
+    });
+    return rows.map((r) => ({
+      chat_request_id: r.chat_request_id,
+      title: r.title,
+      images: r.image ?? []
+    }));
+  }
+
+  /** FEED 주문 상세용: 제목·사진만 */
+  async getChatRequestTitleAndImages(chatRequestId: string) {
+    const row = await prisma.chat_request.findFirst({
+      where: { chat_request_id: chatRequestId },
+      select: { title: true, image: true }
+    });
+    if (!row) return null;
+    return {
+      title: row.title,
+      images: row.image ?? []
+    };
+  }
+
+  async getTitleAndThumbnailByTarget(
+    targetType: 'FEED' | 'REQUEST' | 'PROPOSAL',
+    targetId: string
+  ): Promise<{ title: string; thumbnail: string } | null> {
+    let result: { title: string | null; images: string[] } | null = null;
+    if (targetType === 'FEED') {
+      result = await this.getChatRequestTitleAndImages(targetId);
+    } else if (targetType === 'REQUEST') {
+      result = await this.getRequestTitleAndImagesSingle(targetId);
+    } else if (targetType === 'PROPOSAL') {
+      result = await this.getProposalTitleAndImagesSingle(targetId);
+    }
+    if (!result) return null;
+    return {
+      title: result.title ?? '',
+      thumbnail: result.images?.[0] ?? ''
+    };
+  }
+
+  async getTitleAndThumbnailsForOrders(
+    orders: Array<{ target_type: string | null; target_id: string | null }>
+  ): Promise<Map<string, { title: string; thumbnail: string }>> {
+    const requestIds = orders
+      .filter((o) => o.target_type === 'REQUEST' && o.target_id)
+      .map((o) => o.target_id!);
+    const proposalIds = orders
+      .filter((o) => o.target_type === 'PROPOSAL' && o.target_id)
+      .map((o) => o.target_id!);
+    const feedIds = orders
+      .filter((o) => o.target_type === 'FEED' && o.target_id)
+      .map((o) => o.target_id!);
+
+    const [requests, proposals, chatRequests] = await Promise.all([
+      this.getRequestTitleAndImages(requestIds),
+      this.getProposalTitleAndImages(proposalIds),
+      this.getChatRequestTitles(feedIds)
+    ]);
+
+    const map = new Map<string, { title: string; thumbnail: string }>();
+    for (const r of requests) {
+      map.set(r.reform_request_id, {
+        title: r.title ?? '',
+        thumbnail: r.images?.[0] ?? ''
+      });
+    }
+    for (const p of proposals) {
+      map.set(p.reform_proposal_id, {
+        title: p.title ?? '',
+        thumbnail: p.images?.[0] ?? ''
+      });
+    }
+    for (const cr of chatRequests) {
+      map.set(cr.chat_request_id, {
+        title: cr.title ?? '',
+        thumbnail: cr.images?.[0] ?? ''
+      });
+    }
+    return map;
   }
 
   async getItemTitle(itemId: string) {
@@ -324,6 +461,7 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         target_type: true,
+        chat_room_id: true,
         user: {
           select: {
             name: true,
@@ -333,6 +471,7 @@ export class ProfileRepository {
         receipt: {
           select: {
             created_at: true,
+            receipt_number: true,
             delivery_postal_code: true,
             delivery_address: true,
             delivery_address_detail: true,

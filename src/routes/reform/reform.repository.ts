@@ -258,6 +258,29 @@ export class ReformRepository {
     });
   }
 
+  /**
+   * 결제 완료(PAID) 주문이 있는 target_id 목록 조회 (이미 완료된 요청/제안 표시용)
+   */
+  async findPaidOrderTargetIds(
+    targetType: 'REQUEST' | 'PROPOSAL',
+    targetIds: string[]
+  ): Promise<Set<string>> {
+    if (targetIds.length === 0) return new Set();
+    const rows = await this.prisma.order.findMany({
+      where: {
+        target_type: targetType,
+        target_id: { in: targetIds },
+        status: 'PAID'
+      },
+      select: { target_id: true }
+    });
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.target_id) set.add(r.target_id);
+    }
+    return set;
+  }
+
   async insertRequest(
     dto: ReformRequestCreate,
     categoryId: UUID
