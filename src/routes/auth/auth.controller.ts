@@ -15,7 +15,8 @@ import {
 import { TsoaResponse, ResponseHandler, ErrorResponse } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
 import { LogoutResponse, PassportUserInfo, UserSignupRequest, ReformerSignupRequest, LocalLoginRequest, AuthPublicResponse, RefreshTokenPublicResponse, Role } from './dto/auth.dto.js';
-import { VerifySmsResponseDto, SendSmsResponseDto } from './dto/auth.res.dto.js';
+import { VerifySmsResponseDto, SendSmsResponseDto, RefreshTokenResponseDto } from './dto/auth.res.dto.js';
+import { Request as ExRequest } from 'express';
 import { 
   VerifySmsRequestDto, 
   SendSmsRequestDto
@@ -191,10 +192,12 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('401', '로그인 정보를 찾을 수 없습니다.')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('logout')
-  async logout(@Request() req: express.Request): Promise<TsoaResponse<LogoutResponse>> {
-    const userId = (req.user as any).id;
+  async logout(
+    @Request() req: ExRequest,
+  ): Promise<TsoaResponse<LogoutResponse>> {
+    const payload = req.user;
+    const userId = payload.id;
     await this.authService.logout(userId);
-
     this.setStatus(200);
     this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
     return new ResponseHandler<LogoutResponse>({
@@ -301,7 +304,7 @@ export class AuthController extends Controller {
    */
   @Security('jwt_refresh')
   @SuccessResponse(200, 'Access Token 재발급 성공')
-  @Example<ResponseHandler<RefreshTokenPublicResponse>>({
+  @Example<ResponseHandler<RefreshTokenResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -312,14 +315,15 @@ export class AuthController extends Controller {
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Post('reissue/accessToken')
   public async reissueAccessToken(
-    @Request() req: express.Request): Promise<TsoaResponse<RefreshTokenPublicResponse>> {
+    @Request() req: ExRequest)
+    : Promise<TsoaResponse<RefreshTokenResponseDto>> {
     const refreshTokenFromCookie = req.cookies.refreshToken;
-    const result = await this.authService.reissueAccessToken({refreshToken: refreshTokenFromCookie});
+    const result = await this.authService
+      .reissueAccessToken({refreshToken: refreshTokenFromCookie});
     const { accessToken, refreshToken } = result; 
     this.setStatus(200);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
-    
-    return new ResponseHandler<RefreshTokenPublicResponse>({
+    return new ResponseHandler<RefreshTokenResponseDto>({
       accessToken: accessToken
     });
   }
