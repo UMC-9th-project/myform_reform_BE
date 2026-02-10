@@ -62,7 +62,7 @@ export class MarketController extends Controller {
    * 상품 목록 조회
    * @summary 마켓 상품 목록을 조회합니다
    * @param categoryId 카테고리 ID (선택)
-   * @param sort 정렬 기준 (popular/latest, 기본: popular)
+   * @param sort 정렬 기준 (popular/latest/rating, 기본: popular)
    * @param page 페이지 번호 (기본: 1)
    * @param limit 페이지당 개수 (기본: 15)
    * @returns 상품 목록 조회 결과
@@ -79,7 +79,7 @@ export class MarketController extends Controller {
         reason: '입력값 검증 실패',
         data: [
           { field: 'categoryId', value: 'invalid', messages: 'categoryId는 UUID 형식이어야 합니다' },
-          { field: 'sort', value: 'invalid', messages: 'sort는 popular 또는 latest여야 합니다' },
+          { field: 'sort', value: 'invalid', messages: 'sort는 popular, latest, rating 중 하나여야 합니다' },
           { field: 'page', value: 0, messages: 'page는 1 이상의 정수여야 합니다' },
           { field: 'limit', value: 101, messages: 'limit는 1 이상 100 이하의 정수여야 합니다' }
         ]
@@ -126,7 +126,7 @@ export class MarketController extends Controller {
   public async getItemList(
     @Request() req: ExpressRequest,
     @Query() categoryId?: string,
-    @Query() sort: 'popular' | 'latest' = 'popular',
+    @Query() sort: 'popular' | 'latest' | 'rating' = 'popular',
     @Query() page: number = 1,
     @Query() limit: number = 15
   ): Promise<TsoaResponse<GetItemListResponseDto>> {
