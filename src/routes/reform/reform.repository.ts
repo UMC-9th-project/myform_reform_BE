@@ -13,6 +13,7 @@ import {
   ReformRequestUpdate
 } from './reform.model.js';
 import { UUID } from '../../@types/common.js';
+import { target_type_enum } from '@prisma/client';
 
 export class ReformRepository {
   private prisma;
@@ -258,6 +259,29 @@ export class ReformRepository {
     });
   }
 
+  /**
+   * 결제 완료(PAID) 주문이 있는 target_id 목록 조회 (이미 완료된 요청/제안 표시용)
+   */
+  async findPaidOrderTargetIds(
+    targetType: 'REQUEST' | 'PROPOSAL',
+    targetIds: string[]
+  ): Promise<Set<string>> {
+    if (targetIds.length === 0) return new Set();
+    const rows = await this.prisma.order.findMany({
+      where: {
+        target_type: targetType,
+        target_id: { in: targetIds },
+        status: 'PAID'
+      },
+      select: { target_id: true }
+    });
+    const set = new Set<string>();
+    for (const r of rows) {
+      if (r.target_id) set.add(r.target_id);
+    }
+    return set;
+  }
+
   async insertRequest(
     dto: ReformRequestCreate,
     categoryId: UUID
@@ -371,7 +395,9 @@ export class ReformRepository {
     return { images, body };
   }
 
-  async findAvgStarRecent3MonthsByOwnerId(ownerId: string): Promise<number | null> {
+  async findAvgStarRecent3MonthsByOwnerId(
+    ownerId: string
+  ): Promise<number | null> {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const result = await this.prisma.review.aggregate({
@@ -436,6 +462,16 @@ export class ReformRepository {
       where: {
         reform_request_id: requestId
       }
+    });
+  }
+
+  async deleteRequestWishList(requestId: string) {
+    await this.prisma.user_wish.deleteMany({
+      where: { target_type: 'REQUEST', target_id: requestId }
+    });
+
+    await this.prisma.owner_wish.deleteMany({
+      where: { reform_request_id: requestId }
     });
   }
 

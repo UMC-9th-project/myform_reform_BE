@@ -33,6 +33,12 @@ type ItemWithRelations = Prisma.itemGetPayload<{
         };
       };
     };
+    category: {
+      select: {
+        category_id: true;
+        parent_id: true;
+      };
+    };
   };
 }>;
 

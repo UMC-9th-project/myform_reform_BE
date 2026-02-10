@@ -17,6 +17,9 @@ export interface SaleResponseDto {
   createdAt: Date;
   title: string;
   thumbnail: string;
+  receiptNumber: string | null;
+  chatRoomId: string | null;
+  targetType: string;
 }
 
 export interface SaleDetailResponseDto extends SaleResponseDto {
@@ -132,6 +135,7 @@ export interface OrderResponseDto {
   thumbnail: string;
   reviewAvailable: boolean;
   reviewId: UUID | null;
+  chat_room_id: string;
 }
 
 export interface OrderListResponseDto {
