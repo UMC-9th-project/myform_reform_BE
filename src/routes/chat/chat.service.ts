@@ -180,27 +180,29 @@ export class ChatService {
    * 결제 검증 완료 후 리폼(채팅) 주문의 채팅방에 결제 완료 메시지 전송
    * content: { completed: true, receiptNumber, totalAmount, currency, paymentMethod, approvedAt }
    */
-  async notifyPaymentCompleteForReceipt(receiptId: string): Promise<void> {
-    const rooms = await this.ordersService.getReformOrderChatRoomsByReceiptId(receiptId);
+  async notifyPaymentCompleteForReceipt(receiptId: string): Promise<any> {
+    const room = await this.ordersService.getReformOrderChatRoomsByReceiptId(receiptId);
+    if (!room) return;
+
     const paymentSummary = await this.ordersService.getReceiptPaymentSummaryByReceiptId(receiptId);
     const content = paymentSummary
       ? { completed: true, ...paymentSummary }
       : { completed: true };
-    for (const room of rooms) {
-      try {
-        await this.processSendMessage({
-          chatRoomId: room.chat_room_id,
-          senderId: room.owner_id,
-          senderType: 'OWNER',
-          messageType: 'result',
-          content
-        });
-      } catch (err) {
-        console.error(
-          `채팅방 결제 완료 메시지 전송 실패 (chat_room_id: ${room.chat_room_id}):`,
-          err
-        );
-      }
+
+    try {
+      const {receiverInfo, message} = await this.processSendMessage({
+        chatRoomId: room.chat_room_id,
+        senderId: room.owner_id,
+        senderType: 'OWNER',
+        messageType: 'result',
+        content
+      });
+      return {receiverInfo, message};
+    } catch (err) {
+      console.error(
+        `채팅방 결제 완료 메시지 전송 실패 (chat_room_id: ${room.chat_room_id}):`,
+        err
+      );
     }
   }
 

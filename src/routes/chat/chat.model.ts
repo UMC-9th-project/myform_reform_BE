@@ -17,6 +17,7 @@ export type ChatMessagePayload =
     | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
     | {urls: string[]}                                                        //이미지
     | { price: number; delivery: number; expectedWorking: number; receiptNumber?: string; orderId?: string }  //결제정보
+    | { receiptNumber: string; totalAmount: number; currency: string; paymentMethod: { type: string; provider: string | null; cardNumber: string | null; }; approvedAt: string | null;}  //결과정보
     | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스

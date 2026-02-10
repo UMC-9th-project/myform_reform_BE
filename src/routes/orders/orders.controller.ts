@@ -34,6 +34,7 @@ import {
 } from './dto/orders.res.dto.js';
 import { validateDto } from '../../middleware/validator.js';
 import { ChatService } from '../chat/chat.service.js';
+import { WebSocketServer } from '../../infra/websocket/websocket.js';
 
 @Route('orders')
 @Tags('Orders')
@@ -41,6 +42,7 @@ import { ChatService } from '../chat/chat.service.js';
 export class OrdersController extends Controller {
   private ordersService: OrdersService;
   private chatService: ChatService;
+  private wsServer = WebSocketServer.getInstance();
 
   constructor() {
     super();
@@ -518,9 +520,10 @@ export class OrdersController extends Controller {
       dto.imp_uid
     );
     if (didUpdate && receiptId) {
-      this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
+      const {receiverInfo, message} = await this.chatService.notifyPaymentCompleteForReceipt(receiptId).catch((err) => {
         console.error('결제 완료 채팅 알림 실패 (receiptId:', receiptId, '):', err);
       });
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
     }
 
     return {
