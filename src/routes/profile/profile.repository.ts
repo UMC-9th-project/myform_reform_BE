@@ -801,7 +801,7 @@ export class ProfileRepository {
     };
     const whereClause: any = {
       user_id: userId,
-      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter] as target_type_enum | undefined,
+      target_type: targetTypeFilter[type as keyof typeof targetTypeFilter],
       status: { not: 'PENDING' }
     };
 
