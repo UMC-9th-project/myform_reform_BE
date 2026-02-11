@@ -115,7 +115,6 @@ export class UsersService {
       ...requestBody
     })
     const reformer = await this.usersRepository.findReformerById(reformerId)
-    console.log(reformer?.nickname, updateReformerProfileParams.nickname)
     if (updateReformerProfileParams.nickname !== undefined 
       && reformer?.nickname !== updateReformerProfileParams.nickname) {
       await this.checkNicknameDuplicate(updateReformerProfileParams.nickname);
