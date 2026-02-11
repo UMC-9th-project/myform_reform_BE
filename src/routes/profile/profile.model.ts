@@ -373,6 +373,7 @@ export type RawOrderDetailData = Prisma.orderGetPayload<{
     delivery_fee: true;
     target_type: true;
     tracking_number: true;
+    chat_room_id: true;
     receipt: {
       select: {
         created_at: true;
@@ -428,6 +429,7 @@ export class OrderDetail {
       deliveryFee: delivery_fee,
       totalPrice: totalPrice,
       trackingNumber: raw.tracking_number ?? '',
+      chat_room_id: raw.chat_room_id ?? '',
       createdAt: raw.receipt?.created_at ?? new Date(),
       receiptNumber: raw.receipt?.receipt_number ?? '',
       deliveryPostalCode: raw.receipt?.delivery_postal_code ?? '',

@@ -868,6 +868,7 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         tracking_number: true,
+        chat_room_id: true,
         receipt: {
           select: {
             created_at: true,
