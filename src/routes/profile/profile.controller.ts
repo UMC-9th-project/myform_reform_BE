@@ -207,14 +207,17 @@ export class ProfileController extends Controller {
     @Query() type: 'ITEM' | 'REFORM',
     @Query() page: number = 1,
     @Query() limit: number = 15,
+    @Query() sort: 'asc' | 'desc' = 'desc',
     @Request() req: ExRequest
   ): Promise<TsoaResponse<SaleResponseDto[]>> {
     const payload = req.user;
     if (payload.role !== 'reformer') {
       throw new ItemAddError('판매자만 조회할 수 있습니다.');
     }
+
     const ownerId = payload.id;
-    const dto = new SaleRequestDto(type, page, limit, ownerId);
+    const dto = new SaleRequestDto(type, page, limit, ownerId, sort);
+
     const data = await this.profileService.getSales(dto);
 
     const res = data.map((sale) => {
