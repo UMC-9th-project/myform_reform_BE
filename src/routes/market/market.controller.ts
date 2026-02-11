@@ -234,7 +234,9 @@ export class MarketController extends Controller {
         nickname: '리포머닉네임',
         star: 4.8,
         star_recent_3m: 4.5,
-        order_count: 500
+        order_count: 500,
+        review_count: 120,
+        bio: '리폼 전문가입니다.'
       },
       content: '상품 설명 내용',
       is_wished: false,

@@ -63,6 +63,8 @@ export class GetItemDetailResponseDto {
     star: number;
     star_recent_3m: number;
     order_count: number;
+    review_count: number;
+    bio: string;
   };
   is_wished!: boolean;
   review_summary!: {
