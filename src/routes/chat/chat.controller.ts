@@ -16,7 +16,8 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { CreateChatRoomWithProposalDTO,ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
+import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './dto/chat.req.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, ChatMessageListDTO } from './dto/chat.res.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 import express from 'express';
@@ -416,4 +417,6 @@ export class ChatController extends Controller {
     const result = await this.chatService.getChatMessages(request.user.id, userType, roomId, cursor, limit);
     return new ResponseHandler<ChatMessageListDTO>(result);
   }
+
+
 }
