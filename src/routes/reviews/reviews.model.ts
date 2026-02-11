@@ -163,3 +163,15 @@ export interface ProposalReviewStats {
   photoReviewCount: number;
   reviewPhotos: string[];
 }
+
+export type ReviewStatData = Prisma.GetReviewAggregateType<{
+  where: {
+      owner_id: string;
+  };
+  _count: {
+      review_id: true;
+  };
+  _avg: {
+      star: true;
+  };
+}>
