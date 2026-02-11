@@ -23,7 +23,7 @@ import {
   Sale,
   SaleDetail,
   OrderDetail,
-  RawOptionItemsWithGroup,
+  RawOptionItemsWithGroup
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -108,18 +108,64 @@ export class ProfileService {
   async getSales(dto: SaleRequestDto): Promise<Sale[]> {
     try {
       const orders = await this.profileRepository.getOrder(dto);
-      const titleThumbnailMap =
-        await this.profileRepository.getTitleAndThumbnailsForOrders(orders);
 
-      return orders.map((order) => {
-        const info =
-          order.target_id != null
-            ? titleThumbnailMap.get(order.target_id)
-            : undefined;
-        const title = info?.title ?? '';
-        const thumbnailOverride = info?.thumbnail;
-        return Sale.create(order, title, { thumbnailOverride });
+      const itemIds = new Set<string>();
+      const requestIds = new Set<string>();
+      const proposalIds = new Set<string>();
+      const feedIds = new Set<string>();
+
+      orders.forEach((o) => {
+        if (!o.target_id) return;
+        if (o.target_type === 'ITEM') itemIds.add(o.target_id);
+        else if (o.target_type === 'REQUEST') requestIds.add(o.target_id);
+        else if (o.target_type === 'PROPOSAL') proposalIds.add(o.target_id);
+        else if (o.target_type === 'FEED') feedIds.add(o.target_id);
       });
+
+      const [itemInfos, reqInfos, propInfos, feedInfos] = await Promise.all([
+        this.profileRepository.getItemInfos(Array.from(itemIds)),
+        this.profileRepository.getRequestInfos(Array.from(requestIds)),
+        this.profileRepository.getProposalInfos(Array.from(proposalIds)),
+        this.profileRepository.getFeedInfos(Array.from(feedIds))
+      ]);
+
+      const infoMap = new Map<string, { title: string; thumbnail: string }>();
+      const addToMap = (list: any[], idKey: string) => {
+        list.forEach((data) => {
+          infoMap.set(data[idKey], {
+            title: data.title,
+            thumbnail: data.photo
+          });
+        });
+      };
+
+      addToMap(itemInfos, 'item_id');
+      addToMap(reqInfos, 'reform_request_id');
+      addToMap(propInfos, 'reform_proposal_id');
+      addToMap(feedInfos, 'chatRequestId');
+
+      // 4. 모든 주문 목록 preview 생성
+      const ordersPreview = orders.map((order) => {
+        const info = infoMap.get(order.target_id ?? '') ?? {
+          title: '',
+          thumbnail: ''
+        };
+        return Sale.create(order, info.title, info.thumbnail);
+      });
+      return ordersPreview;
+
+      // const titleThumbnailMap =
+      //   await this.profileRepository.getTitleAndThumbnailsForOrders(orders);
+
+      // return orders.map((order) => {
+      //   const info =
+      //     order.target_id != null
+      //       ? titleThumbnailMap.get(order.target_id)
+      //       : undefined;
+      //   const title = info?.title ?? '';
+      //   const thumbnailOverride = info?.thumbnail;
+      //   return Sale.create(order, title, { thumbnailOverride });
+      // });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       throw new OrderItemError(message);
@@ -349,9 +395,10 @@ export class ProfileService {
           content: proposal.content,
           category: await this.marketService.getCategoryName(proposal.category),
           price: proposal.price !== null ? Number(proposal.price) : null,
-          avgStar: proposal.avg_star !== null ? Number(proposal.avg_star) : null,
+          avgStar:
+            proposal.avg_star !== null ? Number(proposal.avg_star) : null,
           reviewCount: proposal.review_count,
-          sellerName: owner.nickname,
+          sellerName: owner.nickname
         })
       )
     );
@@ -603,7 +650,7 @@ export class ProfileService {
     });
 
     // 3. title 과 thumbnail(photo) 조회
-    const [itemInfos, reqInfos, propInfos, feedInfos ] = await Promise.all([
+    const [itemInfos, reqInfos, propInfos, feedInfos] = await Promise.all([
       this.profileRepository.getItemInfos(Array.from(itemIds)),
       this.profileRepository.getRequestInfos(Array.from(requestIds)),
       this.profileRepository.getProposalInfos(Array.from(proposalIds)),
@@ -620,7 +667,7 @@ export class ProfileService {
     addToMap(itemInfos, 'item_id');
     addToMap(reqInfos, 'reform_request_id');
     addToMap(propInfos, 'reform_proposal_id');
-    addToMap(feedInfos, 'chatRequestId')
+    addToMap(feedInfos, 'chatRequestId');
 
     // 4. 모든 주문 목록 preview 생성
     const ordersPreview = actualOrders.map((order) => {
@@ -656,18 +703,18 @@ export class ProfileService {
     }
 
     // 2. 옵션 조회
-    const optionItemIds 
-      = await this.profileRepository.getOptionIdsByOrderId(orderId)
+    const optionItemIds =
+      await this.profileRepository.getOptionIdsByOrderId(orderId);
     let optionItemsWithGroup: RawOptionItemsWithGroup[] = [];
-    if(optionItemIds.length > 0 ){
-      optionItemsWithGroup 
-      = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    if (optionItemIds.length > 0) {
+      optionItemsWithGroup =
+        await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
     }
 
     const [info] = await Promise.all([
       this.getTargetInfo(order.target_type, order.target_id)
-    ])    
-    
+    ]);
+
     // 3. 결과값 리턴
     const orderDetail = OrderDetail.create(
       order,
@@ -697,18 +744,21 @@ export class ProfileService {
           : undefined;
       case 'REQUEST':
         const requests = await this.profileRepository.getRequestInfos([id]);
-        return requests[0] 
-        ? { 
-          title: requests[0].title ?? '', 
-          thumbnail: requests[0].photo ?? ''
-        } : undefined;
+        return requests[0]
+          ? {
+              title: requests[0].title ?? '',
+
+              thumbnail: requests[0].photo ?? ''
+            }
+          : undefined;
       case 'FEED':
         const feeds = await this.profileRepository.getFeedInfos([id]);
-        return feeds[0] 
-        ? { 
-          title: feeds[0].title ?? '', 
-          thumbnail: feeds[0].photo ?? ''
-        } : undefined;
+        return feeds[0]
+          ? {
+              title: feeds[0].title ?? '',
+              thumbnail: feeds[0].photo ?? ''
+            }
+          : undefined;
       default:
         return undefined;
     }

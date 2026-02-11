@@ -45,15 +45,6 @@ export type RawSaleData = Prisma.orderGetPayload<{
         receipt_number: true;
       };
     };
-    quote_photo: {
-      select: {
-        content: true;
-      };
-      orderBy: {
-        photo_order: 'asc';
-      };
-      take: 1;
-    };
   };
 }>;
 
@@ -147,21 +138,15 @@ export class Sale {
     this.props = props;
   }
 
-  static create(
-    raw: RawSaleData,
-    title: string,
-    options?: { thumbnailOverride?: string }
-  ): Sale {
-    const thumbnail =
-      options?.thumbnailOverride ?? raw.quote_photo[0]?.content ?? '';
+  static create(raw: RawSaleData, title: string, thumbnail: string): Sale {
     return new Sale({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
       status: ORDER_STATUS_LABELS[raw.status!],
-      price: raw.price!.toNumber() ?? 0,
-      deliveryFee: raw.delivery_fee!.toNumber() ?? 0,
+      price: raw.price?.toNumber() ?? 0,
+      deliveryFee: raw.delivery_fee?.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt!.created_at ?? new Date(),
+      createdAt: raw.receipt?.created_at ?? new Date(),
       title: title ?? '',
       thumbnail,
       receiptNumber: raw.receipt?.receipt_number ?? null,
@@ -198,7 +183,7 @@ export class SaleDetail {
       price: raw.price?.toNumber() ?? 0,
       deliveryFee: raw.delivery_fee?.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt!.created_at ?? new Date(),
+      createdAt: raw.receipt?.created_at ?? new Date(),
       title: title,
       thumbnail,
       receiptNumber: raw.receipt?.receipt_number ?? null,
@@ -206,12 +191,12 @@ export class SaleDetail {
       targetType: raw.target_type ?? 'ITEM',
       phone: raw.user.phone ?? '',
       delivery_address: {
-        postal_code: receipt.delivery_postal_code ?? null,
-        address: receipt.delivery_address ?? null,
-        address_detail: receipt.delivery_address_detail ?? null,
-        recipient_name: receipt.delivery_recipient_name ?? null,
-        phone: receipt.delivery_phone ?? null,
-        address_name: receipt.delivery_address_name ?? null
+        postal_code: receipt?.delivery_postal_code ?? null,
+        address: receipt?.delivery_address ?? null,
+        address_detail: receipt?.delivery_address_detail ?? null,
+        recipient_name: receipt?.delivery_recipient_name ?? null,
+        phone: receipt?.delivery_phone ?? null,
+        address_name: receipt?.delivery_address_name ?? null
       },
       option: option?.option_item?.name ?? '',
       billNumber: raw.receipt?.receipt_number ?? ''
