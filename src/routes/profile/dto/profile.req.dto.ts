@@ -38,7 +38,7 @@ export class AddItemRequestDto {
 }
 
 // 판매 상품 수정 요청 DTO (클라이언트 → Controller)
-export interface UpdateItemRequest {
+export class UpdateItemRequest {
   /** @example ["https://example.com/images/denim-jacket-front.jpg"] */
   imageUrls?: string[];
   /** @example "빈티지 데님 자켓 수정" */

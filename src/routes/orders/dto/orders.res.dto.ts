@@ -1,24 +1,25 @@
-export interface OrderSheetItemDto {
-  reformer_nickname: string;
-  thumbnail: string;
-  title: string;
-  selected_options: string[];
-  quantity: number;
-  price: number;
-}
-
-export interface SellerGroupDto {
-  owner_id: string;
-  reformer_nickname: string;
-  items: OrderSheetItemDto[];
-  delivery_fee: number;
-}
 import { RawReviewData } from '../orders.model.js';
 
-export interface GetOrderSheetResponseDto {
-  receipt_number: string;
-  delivery_fee: number;
-  delivery_address: {
+export class OrderSheetItemDto {
+  reformer_nickname!: string;
+  thumbnail!: string;
+  title!: string;
+  selected_options!: string[];
+  quantity!: number;
+  price!: number;
+}
+
+export class SellerGroupDto {
+  owner_id!: string;
+  reformer_nickname!: string;
+  items!: OrderSheetItemDto[];
+  delivery_fee!: number;
+}
+
+export class GetOrderSheetResponseDto {
+  receipt_number!: string;
+  delivery_fee!: number;
+  delivery_address!: {
     delivery_address_id?: string;
     postal_code: string | null;
     address: string | null;
@@ -27,41 +28,41 @@ export interface GetOrderSheetResponseDto {
     phone: string | null;
     address_name: string | null;
   } | null;
-  payment: {
+  payment!: {
     product_amount: number;
     delivery_fee: number;
     total_amount: number;
   };
-  seller_groups: SellerGroupDto[];
+  seller_groups!: SellerGroupDto[];
 }
 
-export interface CreateOrderResponseDto {
-  order_id: string;
-  payment_required: boolean;
+export class CreateOrderResponseDto {
+  order_id!: string;
+  payment_required!: boolean;
   payment_info?: {
     merchant_uid: string;
     amount: number;
   };
 }
 
-export interface VerifyPaymentResponseDto {
-  success: boolean;
+export class VerifyPaymentResponseDto {
+  success!: boolean;
 }
 
-export interface GetOrderItemDto {
-  thumbnail: string;
-  title: string;
-  selected_options: string[];
-  reformer_nickname: string;
-  quantity: number;
-  price: number;
+export class GetOrderItemDto {
+  thumbnail!: string;
+  title!: string;
+  selected_options!: string[];
+  reformer_nickname!: string;
+  quantity!: number;
+  price!: number;
 }
 
-export interface GetOrderResponseDto {
-  order_id: string;
-  receipt_number: string;
-  status: string | null;
-  delivery_address: {
+export class GetOrderResponseDto {
+  order_id!: string;
+  receipt_number!: string;
+  status!: string | null;
+  delivery_address!: {
     postal_code: string | null;
     address: string | null;
     address_detail: string | null;
@@ -69,8 +70,8 @@ export interface GetOrderResponseDto {
     phone: string | null;
     address_name: string | null;
   };
-  order_items: GetOrderItemDto[];
-  payment: {
+  order_items!: GetOrderItemDto[];
+  payment!: {
     amount: number;
     payment_method: string | null;
     card_name: string | null;
@@ -78,11 +79,11 @@ export interface GetOrderResponseDto {
     card_info: string | null;
     approved_at: Date | null;
   };
-  first_item: GetOrderItemDto | null;
-  remaining_items_count: number;
-  total_amount: number;
-  product_amount: number;
-  delivery_fee: number;
+  first_item!: GetOrderItemDto | null;
+  remaining_items_count!: number;
+  total_amount!: number;
+  product_amount!: number;
+  delivery_fee!: number;
 }
 
 export class CreateReviewResponseDto {
