@@ -128,6 +128,7 @@ export class ReviewsService {
 
   async deleteReview(userId: string, reviewId: string): Promise<string> {
     const review = await this.reviewsRepository.findReviewById(reviewId);
+    const ownerId = review?.owner_id!;
     if (!review) {
       throw new ReviewNotFoundError('리뷰를 찾을 수 없습니다.');
     }
@@ -137,6 +138,10 @@ export class ReviewsService {
     return await runInTransaction(async () => {
       await this.reviewsRepository.deleteReviewPhotos(reviewId);
       await this.reviewsRepository.deleteReview(reviewId);
+      const reformerReviewstat = await this.reviewsRepository.getReformerReviewStat(ownerId);
+      const reviewCount = reformerReviewstat._count.review_id
+      const avgStar = reformerReviewstat._avg.star
+      await this.reviewsRepository.syncReformerReviewStat(ownerId, reviewCount, avgStar)
       return '리뷰 삭제가 완료되었습니다.';
     });
   }

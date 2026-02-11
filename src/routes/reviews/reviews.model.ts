@@ -228,3 +228,15 @@ export interface GetReviewDetailResponseDto {
   prev_photo_index?: number;
   next_photo_index?: number;
 }
+
+export type ReviewStatData = Prisma.GetReviewAggregateType<{
+  where: {
+    owner_id: string;
+  };
+  _count: {
+    review_id: true;
+  };
+  _avg: {
+    star: true;
+  };
+}>

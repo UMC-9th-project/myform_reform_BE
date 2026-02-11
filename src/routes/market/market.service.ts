@@ -233,7 +233,9 @@ export class MarketService {
           nickname: item.owner.nickname,
           star: item.owner.avg_star ? Number(item.owner.avg_star) : 0,
           star_recent_3m: starRecent3m ?? 0,
-          order_count: item.owner.trade_count || 0
+          order_count: item.owner.trade_count || 0,
+          review_count: item.owner.review_count ?? 0,
+          bio: item.owner.bio ?? ''
         },
         content: item.content ?? '',
         is_wished: isWished,

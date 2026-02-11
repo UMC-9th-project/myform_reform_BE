@@ -1,5 +1,5 @@
 import prisma from '../../config/prisma.config.js';
-import { review } from '@prisma/client';
+import { review, owner } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client/extension';
 import {
@@ -13,7 +13,8 @@ import {
   ProposalReviewStats,
   ProposalReviewSortBy,
   ItemReviewWithPhotos,
-  ReviewTargetType
+  ReviewTargetType,
+  ReviewStatData
 } from './reviews.model.js';
 
 export class ReviewsRepository {
@@ -308,7 +309,6 @@ export class ReviewsRepository {
       }
     });
   }
-
   private getReviewSortOrder(sortBy: ProposalReviewSortBy) {
     switch (sortBy) {
       case 'high_rating':
@@ -376,6 +376,14 @@ export class ReviewsRepository {
           target_id: targetId
         }
       },
+      _avg: { star: true }
+    });
+  }
+
+  async getReformerReviewStat(reformerId: string): Promise<ReviewStatData> {
+    return await this.prisma.review.aggregate({
+      where: { owner_id: reformerId },
+      _count: { review_id: true },
       _avg: { star: true }
     });
   }
@@ -503,5 +511,19 @@ export class ReviewsRepository {
       photo_url: photo.content,
       photo_order: photo.photo_order ?? 0
     }));
+  }
+
+  async syncReformerReviewStat(
+    reformerId: string,
+    reviewCount: number,
+    avgStar: number | null
+  ): Promise<owner> {
+    return await this.prisma.owner.update({
+      where: { owner_id: reformerId },
+      data: {
+        review_count: reviewCount,
+        avg_star: avgStar
+      }
+    });
   }
 }
