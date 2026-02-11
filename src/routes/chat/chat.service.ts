@@ -1,4 +1,4 @@
-import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
+import { CreateChatRoomWithProposalDTO, ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
 import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
 import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
@@ -23,7 +23,7 @@ export class ChatService {
     let target : any;
     let ownerId : string;
     let requesterId : string;
-
+    
     switch (request.type) {
     case 'FEED':
       // 피드 채팅방 생성 로직(유저가 리폼러에게 채팅방 개설)
@@ -78,6 +78,34 @@ export class ChatService {
     };
     return result;
   }
+
+  // 채팅방 제안서와 함께 생성
+  async createChatRoomWithProposal(
+    dto : CreateChatRoomWithProposalDTO, 
+    userId: string
+  ): Promise<any> {
+    // 트랜젝션 시작
+    const {chatRoomResponse, message, receiverInfo}= await runInTransaction(async () => {
+      // 채팅방 생성
+      const chatRoomResponse = await this.createChatRoom({type: 'REQUEST',id: dto.requestId},userId);
+      const chatProposalDto : CreateChatProposalDTO = {
+        chatRoomId : chatRoomResponse.id,
+        price : dto.price,
+        delivery : dto.delivery,
+        expectedWorking : dto.expectedWorking,
+        content : dto.content,
+        image : dto.image || []
+      }
+      const {result , message, receiverInfo} = await this.createChatProposal(
+        chatProposalDto,
+        userId,
+        'owner'
+      )
+      return {chatRoomResponse, message, receiverInfo};
+    });
+    return {chatRoomResponse, message, receiverInfo}; 
+  }
+
 
   // 채팅방 목록 조회
   async getChatRooms(

@@ -39,16 +39,67 @@ export class CreateChatRoomResponseDTO {
   isNew!: boolean;
 }
 
-export class SimplePatchResponseDTO {
-  /** @format uuid */
-  id!: UUID;
-  updatedAt!: Date;
+
+
+
+/**
+ * 리소스 수정 성공 시 반환되는 기본 응답 객체
+ */
+export interface SimplePatchResponseDTO{
+    /**
+     * 수정된 리소스의 고유 아이디
+     * @format uuid
+     * @example "550e8400-e29b-41d4-a716-446655440000"
+     */
+    id : UUID;
+    /**
+     * 수정 일시
+     * @example "2024-01-15T10:30:00.000Z"
+     */
+    updatedAt : Date;
 }
 
-export class CreateChatRoomDTO {
-  id!: UUID;
-  type!: 'REQUEST' | 'PROPOSAL' | 'FEED';
+/**
+ * 채팅방 생성 요청 DTO
+ */
+export interface CreateChatRoomDTO{
+
+    /**
+     * 요청글, 제안서, 프로필등 채팅방을 생성하는 주체의 고유 아이디
+     * @example "550e8400-e29b-41d4-a716-446655440000"
+     */
+    id : UUID;
+    /**
+     * 채팅방 타입
+     * - REQUEST: 요청글 기반 채팅방 (리폼러가 유저에게)
+     * - (다른 api를 사용해주세요)PROPOSAL: 제안서 기반 채팅방 (유저가 리폼러에게)
+     * - FEED: 피드 기반 문의 채팅방 (유저가 리폼러에게)
+     * @example "FEED"
+     */
+    type : 'REQUEST' | 'FEED' | 'PROPOSAL';
 }
+
+export interface CreateChatRoomWithProposalDTO {
+
+    /**
+     * 제안서를 작성 하는 대상 요청서의 고유 아이디
+     * @example "550e8400-e29b-41d4-a716-446655440000"
+     */
+    requestId : UUID;
+    /**
+     * 첨부 이미지 URL 배열
+     * @example ["https://s3.example.com/image1.jpg", "https://s3.example.com/image2.jpg"]
+     */
+    image: string[] | null;
+    price : number;
+    delivery : number;
+    expectedWorking : number;
+    content : string;
+
+}
+
+
+
 
 export class ChatRoomPreviewDTO {
   chatRoomId!: UUID;
