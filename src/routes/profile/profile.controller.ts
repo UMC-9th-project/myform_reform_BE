@@ -92,12 +92,12 @@ export class ProfileController extends Controller {
    * @param body 수정할 판매 상품 정보
    * @returns 판매글 수정 결과
    */
-  @Patch('item/{id}')
+  @Patch('item/{itemId}')
   @Security('jwt')
   @SuccessResponse(200, '판매글 수정 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async updateItem(
-    @Path() id: string,
+    @Path() itemId: string,
     @Body() body: UpdateItemRequest,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
@@ -106,10 +106,10 @@ export class ProfileController extends Controller {
       throw new ItemAddError('판매자만 수정할 수 있습니다.');
     }
     const ownerId = payload.id;
-    const dto = ItemUpdate.createFromUpdateRequest(body, id, ownerId);
-    const itemId = await this.profileService.updateItem(dto);
+    const dto = ItemUpdate.createFromUpdateRequest(body, itemId, ownerId);
+    const ans = await this.profileService.updateItem(dto);
 
-    return new ResponseHandler(itemId);
+    return new ResponseHandler(ans);
   }
   /**
    * 주문제작 상품 등록
@@ -227,10 +227,10 @@ export class ProfileController extends Controller {
   /**
    * 특정 판매목록 상세 조회
    * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
-   * @param id 판매상품 ID (order_id)
+   * @param orderId 판매상품 ID (order_id)
    * @returns 판매상품 상세 정보
    */
-  @Get('sales/:id')
+  @Get('sales/{orderId}')
   @Security('jwt')
   @SuccessResponse(200, '특정 판매상품 조회 성공')
   @Response<TsoaResponse<SaleDetailResponseDto>>(
@@ -268,7 +268,7 @@ export class ProfileController extends Controller {
   )
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getDetailSales(
-    @Path() id: string,
+    @Path() orderId: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<SaleDetailResponseDto>> {
     const payload = req.user;
@@ -277,7 +277,7 @@ export class ProfileController extends Controller {
     }
     const ownerId = payload.id;
 
-    const data = await this.profileService.getSaleDetail(ownerId, id);
+    const data = await this.profileService.getSaleDetail(ownerId, orderId);
 
     return new ResponseHandler(data.toResponse());
   }
@@ -371,20 +371,20 @@ export class ProfileController extends Controller {
   /**
    * 구매 목록 상세 조회
    * @summary 구매 목록 ID로 해당 목록의 상세 정보를 조회합니다
-   * @param id 구매 목록 ID (order_id)
+   * @param orderId 구매 목록 ID (order_id)
    * @returns 구매 목록 상세 정보
    */
-  @Get('orders/:id')
+  @Get('orders/{orderId}')
   @Security('jwt', ['user'])
   @SuccessResponse(200, '구매 목록 상세 조회 성공')
   @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
   public async getOrderDetail(
-    @Path() id: string,
+    @Path() orderId: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<OrderDetailResponseDto>> {
     const payload = req.user;
     const userId = payload.id;
-    const data = await this.profileService.getOrderDetail(userId, id);
+    const data = await this.profileService.getOrderDetail(userId, orderId);
     return new ResponseHandler(data);
   }
 
@@ -415,10 +415,10 @@ export class ProfileController extends Controller {
   /**
    * 프로필 기본 정보 조회
    * @summary 리폼러 프로필 정보(닉네임, 평점, 리뷰 수 등)를 조회합니다. owner UUID 또는 닉네임으로 조회할 수 있습니다.
-   * @param id owner UUID 또는 리폼러 닉네임
+   * @param ownerID owner UUID 또는 리폼러 닉네임
    * @returns 프로필 정보 (ownerId, avgStarRecent3m 포함)
    */
-  @Get('{id}')
+  @Get('{ownerId}')
   @SuccessResponse(200, '프로필 정보 조회 성공')
   @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
     resultType: 'FAIL',
@@ -446,21 +446,21 @@ export class ProfileController extends Controller {
     }
   })
   public async getProfileInfo(
-    @Path() id: string
+    @Path() ownerId: string
   ): Promise<TsoaResponse<ProfileInfoResponse>> {
-    const result = await this.profileService.getProfileInfo(id);
+    const result = await this.profileService.getProfileInfo(ownerId);
     return new ResponseHandler(result);
   }
 
   /**
    * 프로필 피드 목록 조회 (cursor 기반)
    * @summary owner의 피드 목록을 조회합니다 (공개)
-   * @param id owner UUID
+   * @param ownerId owner UUID
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 피드 목록
    */
-  @Get('{id}/feed')
+  @Get('{ownerId}/feed')
   @SuccessResponse(200, '피드 목록 조회 성공')
   @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
     resultType: 'FAIL',
@@ -473,13 +473,13 @@ export class ProfileController extends Controller {
   })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileFeed(
-    @Path() id: string,
+    @Path() ownerId: string,
     @Query() cursor?: string,
     @Query() limit?: number
   ): Promise<TsoaResponse<FeedListResponse>> {
     const limitValue = limit && limit > 0 ? limit : 20;
     const result = await this.profileService.getProfileFeed(
-      id,
+      ownerId,
       cursor,
       limitValue
     );
@@ -489,25 +489,25 @@ export class ProfileController extends Controller {
   /**
    * 프로필 판매 상품 목록 조회 (cursor 기반)
    * @summary owner의 판매 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
-   * @param id owner UUID 또는 리폼러 닉네임
+   * @param ownerId owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 판매 상품 목록
    */
-  @Get('{id}/item')
+  @Get('{ownerId}/item')
   @SuccessResponse(200, '판매 상품 목록 조회 성공')
   @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
     resultType: 'FAIL',
     error: {
       errorCode: 'OWNER-NOT-FOUND',
       reason: '프로필을 찾을 수 없습니다.',
-      data: 'Owner ID: {id}'
+      data: 'Owner owerId: {id}'
     },
     success: null
   })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileItems(
-    @Path() id: string,
+    @Path() ownerId: string,
     @Request() req: ExpressRequest,
     @Query() cursor?: string,
     @Query() limit?: number
@@ -515,7 +515,7 @@ export class ProfileController extends Controller {
     const limitValue = limit && limit > 0 ? limit : 20;
     const userId = req.user?.id;
     const result = await this.profileService.getProfileItems(
-      id,
+      ownerId,
       cursor,
       limitValue,
       userId
@@ -526,12 +526,12 @@ export class ProfileController extends Controller {
   /**
    * 프로필 주문제작 목록 조회 (cursor 기반)
    * @summary owner의 주문제작 상품 목록을 조회합니다 (로그인 시 찜 여부 포함). id는 owner UUID 또는 닉네임입니다.
-   * @param id owner UUID 또는 리폼러 닉네임
+   * @param ownerId owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 주문제작 목록
    */
-  @Get('{id}/proposal')
+  @Get('{ownerId}/proposal')
   @SuccessResponse(200, '주문제작 목록 조회 성공')
   @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
     resultType: 'FAIL',
@@ -544,7 +544,7 @@ export class ProfileController extends Controller {
   })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileProposals(
-    @Path() id: string,
+    @Path() ownerId: string,
     @Request() req: ExpressRequest,
     @Query() cursor?: string,
     @Query() limit?: number
@@ -552,7 +552,7 @@ export class ProfileController extends Controller {
     const limitValue = limit && limit > 0 ? limit : 20;
     const userId = req.user?.id;
     const result = await this.profileService.getProfileProposals(
-      id,
+      ownerId,
       cursor,
       limitValue,
       userId
@@ -563,12 +563,12 @@ export class ProfileController extends Controller {
   /**
    * 프로필 리뷰 목록 조회 (cursor 기반)
    * @summary owner에 대한 리뷰 목록을 조회합니다 (공개). id는 owner UUID 또는 닉네임입니다.
-   * @param id owner UUID 또는 리폼러 닉네임
+   * @param ownerId owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
    * @returns 리뷰 목록
    */
-  @Get('{id}/review')
+  @Get('{ownerId}/review')
   @SuccessResponse(200, '리뷰 목록 조회 성공')
   @Response<ErrorResponse>(404, '프로필을 찾을 수 없습니다.', {
     resultType: 'FAIL',
@@ -581,13 +581,13 @@ export class ProfileController extends Controller {
   })
   @Response<ErrorResponse>(500, '서버 에러', commonError.serverError)
   public async getProfileReviews(
-    @Path() id: string,
+    @Path() ownerId: string,
     @Query() cursor?: string,
     @Query() limit?: number
   ): Promise<TsoaResponse<ReviewListResponse>> {
     const limitValue = limit && limit > 0 ? limit : 20;
     const result = await this.profileService.getProfileReviews(
-      id,
+      ownerId,
       cursor,
       limitValue
     );

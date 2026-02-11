@@ -119,7 +119,7 @@ export class ReformController extends Controller {
    * @param id 리폼 요청 ID (UUID)
    * @returns 리폼 요청 상세 정보
    */
-  @Get('/request/:id')
+  @Get('/request/{requestId}')
   @Security('jwt_optional')
   @Example<ReformDetailRequestResponseDto>({
     isOwner: true,
@@ -141,27 +141,27 @@ export class ReformController extends Controller {
   })
   @SuccessResponse(200, '조회 성공')
   public async findDetailRequest(
-    @Path() id: string,
+    @Path() requestId: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<ReformDetailRequestResponseDto>> {
     const payload = req.user ?? null;
     const ans = (
-      await this.reformService.findDetailRequest(payload, id)
+      await this.reformService.findDetailRequest(payload, requestId)
     ).toDto();
     return new ResponseHandler(ans);
   }
 
   /**
    * @summary 특정 리폼 요청을 수정합니다.
-   * @param id 리폼 요청 ID (UUID)
+   * @param requestId 리폼 요청 ID (UUID)
    * @param body 수정할 데이터
    * @returns 수정된 리폼 요청 ID
    */
-  @Patch('/request/:id')
+  @Patch('/request/{requestId}')
   @Security('jwt')
   @SuccessResponse(200, '수정 성공')
   public async modifyRequest(
-    @Path() id: string,
+    @Path() requestId: string,
     @Body() body: ModifyRequestRequest,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
@@ -170,26 +170,30 @@ export class ReformController extends Controller {
       throw new ReformError('일반 유저만 요청서를 수정할 수 있습니다.');
 
     const userId = req.user.id;
-    const dto = ReformRequestFactory.createFromModifyRequest(body, id, userId);
+    const dto = ReformRequestFactory.createFromModifyRequest(
+      body,
+      requestId,
+      userId
+    );
     const ans = await this.reformService.modifyRequest(dto);
     return new ResponseHandler(ans);
   }
 
   /**
    * @summary 특정 리폼 요청을 삭제합니다.
-   * @param id 삭제하려는 리폼 요청글 ID (UUID)
+   * @param requestId 삭제하려는 리폼 요청글 ID (UUID)
    * @returns 리폼 요청 삭제 성공 여부
    */
-  @Delete('/request/:id')
+  @Delete('/request/{requestId}')
   @Security('jwt')
   @SuccessResponse(200, '삭제 성공')
   public async deleteRequest(
-    @Path() id: string,
+    @Path() requestId: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
     const payload = req.user;
     const userId = payload.id;
-    const ans = await this.reformService.deleteRequest(id, userId);
+    const ans = await this.reformService.deleteRequest(requestId, userId);
     return new ResponseHandler(ans);
   }
 
@@ -219,35 +223,35 @@ export class ReformController extends Controller {
 
   /**
    * @summary 특정 리폼제안서의 상세 정보를 조회합니다.
-   * @param id 제안 ID (UUID)
+   * @param proposalId 제안 ID (UUID)
    * @returns 제안 상세 정보
    */
-  @Get('/proposal/:id')
+  @Get('/proposal/{proposalId}')
   @Security('jwt_optional')
   @SuccessResponse(200, '조회 성공')
   public async findDetailProposal(
-    @Path() id: string,
+    @Path() proposalId: string,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<ReformDetailProposalResponseDto>> {
     const payload = req.user ?? null;
 
     const ans = (
-      await this.reformService.findDetailProposal(payload, id)
+      await this.reformService.findDetailProposal(payload, proposalId)
     ).toDto();
     return new ResponseHandler(ans);
   }
 
   /**
    * @summary 특정 제안서를 수정합니다.
-   * @param id 제안 ID (UUID)
+   * @param proposalId 제안 ID (UUID)
    * @param body 수정할 데이터
    * @returns 수정된 제안서 ID
    */
-  @Patch('/proposal/:id')
+  @Patch('/proposal/{proposalId}')
   @Security('jwt')
   @SuccessResponse(200, '수정 성공')
   public async modifyProposal(
-    @Path() id: string,
+    @Path() proposalId: string,
     @Body() body: ModifyProposalRequest,
     @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
@@ -258,7 +262,7 @@ export class ReformController extends Controller {
     const ownerId = req.user.id;
     const dto = ReformProposalFactory.createFromModifyRequest(
       body,
-      id,
+      proposalId,
       ownerId
     );
     const ans = await this.reformService.modifyProposal(dto);
