@@ -83,10 +83,12 @@ export class ChatController extends Controller {
   })
   public async createChatRoomWithProposal(
     @Request() request: express.Request,
-    @Body() body: {dto: CreateChatRoomWithProposalDTO}
+    @Body() body: CreateChatRoomWithProposalDTO
   ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
-    const {chatRoomResponse, message, receiverInfo} = await this.chatService.createChatRoomWithProposal(body.dto, request.user.id);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    const {chatRoomResponse, message, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
+    if(chatRoomResponse.isNew == true){
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    }
     return new ResponseHandler<CreateChatRoomResponseDTO>(chatRoomResponse);
   }
 

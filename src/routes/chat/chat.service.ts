@@ -87,14 +87,14 @@ export class ChatService {
     // 트랜젝션 시작
     const {chatRoomResponse, message, receiverInfo}= await runInTransaction(async () => {
       // 채팅방 생성
-      const chatRoomResponse = await this.createChatRoom({type: 'REQUEST',id: dto.requestId},userId);
+      const chatRoomResponse = await this.createChatRoom({type: 'REQUEST',id: dto.targetId},userId);
       const chatProposalDto : CreateChatProposalDTO = {
         chatRoomId : chatRoomResponse.id,
         price : dto.price,
         delivery : dto.delivery,
         expectedWorking : dto.expectedWorking,
-        content : dto.content,
-        image : dto.image || []
+        content : dto.contents,
+        image : dto.images || []
       }
       const {result , message, receiverInfo} = await this.createChatProposal(
         chatProposalDto,
