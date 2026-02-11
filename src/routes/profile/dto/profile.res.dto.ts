@@ -164,7 +164,7 @@ export class OrderDetailResponseDto {
   deliveryPhone!: string;
   deliveryAddressName!: string;
   options!: RawOptionItemsWithGroup[];
-  chat_room_id!: string;
+  chatRoomId!: string;
 }
 
 export class RequestsListResponseDto {

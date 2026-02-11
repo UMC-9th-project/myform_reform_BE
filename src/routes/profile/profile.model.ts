@@ -429,7 +429,7 @@ export class OrderDetail {
       deliveryFee: delivery_fee,
       totalPrice: totalPrice,
       trackingNumber: raw.tracking_number ?? '',
-      chat_room_id: raw.chat_room_id ?? '',
+      chatRoomId: raw.chat_room_id ?? '',
       createdAt: raw.receipt?.created_at ?? new Date(),
       receiptNumber: raw.receipt?.receipt_number ?? '',
       deliveryPostalCode: raw.receipt?.delivery_postal_code ?? '',
