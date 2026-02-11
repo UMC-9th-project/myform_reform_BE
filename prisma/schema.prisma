@@ -487,6 +487,7 @@ enum message_type {
   text
   payment
   result
+  accept
 }
 
 enum order_status_enum {
