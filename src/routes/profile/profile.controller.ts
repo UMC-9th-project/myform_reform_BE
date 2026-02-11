@@ -242,7 +242,7 @@ export class ProfileController extends Controller {
       success: {
         orderId: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
         targetId: '550e8400-e29b-41d4-a716-446655440000',
-        status: 'PAID',
+        status: 'COMPLETE',
         price: 53000,
         deliveryFee: 3000,
         userName: '구매자이름',
