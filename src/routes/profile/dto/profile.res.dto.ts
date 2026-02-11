@@ -106,7 +106,7 @@ export class ReviewItem {
   createdAt!: Date | null;
   content!: string | null;
   productId!: string | null;
-  productType!: 'ITEM' | 'PROPOSAL' | null;
+  productType!: 'ITEM' | 'PROPOSAL' | 'REQUEST' | 'FEED' | null;
   productTitle!: string | null;
   productPhoto!: string | null;
   productPrice!: number | null;
