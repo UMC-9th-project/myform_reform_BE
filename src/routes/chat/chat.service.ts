@@ -86,7 +86,7 @@ export class ChatService {
     userId: string
   ): Promise<any> {
     // 트랜젝션 시작
-    const {chatRoomResponse, message, receiverInfo}= await runInTransaction(async () => {
+    const {chatRoomResponse, messages, receiverInfo}= await runInTransaction(async () => {
       // 채팅방 생성
       const chatRoomResponse = await this.createChatRoom({type: 'REQUEST',id: dto.targetId},userId);
       const chatProposalDto : CreateChatProposalDTO = {
@@ -97,14 +97,14 @@ export class ChatService {
         content : dto.contents,
         image : dto.images || []
       }
-      const {result , message, receiverInfo} = await this.createChatProposal(
+      const {result , messages, receiverInfo} = await this.createChatProposal(
         chatProposalDto,
         userId,
         'owner'
       )
-      return {chatRoomResponse, message, receiverInfo};
+      return {chatRoomResponse, messages, receiverInfo};
     });
-    return {chatRoomResponse, message, receiverInfo}; 
+    return {chatRoomResponse, messages, receiverInfo}; 
   }
 
 
@@ -205,6 +205,8 @@ export class ChatService {
     });
   }
 
+
+  
   /**
    * 결제 검증 완료 후 리폼(채팅) 주문의 채팅방에 결제 완료 메시지 전송
    * content: { completed: true, receiptNumber, totalAmount, currency, paymentMethod, approvedAt }
@@ -353,28 +355,42 @@ export class ChatService {
       const senderType = userType === 'owner' ? 'OWNER' : 'USER';
 
       // 채팅 제안서 페이로드 생성
-      const payload = ChatMessageFactory.mapToProposalPayload({
+      const proposalPayload = ChatMessageFactory.mapToProposalPayload({
               chatProposalId : proposalUuid,
               price : request.price,
               delivery : request.delivery,
               expectedWorking : request.expectedWorking
             }
           )
+
+      // accept 타입 페이로드 생성 (isAccepted: null)
+      const acceptPayload = ChatMessageFactory.mapToAcceptPayload({
+              isAccepted: null
+            }
+          )
           
       // 메세지 처리와 요청서 제목 병렬 처리
-      const [sendMessageResult, chatRequest] = await Promise.all([
+      const [proposalMessageResult, acceptMessageResult, chatRequest] = await Promise.all([
         this.processSendMessage({
           chatRoomId: request.chatRoomId,
           senderType: senderType as 'OWNER' | 'USER',
           senderId: userId,
           messageType: 'proposal',
-          content: payload,
+          content: proposalPayload,
+        }),
+        this.processSendMessage({
+          chatRoomId: request.chatRoomId,
+          senderType: senderType as 'OWNER' | 'USER',
+          senderId: userId,
+          messageType: 'accept',
+          content: acceptPayload,
         }),
         this.chatRepository.getChatRequestByChatRoomId(request.chatRoomId),
       ]);
 
       // 결과 구조 분해 할당
-      const { receiverInfo, message } = sendMessageResult;
+      const { receiverInfo, message: proposalMessage } = proposalMessageResult;
+      const { message: acceptMessage } = acceptMessageResult;
       const requestTitle = (chatRequest?.payload as any)?.title || '제목 없음';
 
       // 제안서 생성, 메세지가 먼저 존재하고 제안서를 연결
@@ -385,7 +401,7 @@ export class ChatService {
         request.delivery,
         request.expectedWorking,
         request.content,
-        message['props'].message_id as string,
+        proposalMessage['props'].message_id as string,
         request.image
       );
       const result = {
@@ -393,7 +409,8 @@ export class ChatService {
         createdAt: chatProposal.created_at as Date
       }
       
-      return {result , message, receiverInfo};
+      // 두 개의 메시지를 배열로 반환
+      return {result, messages: [proposalMessage, acceptMessage], receiverInfo};
     });
   }
 
