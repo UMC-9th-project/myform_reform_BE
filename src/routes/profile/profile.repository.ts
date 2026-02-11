@@ -101,6 +101,13 @@ export class ProfileRepository {
     return groups;
   }
 
+  async updateTrackingNumber(orderId: string, trackingNumber: string) {
+    await prisma.order.update({
+      where: { order_id: orderId },
+      data: { tracking_number: trackingNumber }
+    });
+  }
+
   async addReform(dto: ReformDto, categoryId: string) {
     return await prisma.reform_proposal.create({
       data: {
@@ -497,6 +504,7 @@ export class ProfileRepository {
         delivery_fee: true,
         target_type: true,
         chat_room_id: true,
+        tracking_number: true,
         user: {
           select: {
             name: true,

@@ -228,6 +228,34 @@ export class ProfileController extends Controller {
   }
 
   /**
+   * 운송장 번호 수정
+   * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
+   * @param orderId 판매상품 ID (order_id)
+   * @returns 판매상품 상세 정보
+   */
+  @Patch('sales/{orderId}/tracking')
+  @Security('jwt')
+  @SuccessResponse(200, '운송장 번호 수정 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async updateTrackingNumber(
+    @Path() orderId: string,
+    @Body() body: { trackingNumber: string },
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+
+    await this.profileService.updateTrackingNumber(
+      ownerId,
+      orderId,
+      body.trackingNumber
+    );
+    return new ResponseHandler('수정 성공');
+  }
+  /**
    * 특정 판매목록 상세 조회
    * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
    * @param orderId 판매상품 ID (order_id)
@@ -253,6 +281,7 @@ export class ProfileController extends Controller {
         title: '상품명',
         thumbnail: 'https://example.com/thumbnail.jpg',
         phone: '01012345678',
+        tracking_number: '12312123',
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',

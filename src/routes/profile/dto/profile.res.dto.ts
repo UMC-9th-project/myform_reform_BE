@@ -34,6 +34,7 @@ export class SaleDetailResponseDto extends SaleResponseDto {
   };
   billNumber!: string;
   option!: string;
+  tracking_number!: string;
 }
 
 // --- 5 GET 응답 타입 (profile/{id}, feed, item, proposal, review) ---

@@ -4,7 +4,8 @@ import {
   ItemAddError,
   OrderItemError,
   OwnerNotFound,
-  ForbiddenAccessError
+  ForbiddenAccessError,
+  profileError
 } from './profile.error.js';
 import { OrderNotFoundError } from '../orders/orders.error.js';
 import {
@@ -169,6 +170,26 @@ export class ProfileService {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       throw new OrderItemError(message);
+    }
+  }
+
+  async updateTrackingNumber(
+    ownerId: string,
+    orderId: string,
+    trackingNumber: string
+  ) {
+    try {
+      const check = await this.profileRepository.isOrderOwner(ownerId, orderId);
+      if (!check) {
+        throw new OrderItemError('본인의 판매 내용이 아닙니다.');
+      }
+
+      await this.profileRepository.updateTrackingNumber(
+        orderId,
+        trackingNumber
+      );
+    } catch (err: any) {
+      throw new OrderItemError(err);
     }
   }
 
@@ -501,12 +522,13 @@ export class ProfileService {
           r.order!.target_id!
       );
 
-    const [itemInfos, proposalInfos, requestInfos, feedInfos] = await Promise.all([
-      this.profileRepository.getItemInfos([...new Set(itemIds)]),
-      this.profileRepository.getProposalInfos([...new Set(proposalIds)]),
-      this.profileRepository.getRequestInfos([...new Set(requestIds)]),
-      this.profileRepository.getFeedInfos([...new Set(feedIds)])
-    ]);
+    const [itemInfos, proposalInfos, requestInfos, feedInfos] =
+      await Promise.all([
+        this.profileRepository.getItemInfos([...new Set(itemIds)]),
+        this.profileRepository.getProposalInfos([...new Set(proposalIds)]),
+        this.profileRepository.getRequestInfos([...new Set(requestIds)]),
+        this.profileRepository.getFeedInfos([...new Set(feedIds)])
+      ]);
     type ProductInfo = {
       title: string | null;
       price: number | null;
@@ -525,16 +547,34 @@ export class ProfileService {
       ])
     );
     const requestMap = new Map<string, ProductInfo>(
-      requestInfos.map((r: { reform_request_id: string; title: string | null; minBudget: number | null; maxBudget: number | null; photo: string | null }) => [
-        r.reform_request_id,
-        { title: r.title, price: r.minBudget ?? r.maxBudget ?? null, photo: r.photo }
-      ])
+      requestInfos.map(
+        (r: {
+          reform_request_id: string;
+          title: string | null;
+          minBudget: number | null;
+          maxBudget: number | null;
+          photo: string | null;
+        }) => [
+          r.reform_request_id,
+          {
+            title: r.title,
+            price: r.minBudget ?? r.maxBudget ?? null,
+            photo: r.photo
+          }
+        ]
+      )
     );
     const feedMap = new Map<string, ProductInfo>(
-      feedInfos.map((f: { chatRequestId: string; title: string | null; photo: string | undefined }) => [
-        f.chatRequestId,
-        { title: f.title, price: null, photo: f.photo ?? null }
-      ])
+      feedInfos.map(
+        (f: {
+          chatRequestId: string;
+          title: string | null;
+          photo: string | undefined;
+        }) => [
+          f.chatRequestId,
+          { title: f.title, price: null, photo: f.photo ?? null }
+        ]
+      )
     );
 
     const reviewList = actualReviews.map(
