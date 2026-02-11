@@ -107,7 +107,9 @@ export class MarketRepository {
             profile_photo: true,
             nickname: true,
             avg_star: true,
-            trade_count: true
+            trade_count: true,
+            review_count: true,
+            bio: true
           }
         },
         item_photo: {
