@@ -885,7 +885,7 @@ export class OrdersService {
 
         const initialOrderStatus =
           receipt.payment_status === 'paid'
-            ? order_status_enum.PAID
+            ? order_status_enum.COMPLETE
             : order_status_enum.PENDING;
 
         let firstOrderId: string | null = null;
@@ -1266,10 +1266,10 @@ export class OrdersService {
         return { didUpdate: false };
       }
 
-      const allPaid = receipt.order.every(
-        (o) => o.status === order_status_enum.PAID
+      const allComplete = receipt.order.every(
+        (o) => o.status === order_status_enum.COMPLETE
       );
-      if (allPaid) {
+      if (allComplete) {
         return { didUpdate: false };
       }
 
@@ -1330,7 +1330,7 @@ export class OrdersService {
         const orderIds = receipt.order.map((o) => o.order_id);
         await this.repository.updateOrdersStatus(
           orderIds,
-          order_status_enum.PAID
+          order_status_enum.COMPLETE
         );
 
         const transactionPayload = this.buildTransactionPayload(
@@ -2161,7 +2161,7 @@ export class OrdersService {
 
         const initialOrderStatus =
           receipt.payment_status === 'paid'
-            ? order_status_enum.PAID
+            ? order_status_enum.COMPLETE
             : order_status_enum.PENDING;
 
         const createdOrders: Array<{ order_id: string; item_id: string }> = [];
@@ -2302,6 +2302,7 @@ export class OrdersService {
     if (!order) {
       throw new OrderNotFoundError(orderId);
     }
+    // PENDING만 리뷰 불가. COMPLETE(결제 완료) 등은 리뷰 허용
     if (order.status === order_status_enum.PENDING) {
       throw new ReviewNotAllowedError('해당 주문은 리뷰 작성 가능한 상태가 아닙니다.');
     }
