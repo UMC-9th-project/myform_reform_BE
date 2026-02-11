@@ -79,26 +79,15 @@ export interface CreateChatRoomDTO{
     type : 'REQUEST' | 'FEED' | 'PROPOSAL';
 }
 
-export interface CreateChatRoomWithProposalDTO {
-
-    /**
-     * 제안서를 작성 하는 대상 요청서의 고유 아이디
-     * @example "550e8400-e29b-41d4-a716-446655440000"
-     */
-    requestId : UUID;
-    /**
-     * 첨부 이미지 URL 배열
-     * @example ["https://s3.example.com/image1.jpg", "https://s3.example.com/image2.jpg"]
-     */
-    image: string[] | null;
-    price : number;
-    delivery : number;
-    expectedWorking : number;
-    content : string;
+export class CreateChatRoomWithProposalDTO {
+  images!: string[];
+  targetId!: string;
+  price!: number;
+  contents!: string;
+  delivery!: number;
+  expectedWorking!: number;
 
 }
-
-
 
 
 export class ChatRoomPreviewDTO {
@@ -225,3 +214,4 @@ export class ChatMessageDTO {
   payload!: any | null;
   createdAt!: Date;
 }
+
