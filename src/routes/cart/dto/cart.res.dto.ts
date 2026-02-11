@@ -4,49 +4,49 @@
 
 import { UUID } from '../../../@types/common.js';
 
-export interface CreateCartResDTO {
+export class CreateCartResDTO {
   /**
    * @format uuid
    */
-  cartId: UUID;
-  createdAt: Date;
+  cartId!: UUID;
+  createdAt!: Date;
 }
 
-export interface OptionDTO {
+export class OptionDTO {
   /**
    * @format uuid
    */
-  option_item_id: UUID | null;
-  name: string | null;
-  extra_price: number;
+  option_item_id!: UUID | null;
+  name!: string | null;
+  extra_price!: number;
 }
 
-export interface CartItemDTO {
+export class CartItemDTO {
   /**
    * @format uuid
    */
-  cartId: UUID;
+  cartId!: UUID;
   /**
    * @format uuid
    */
-  itemId: UUID | null;
-  title: string | null;
-  imageUrl: string | null;
-  price: number;
-  quantity: number;
-  delivery: number;
-  options: OptionDTO[];
+  itemId!: UUID | null;
+  title!: string | null;
+  imageUrl!: string | null;
+  price!: number;
+  quantity!: number;
+  delivery!: number;
+  options!: OptionDTO[];
 }
 
-export interface SellerCartDTO {
+export class SellerCartDTO {
   /**
    * @format uuid
    */
-  ownerId: UUID;
-  ownerName: string | null;
-  deliveryFee: number;
-  total: number;
-  items: CartItemDTO[];
+  ownerId!: UUID;
+  ownerName!: string | null;
+  deliveryFee!: number;
+  total!: number;
+  items!: CartItemDTO[];
 }
 
 export type CartGroupedResDTO = SellerCartDTO[];

@@ -3,19 +3,19 @@ import { owner, reformer_status_enum, user } from '@prisma/client';
 import { rawReformerPortfolio } from '../users.model.js';
 
 // 닉네임 중복 검사 응답 데이터
-export interface CheckNicknameResponse {
-  isAvailable: boolean;
-  nickname: string;
-  message: string;
+export class CheckNicknameResponse {
+  isAvailable!: boolean;
+  nickname!: string;
+  message!: string;
 }
 
 // 유저 정보 응답 데이터
-export interface UsersInfoResponse {
-  id: string;
-  email: string;
-  nickname: string;
+export class UsersInfoResponse {
+  id!: string;
+  email!: string;
+  nickname!: string;
   hashed?: string;
-  role: Role;
+  role!: Role;
   auth_status?: AuthStatus;
 }
 
@@ -109,14 +109,14 @@ export class ReformerDetailInfoResponseDto {
   }
 }
 
-export interface UserProfileResponseDto{
-  userId: string,
-  email: string,
-  name: string,
-  nickName: string,
-  phone: string,
-  profilePhoto: string,
-  role: Role
+export class UserProfileResponseDto {
+  userId!: string;
+  email!: string;
+  name!: string;
+  nickName!: string;
+  phone!: string;
+  profilePhoto!: string;
+  role!: Role;
 }
 
 export class ReformerPortfolioDto {
