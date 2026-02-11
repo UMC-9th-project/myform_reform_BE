@@ -19,7 +19,7 @@ import {
   getOwnerWishList
 } from './wish.model.js';
 import type { UserAllowedTarget } from './wish.model.js';
-import { Role } from '../auth/auth.dto.js';
+import { Role } from '../auth/dto/auth.dto.js';
 
 export class WishService {
   constructor() {}
