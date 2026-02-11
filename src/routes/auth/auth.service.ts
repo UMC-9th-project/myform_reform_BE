@@ -11,7 +11,8 @@ import {
   RefreshTokenError, 
   EmailDuplicateError, 
   InputValidationError, 
-  SocialAccountDuplicateError
+  SocialAccountDuplicateError,
+  reformerNotApprovedError
 } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
@@ -179,6 +180,10 @@ export class AuthService {
       throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
     }
     
+    if (user.role === 'reformer' && user.auth_status === 'PENDING'){
+      throw new reformerNotApprovedError('reformerNotApprovedError')
+    }
+
     const payload: CustomJwt = {
       id: user.id,
       role: user.role,
@@ -292,11 +297,16 @@ export class AuthService {
       throw new passwordInvalidError('비밀번호가 일치하지 않습니다.');
     }
     
+    if (account.role === 'reformer' && account.auth_status === 'PENDING'){
+      throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+    }
+    
     const payload: CustomJwt = {
       id: account.id,
       role: account.role,
       ...(role === 'reformer' && { auth_status: account.auth_status })
     };
+    
 
     return await this.generateAndSaveTokens(payload);
   }
