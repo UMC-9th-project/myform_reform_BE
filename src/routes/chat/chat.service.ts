@@ -1,9 +1,10 @@
-import { CreateChatRoomWithProposalDTO, ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
+import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, LatestProposalPriceDTO } from './dto/chat.res.dto.js';
+import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO   } from './dto/chat.req.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
-import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
-import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
+import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,CreateMessageParams, } from './chat.model.js';
+import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, ChatRoomAccessDeniedError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
-import { v4, v7 } from 'uuid';
+import { v4 } from 'uuid';
 import { UploadService } from '../common/upload.service.js';
 import { ImageUrls } from '../common/upload.dto.js';
 import { OrdersService } from '../orders/orders.service.js';
@@ -701,6 +702,33 @@ export class ChatService {
     // 기존 이미지 중에서 새로운 리스트에 없는 이미지를 찾아 반환
     const imagesToDelete = oldImages.filter(oldImage => !newImages.includes(oldImage));
     return imagesToDelete;
+  }
+
+  /**
+   * 채팅방 내 가장 최신 제안서의 가격 정보 조회
+   */
+  async getLatestProposalPrice(
+    chatRoomId: string,
+    userId: string,
+    userType: 'owner' | 'requester'
+  ): Promise<LatestProposalPriceDTO> {
+    // 채팅방 참여자 검증
+    const isParticipant = await this.chatRepository.isUserInChatRoom(
+      chatRoomId, 
+      userId, 
+      userType === 'owner'
+    );
+    if (!isParticipant) {
+      throw new ChatRoomAccessDeniedError('채팅방에 접근 권한이 없습니다.');
+    }
+
+    const result = await this.chatRepository.getLatestProposalPriceByChatRoomId(chatRoomId);
+    
+    return {
+      price: result?.price ?? null,
+      delivery: result?.delivery ?? null,
+      expectedWorking: result?.expected_working ?? null
+    };
   }
 
 }

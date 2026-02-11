@@ -3,7 +3,7 @@ import { chat_message } from '@prisma/client';
 
 export type ChatRoomType = 'REQUEST' | 'PROPOSAL' | 'FEED'
 export type ChatRoomFilter = 'INQUIRY' | 'ORDER' | 'UNREAD';
-export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' | 'result';
+export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' | 'result' | 'accept';
 
 // 채팅방 payload에 담길 타입 정의
 export type ChatRoomPayload = 
@@ -18,6 +18,7 @@ export type ChatMessagePayload =
     | {urls: string[]}                                                        //이미지
     | { price: number; delivery: number; expectedWorking: number; receiptNumber?: string; orderId?: string }  //결제정보
     | { receiptNumber: string; totalAmount: number; currency: string; paymentMethod: { type: string; provider: string | null; cardNumber: string | null; }; approvedAt: string | null;}  //결과정보
+    | { isAccepted: boolean }                                                  //제안서 승인/거절
     | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
@@ -154,8 +155,10 @@ export class ChatMessageFactory {
     }else if ( messageType === 'payment'){
       payload = this.mapToPaymentPayload(content) as ChatMessagePayload;
       textContent = undefined;  // 결제 정보 타입은 텍스트 내용이 없어야 함
-    }
-    else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+    }else if ( messageType === 'accept'){
+      payload = this.mapToAcceptPayload(content) as ChatMessagePayload;
+      textContent = undefined; // 요청서 타입은 텍스트 내용이 없어야 함
+    }else if (this.PAYLOAD_TYPES.includes(messageType!)) {
       payload = content as ChatMessagePayload;
       textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
     } else {
@@ -171,6 +174,11 @@ export class ChatMessageFactory {
       textContent,
       payload
     );
+  }
+  static mapToAcceptPayload(target: any): ChatMessagePayload {
+    return {
+      isAccepted: target.isAccepted
+    };
   }
 
   static mapToRequestPayload(target: any): ChatMessagePayload {

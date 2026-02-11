@@ -371,7 +371,8 @@ export class ProfileService {
   async getProfileReviews(
     id: string,
     cursor: string | undefined,
-    limit: number
+    limit: number,
+    targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ): Promise<ReviewListResponse> {
     const owner = await this.resolveOwner(id);
     const ownerId = owner.owner_id;
@@ -380,7 +381,8 @@ export class ProfileService {
     const reviews = await this.profileRepository.findReviewsByOwnerId(
       ownerId,
       cursor,
-      take
+      take,
+      targetType
     );
     const hasNext = reviews.length > take;
     const actualReviews = hasNext ? reviews.slice(0, take) : reviews;
@@ -425,10 +427,38 @@ export class ProfileService {
         (r: { order: { target_id: string | null } | null }) =>
           r.order!.target_id!
       );
+    const requestIds: string[] = actualReviews
+      .filter(
+        (r: {
+          order: {
+            target_type: string | null;
+            target_id: string | null;
+          } | null;
+        }) => r.order?.target_type === 'REQUEST' && r.order?.target_id
+      )
+      .map(
+        (r: { order: { target_id: string | null } | null }) =>
+          r.order!.target_id!
+      );
+    const feedIds: string[] = actualReviews
+      .filter(
+        (r: {
+          order: {
+            target_type: string | null;
+            target_id: string | null;
+          } | null;
+        }) => r.order?.target_type === 'FEED' && r.order?.target_id
+      )
+      .map(
+        (r: { order: { target_id: string | null } | null }) =>
+          r.order!.target_id!
+      );
 
-    const [itemInfos, proposalInfos] = await Promise.all([
+    const [itemInfos, proposalInfos, requestInfos, feedInfos] = await Promise.all([
       this.profileRepository.getItemInfos([...new Set(itemIds)]),
-      this.profileRepository.getProposalInfos([...new Set(proposalIds)])
+      this.profileRepository.getProposalInfos([...new Set(proposalIds)]),
+      this.profileRepository.getRequestInfos([...new Set(requestIds)]),
+      this.profileRepository.getFeedInfos([...new Set(feedIds)])
     ]);
     type ProductInfo = {
       title: string | null;
@@ -447,6 +477,18 @@ export class ProfileService {
         { title: p.title, price: p.price, photo: p.photo }
       ])
     );
+    const requestMap = new Map<string, ProductInfo>(
+      requestInfos.map((r: { reform_request_id: string; title: string | null; minBudget: number | null; maxBudget: number | null; photo: string | null }) => [
+        r.reform_request_id,
+        { title: r.title, price: r.minBudget ?? r.maxBudget ?? null, photo: r.photo }
+      ])
+    );
+    const feedMap = new Map<string, ProductInfo>(
+      feedInfos.map((f: { chatRequestId: string; title: string | null; photo: string | undefined }) => [
+        f.chatRequestId,
+        { title: f.title, price: null, photo: f.photo ?? null }
+      ])
+    );
 
     const reviewList = actualReviews.map(
       (review: {
@@ -461,7 +503,7 @@ export class ProfileService {
         const order = review.order;
         const user = review.user_id ? userMap.get(review.user_id) : null;
         let productId: string | null = null;
-        let productType: 'ITEM' | 'PROPOSAL' | null = null;
+        let productType: 'ITEM' | 'PROPOSAL' | 'REQUEST' | 'FEED' | null = null;
         let productTitle: string | null = null;
         let productPhoto: string | null = null;
         let productPrice: number | null = null;
@@ -473,7 +515,11 @@ export class ProfileService {
               ? 'ITEM'
               : order.target_type === 'PROPOSAL'
                 ? 'PROPOSAL'
-                : null;
+                : order.target_type === 'REQUEST'
+                  ? 'REQUEST'
+                  : order.target_type === 'FEED'
+                    ? 'FEED'
+                    : null;
 
           if (productType === 'ITEM' && productId) {
             const item = itemMap.get(productId);
@@ -485,6 +531,16 @@ export class ProfileService {
             productTitle = proposal?.title ?? null;
             productPhoto = proposal?.photo ?? null;
             productPrice = proposal?.price ?? null;
+          } else if (productType === 'REQUEST' && productId) {
+            const req = requestMap.get(productId);
+            productTitle = req?.title ?? null;
+            productPhoto = req?.photo ?? null;
+            productPrice = req?.price ?? null;
+          } else if (productType === 'FEED' && productId) {
+            const feed = feedMap.get(productId);
+            productTitle = feed?.title ?? null;
+            productPhoto = feed?.photo ?? null;
+            productPrice = feed?.price ?? null;
           }
         }
 

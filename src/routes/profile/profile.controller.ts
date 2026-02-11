@@ -242,7 +242,7 @@ export class ProfileController extends Controller {
       success: {
         orderId: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
         targetId: '550e8400-e29b-41d4-a716-446655440000',
-        status: 'PAID',
+        status: 'COMPLETE',
         price: 53000,
         deliveryFee: 3000,
         userName: '구매자이름',
@@ -566,6 +566,7 @@ export class ProfileController extends Controller {
    * @param ownerId owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @param targetType 필터: ITEM|PROPOSAL|FEED|REQUEST (선택, 없으면 전체 타입)
    * @returns 리뷰 목록
    */
   @Get('{ownerId}/review')
@@ -583,13 +584,15 @@ export class ProfileController extends Controller {
   public async getProfileReviews(
     @Path() ownerId: string,
     @Query() cursor?: string,
-    @Query() limit?: number
+    @Query() limit?: number,
+    @Query() targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ): Promise<TsoaResponse<ReviewListResponse>> {
     const limitValue = limit && limit > 0 ? limit : 20;
     const result = await this.profileService.getProfileReviews(
       ownerId,
       cursor,
-      limitValue
+      limitValue,
+      targetType
     );
     return new ResponseHandler(result);
   }
