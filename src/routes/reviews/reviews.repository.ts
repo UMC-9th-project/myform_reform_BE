@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.config.js';
-import { review } from '@prisma/client';
+import { review, owner } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client/extension';
 import {
   RawItemInfo,
@@ -10,7 +11,10 @@ import {
   UnifiedProductInfo,
   RawProposalReviewData,
   ProposalReviewStats,
-  ProposalReviewSortBy
+  ProposalReviewSortBy,
+  ItemReviewWithPhotos,
+  ReviewTargetType,
+  ReviewStatData
 } from './reviews.model.js';
 
 export class ReviewsRepository {
@@ -197,32 +201,36 @@ export class ReviewsRepository {
     });
   }
 
-  // 리폼러 ID로 연결된 order ID 목록 조회 (리폼러의 모든 제안서에 대한 주문)
+  // 리폼러(owner_id)가 판매자인 모든 주문의 order_id 목록 조회
   async getOrderIdsByReformerId(reformerId: string): Promise<string[]> {
-    // 1. 리폼러의 모든 제안서 ID 조회
-    const proposals = await this.prisma.reform_proposal.findMany({
-      where: {
-        owner_id: reformerId
-      },
-      select: {
-        reform_proposal_id: true
-      }
-    });
-    const proposalIds = proposals.map((p: { reform_proposal_id: string }) => p.reform_proposal_id);
-
-    if (proposalIds.length === 0) return [];
-
-    // 2. 해당 제안서들에 연결된 order ID 조회
     const orders = await this.prisma.order.findMany({
       where: {
-        target_type: 'PROPOSAL',
-        target_id: { in: proposalIds }
+        owner_id: reformerId
       },
       select: {
         order_id: true
       }
     });
     return orders.map((o: { order_id: string }) => o.order_id);
+  }
+
+  async getFeedInfos(chatRequestIds: string[]): Promise<UnifiedProductInfo[]> {
+    if (!chatRequestIds?.length) return [];
+    const chatRequests = await this.prisma.chat_request.findMany({
+      where: {
+        chat_request_id: { in: chatRequestIds }
+      },
+      select: {
+        chat_request_id: true,
+        title: true,
+        image: true
+      }
+    });
+    return chatRequests.map((cr: { chat_request_id: string; title: string | null; image: string[] }) => ({
+      product_id: cr.chat_request_id,
+      title: cr.title,
+      thumbnail: cr.image?.[0] ?? ''
+    }));
   }
 
   // 리폼러 리뷰 통계 조회 (총 리뷰 수, 평균 별점, 사진 후기 수, 리뷰 사진 목록)
@@ -301,7 +309,6 @@ export class ReviewsRepository {
       }
     });
   }
-
   private getReviewSortOrder(sortBy: ProposalReviewSortBy) {
     switch (sortBy) {
       case 'high_rating':
@@ -312,5 +319,211 @@ export class ReviewsRepository {
       default:
         return { created_at: 'desc' as const };
     }
+  }
+
+  // --- 4종 타입 공통--
+
+  async findReviewsForTarget(
+    targetType: ReviewTargetType,
+    targetId: string,
+    orderBy:
+      | Prisma.reviewOrderByWithRelationInput
+      | Prisma.reviewOrderByWithRelationInput[],
+    skip: number,
+    take: number
+  ): Promise<ItemReviewWithPhotos[]> {
+    return await this.prisma.review.findMany({
+      where: {
+        order: {
+          target_type: targetType,
+          target_id: targetId
+        }
+      },
+      include: {
+        review_photo: {
+          select: {
+            content: true,
+            photo_order: true
+          },
+          orderBy: { photo_order: 'asc' }
+        }
+      },
+      orderBy: orderBy,
+      skip,
+      take
+    });
+  }
+
+  async countReviewsForTarget(
+    targetType: ReviewTargetType,
+    targetId: string
+  ): Promise<number> {
+    return await this.prisma.review.count({
+      where: {
+        order: {
+          target_type: targetType,
+          target_id: targetId
+        }
+      }
+    });
+  }
+
+  async findAverageStarForTarget(targetType: ReviewTargetType, targetId: string) {
+    return await this.prisma.review.aggregate({
+      where: {
+        order: {
+          target_type: targetType,
+          target_id: targetId
+        }
+      },
+      _avg: { star: true }
+    });
+  }
+
+  async getReformerReviewStat(reformerId: string): Promise<ReviewStatData> {
+    return await this.prisma.review.aggregate({
+      where: { owner_id: reformerId },
+      _count: { review_id: true },
+      _avg: { star: true }
+    });
+  }
+
+  /** 4종 target별 썸네일 URL 조회 */
+  async findTargetThumbnail(
+    targetType: ReviewTargetType,
+    targetId: string
+  ): Promise<string | null> {
+    switch (targetType) {
+      case 'ITEM': {
+        const row = await this.prisma.item_photo.findFirst({
+          where: { item_id: targetId },
+          orderBy: { photo_order: 'asc' },
+          select: { content: true }
+        });
+        return row?.content ?? null;
+      }
+      case 'PROPOSAL': {
+        const row = await this.prisma.reform_proposal_photo.findFirst({
+          where: { reform_proposal_id: targetId },
+          orderBy: { photo_order: 'asc' },
+          select: { content: true }
+        });
+        return row?.content ?? null;
+      }
+      case 'FEED': {
+        const row = await this.prisma.chat_request.findUnique({
+          where: { chat_request_id: targetId },
+          select: { image: true }
+        });
+        return row?.image?.[0] ?? null;
+      }
+      case 'REQUEST': {
+        const row = await this.prisma.reform_request_photo.findFirst({
+          where: { reform_request_id: targetId },
+          orderBy: { photo_order: 'asc' },
+          select: { content: true }
+        });
+        return row?.content ?? null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  async findReviewWithPhotosByTarget(
+    targetType: ReviewTargetType,
+    targetId: string,
+    reviewId: string
+  ): Promise<ItemReviewWithPhotos | null> {
+    return await this.prisma.review.findFirst({
+      where: {
+        review_id: reviewId,
+        order: {
+          target_type: targetType,
+          target_id: targetId
+        }
+      },
+      include: {
+        review_photo: {
+          select: {
+            content: true,
+            photo_order: true
+          },
+          orderBy: { photo_order: 'asc' }
+        }
+      }
+    });
+  }
+
+  async countTotalPhotosForTarget(
+    targetType: ReviewTargetType,
+    targetId: string
+  ): Promise<number> {
+    return await this.prisma.review_photo.count({
+      where: {
+        review: {
+          order: {
+            target_type: targetType,
+            target_id: targetId
+          }
+        }
+      }
+    });
+  }
+
+  async findReviewPhotosForTarget(
+    targetType: ReviewTargetType,
+    targetId: string,
+    offset: number,
+    limit: number
+  ): Promise<
+    Array<{
+      review_id: string;
+      photo_url: string;
+      photo_order: number;
+    }>
+  > {
+    type PhotoRow = {
+      review_id: string;
+      content: string;
+      photo_order: number | null;
+    };
+    const photos = (await this.prisma.$queryRaw(
+      Prisma.sql`
+      SELECT 
+        rp.review_id,
+        rp.content,
+        rp.photo_order
+      FROM review_photo rp
+      INNER JOIN review r ON rp.review_id = r.review_id
+      INNER JOIN "order" o ON r.order_id = o.order_id
+      WHERE o.target_type = (${targetType})::target_type_enum
+        AND o.target_id = (${targetId})::uuid
+        AND rp.content IS NOT NULL
+      ORDER BY r.created_at DESC, rp.photo_order ASC NULLS LAST
+      LIMIT ${limit + 1}
+      OFFSET ${offset}
+    `
+    )) as PhotoRow[];
+
+    return photos.map((photo: PhotoRow) => ({
+      review_id: photo.review_id,
+      photo_url: photo.content,
+      photo_order: photo.photo_order ?? 0
+    }));
+  }
+
+  async syncReformerReviewStat(
+    reformerId: string,
+    reviewCount: number,
+    avgStar: number | null
+  ): Promise<owner> {
+    return await this.prisma.owner.update({
+      where: { owner_id: reformerId },
+      data: {
+        review_count: reviewCount,
+        avg_star: avgStar
+      }
+    });
   }
 }

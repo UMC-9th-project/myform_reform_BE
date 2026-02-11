@@ -30,6 +30,7 @@ import { Decimal } from '@prisma/client/runtime/binary';
 import { CreateReviewRequestDto } from './dto/orders.req.dto.js';
 import { CreateReviewInput } from './orders.model.js';
 import { CreateReviewResponseDto } from './dto/orders.res.dto.js';
+import { ReviewsRepository } from '../reviews/reviews.repository.js';
 
 
 export class OrdersService {
@@ -40,7 +41,10 @@ export class OrdersService {
     OrdersService.ORDER_NUMBER_LENGTH
   );
 
-  constructor(private repository: OrdersRepository = new OrdersRepository()) {}
+  constructor(
+    private repository: OrdersRepository = new OrdersRepository(),
+    private reviewsRepository: ReviewsRepository = new ReviewsRepository()
+  ) {}
 
   /**
    * 옵션 검증 (공통 로직)
@@ -881,7 +885,7 @@ export class OrdersService {
 
         const initialOrderStatus =
           receipt.payment_status === 'paid'
-            ? order_status_enum.PAID
+            ? order_status_enum.COMPLETE
             : order_status_enum.PENDING;
 
         let firstOrderId: string | null = null;
@@ -1262,10 +1266,10 @@ export class OrdersService {
         return { didUpdate: false };
       }
 
-      const allPaid = receipt.order.every(
-        (o) => o.status === order_status_enum.PAID
+      const allComplete = receipt.order.every(
+        (o) => o.status === order_status_enum.COMPLETE
       );
-      if (allPaid) {
+      if (allComplete) {
         return { didUpdate: false };
       }
 
@@ -1326,7 +1330,7 @@ export class OrdersService {
         const orderIds = receipt.order.map((o) => o.order_id);
         await this.repository.updateOrdersStatus(
           orderIds,
-          order_status_enum.PAID
+          order_status_enum.COMPLETE
         );
 
         const transactionPayload = this.buildTransactionPayload(
@@ -2157,7 +2161,7 @@ export class OrdersService {
 
         const initialOrderStatus =
           receipt.payment_status === 'paid'
-            ? order_status_enum.PAID
+            ? order_status_enum.COMPLETE
             : order_status_enum.PENDING;
 
         const createdOrders: Array<{ order_id: string; item_id: string }> = [];
@@ -2298,15 +2302,23 @@ export class OrdersService {
     if (!order) {
       throw new OrderNotFoundError(orderId);
     }
-    if (order.status == order_status_enum.PENDING) {
+    // PENDING만 리뷰 불가. COMPLETE(결제 완료) 등은 리뷰 허용
+    if (order.status === order_status_enum.PENDING) {
       throw new ReviewNotAllowedError('해당 주문은 리뷰 작성 가능한 상태가 아닙니다.');
     }
     if (await this.repository.findReviewByOrderId(orderId)) {
       throw new ReviewAlreadyExistsError('해당 주문에 대한 리뷰가 이미 작성되었습니다.');
     }
-    const createReviewInput = new CreateReviewInput(orderId, userId, order.owner_id, requestBody);
-    const review = await this.repository.createReview(createReviewInput);
-    const createReviewResponse = new CreateReviewResponseDto(review);
-    return createReviewResponse;
+    return await runInTransaction(async () => {
+      const createReviewInput = new CreateReviewInput(orderId, userId, order.owner_id, requestBody);
+      const review = await this.repository.createReview(createReviewInput);
+      const createReviewResponse = new CreateReviewResponseDto(review);
+      const ownerId = order.owner_id
+      const reformerReviewstat = await this.reviewsRepository.getReformerReviewStat(ownerId);
+      const reviewCount = reformerReviewstat._count.review_id
+      const avgStar = reformerReviewstat._avg.star
+      await this.reviewsRepository.syncReformerReviewStat(ownerId, reviewCount, avgStar)
+      return createReviewResponse;
+    });
   }
 }

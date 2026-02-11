@@ -1,9 +1,15 @@
 import { DatabaseError } from "./users.error.js";
-import { UpdateReformerProfileParams, UpdateUserProfileParams } from "./dto/users.req.dto.js";
+import { 
+  UpdateReformerProfileParams, 
+  UpdateReformerStatusRequestDto, 
+  UpdateUserProfileParams 
+} from "./dto/users.req.dto.js";
+import {
+  UsersInfoResponseDto
+} from "./dto/users.res.dto.js";
 import prisma from "../../config/prisma.config.js";
-import { user, owner } from "@prisma/client";
+import { reformer_status_enum, account_role,  provider_type, user, owner, social_account } from "@prisma/client";
 import { RawUserPorfile, rawReformerPortfolio } from './users.model.js';
-import { reformer_status_enum } from '@prisma/client';
 
 export class UsersRepository {
   async updateUserProfile(updateUserProfileParams: UpdateUserProfileParams): Promise<user> {
@@ -48,15 +54,10 @@ export class UsersRepository {
   }
 
   async findReformerbyReformerId(reformerId: string): Promise<owner | null> {
-    try {
-      const reformer = await prisma.owner.findUnique({
-        where: { owner_id: reformerId },
-      });
-      return reformer;
-    } catch (error) {
-      console.error(error);
-      throw new DatabaseError('리폼러 조회 중 DB에서 오류가 발생했습니다.');
-    }
+    const reformer = await prisma.owner.findUnique({
+      where: { owner_id: reformerId },
+    });
+    return reformer;
   }
 
   async getUserProfile(userId: string): Promise<RawUserPorfile | null> {
@@ -110,5 +111,189 @@ export class UsersRepository {
       })
     ])
     return { totalCount, items };
+  }
+
+  async findUserByEmail(email: string): Promise<UsersInfoResponseDto | null> {
+    const user = await prisma.user.findUnique({
+      where: { email: email }
+    });
+    if (!user){
+      return null;
+    }
+    return{
+      id: user?.user_id as string,
+      email: user?.email as string,
+      nickname: user?.nickname as string,
+      role: 'user',
+      hashed: user?.hashed as string
+    };
+  }
+
+  async findReformerByEmail(email: string): Promise<UsersInfoResponseDto | null> {
+    const reformer = await prisma.owner.findUnique({
+      where: { email: email }
+    });
+    if (!reformer){
+      return null;
+    }
+    return{
+      id: reformer?.owner_id as string,
+      email: reformer?.email as string,
+      nickname: reformer?.nickname as string,
+      role: 'reformer',
+      auth_status: reformer?.status,
+      hashed: reformer?.hashed as string
+    };
+  }
+
+  async findUserSocialAccountById(userId: string): Promise<social_account | null>{
+    const socialAccount = await prisma.social_account.findFirst({
+      where: {
+        role: 'USER',
+        user_id : userId
+      }
+    })
+    return socialAccount
+  }
+
+  async findReformerSocialAccountById(reformerId: string): Promise<social_account | null>{
+    const socialAccount = await prisma.social_account.findFirst({
+      where: {
+        role: 'OWNER',
+        user_id : reformerId
+      }
+    })
+    return socialAccount
+  }
+
+  async isUserNicknameDuplicate(nickname: string): Promise<boolean> {
+    const user = await prisma.user.findFirst({
+      where: { nickname: nickname }
+    });
+    return !!(user);
+  }
+
+  async isReformerNicknameDuplicate(nickname: string): Promise<boolean> {
+    const reformer = await prisma.owner.findFirst({
+      where: { nickname: nickname }
+    });
+    return !!(reformer);
+  }
+
+  async updateReformerStatus(reformerId: string, requestBody: UpdateReformerStatusRequestDto): Promise<UsersInfoResponseDto> {
+    const { status } = requestBody;
+    const reformer = await prisma.owner.update({
+      where: { owner_id: reformerId },
+      data: { status: status }
+    });
+    return {
+      id: reformer.owner_id,
+      email: reformer.email as string,
+      nickname: reformer.nickname as string,
+      role: 'reformer',
+      auth_status: reformer.status
+    };
+  }
+
+  async findUserByPhoneNumber(phoneNumber: string): Promise<UsersInfoResponseDto | null> {
+    const user = await prisma.user.findUnique({
+      where: { phone: phoneNumber }
+    });
+    if (!user){
+      return null;
+    }
+    return{
+      id: user?.user_id as string,
+      email: user?.email as string,
+      nickname: user?.nickname as string,
+      role: 'user',
+      hashed: user?.hashed as string
+    };
+  }
+
+  async findReformerByPhoneNumber(phoneNumber: string): Promise<UsersInfoResponseDto | null> {
+    const reformer = await prisma.owner.findUnique({
+      where: { phone: phoneNumber }
+    });
+    if (!reformer){
+      return null;
+    }
+    return{
+      id: reformer?.owner_id as string,
+      email: reformer?.email as string,
+      nickname: reformer?.nickname as string,
+      role: 'reformer',
+      hashed: reformer?.hashed as string,
+      auth_status: reformer?.status
+    };
+  }
+
+  async findUserById(userId: string): Promise<UsersInfoResponseDto | null> {
+    const user = await prisma.user.findUnique({
+      where: { user_id: userId }
+    });
+    if (!user){
+      return null;
+    }
+    return{
+      id: user?.user_id as string,
+      email: user?.email as string,
+      nickname: user?.nickname as string,
+      role: 'user',
+      hashed: user?.hashed as string
+    };
+  }
+
+  async findReformerById(userId: string): Promise<UsersInfoResponseDto | null> {
+    const reformer = await prisma.owner.findUnique({
+      where: { owner_id: userId }
+    });
+    if (!reformer){
+      return null;
+    }
+    return{
+      id: reformer?.owner_id as string,
+      email: reformer?.email as string,
+      nickname: reformer?.nickname as string,
+      role: 'reformer',
+      auth_status: reformer?.status,
+      hashed: reformer?.hashed
+    } as UsersInfoResponseDto;
+  }
+
+  async findSocialAccountByProviderId(
+    provider: provider_type, 
+    providerId: string, 
+    role: account_role
+    ): Promise<social_account | null> {
+    const socialAccount = await prisma.social_account.findFirst({
+      where: { 
+        provider: provider as provider_type, 
+        provider_id: providerId, 
+        role: role as account_role 
+      }
+    });
+    if (!socialAccount){
+      return null;
+    }
+    return socialAccount;
+  }
+
+  async findSocialAccountByProviderIdAndProviderTypeAndRole(
+    providerId: string, 
+    providerType: provider_type, 
+    role: account_role
+  ): Promise<social_account | null> {
+    const socialAccount = await prisma.social_account.findFirst({
+      where: { 
+        provider: providerType, 
+        provider_id: providerId, 
+        role: role 
+      }
+    });
+    if (!socialAccount){
+      return null;
+    }
+    return socialAccount;
   }
 }

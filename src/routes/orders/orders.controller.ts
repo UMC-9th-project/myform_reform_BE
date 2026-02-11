@@ -431,7 +431,7 @@ export class OrdersController extends Controller {
    * @param requestBody 결제 검증 요청 (order_id, imp_uid)
    * @returns 결제 검증 결과
    * @description 프론트엔드에서 포트원 결제 완료 콜백에서 호출합니다.
-   *              포트원 API로 결제 정보를 검증하고 주문 상태를 PAID로 업데이트합니다.
+   *              포트원 API로 결제 정보를 검증하고 주문 상태를 COMPLETE로 업데이트합니다.
    * @example requestBody {
    *   "order_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
    *   "imp_uid": "imp_1234567890"
@@ -561,7 +561,7 @@ export class OrdersController extends Controller {
       success: {
         order_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
         receipt_number: '481025937412',
-        status: 'PAID',
+        status: 'COMPLETE',
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',

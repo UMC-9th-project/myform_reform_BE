@@ -476,8 +476,7 @@ export class ProfileRepository {
       title: feed.title,
       photo: feed.image[0],
       min_budget: feed.min_budget,
-      max_budget: feed.max_budget,
-      expectedWorking: feed.expected_working
+      max_budget: feed.max_budget
     }));
   }
 
@@ -749,11 +748,19 @@ export class ProfileRepository {
   async findReviewsByOwnerId(
     ownerId: string,
     cursor: string | undefined,
-    take: number
+    take: number,
+    targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ) {
-    const where = cursor
+    const where: {
+      owner_id: string;
+      review_id?: { lt: string };
+      order?: { target_type: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST' };
+    } = cursor
       ? { owner_id: ownerId, review_id: { lt: cursor } }
       : { owner_id: ownerId };
+    if (targetType) {
+      where.order = { target_type: targetType };
+    }
 
     return await this.prisma.review.findMany({
       where,

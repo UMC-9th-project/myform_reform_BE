@@ -16,10 +16,12 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
+import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './dto/chat.req.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, ChatMessageListDTO, LatestProposalPriceDTO } from './dto/chat.res.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 import express from 'express';
+import { BasicError } from '../../middleware/error.js';
 
 @Route('chat')
 @Tags('채팅 기능')
@@ -36,7 +38,7 @@ export class ChatController extends Controller {
    * @summary 채팅방 생성
    * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다. 
    * **채팅방 타입별 생성 규칙:**
-   * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설
+   * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설(현재 취소)
    * - PROPOSAL: 유저가 리폼러의 제안서를 보고 채팅방 개설
    * - FEED: 유저가 리폼러의 피드를 보고 문의 채팅방 개설
    * 각 대상의 id를 입력, feed의 경우 ownerId 입력
@@ -62,6 +64,33 @@ export class ChatController extends Controller {
   ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
     const result = await this.chatService.createChatRoom(body.dto, request.user.id);
     return new ResponseHandler<CreateChatRoomResponseDTO>(result);
+  }
+  /**
+   * @summary 채팅방 생성 (요청서를 기반으로 제안서와 함께)
+   * @param body 채팅방 생성 요청 데이터와 제안서 작성 데이터
+   * @returns 생성된 채팅방의 고유 아이디와 생성 일시
+   */
+  @Post('/rooms/request')
+  @Security('jwt')
+  @SuccessResponse('201', 'Created')
+  @Example<TsoaResponse<CreateChatRoomResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: new Date(),
+      isNew: true
+    }
+  })
+  public async createChatRoomWithProposal(
+    @Request() request: express.Request,
+    @Body() body: CreateChatRoomWithProposalDTO
+  ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
+    const {chatRoomResponse, message, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
+    if(chatRoomResponse.isNew == true){
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    }
+    return new ResponseHandler<CreateChatRoomResponseDTO>(chatRoomResponse);
   }
 
   /**
@@ -388,4 +417,34 @@ export class ChatController extends Controller {
     const result = await this.chatService.getChatMessages(request.user.id, userType, roomId, cursor, limit);
     return new ResponseHandler<ChatMessageListDTO>(result);
   }
+
+  /**
+   * @summary 채팅방 내 최신 제안서 가격 정보 조회
+   * @description 특정 채팅방에서 가장 최근에 작성된 제안서의 가격, 배달비, 예상 작업 기간을 조회합니다.
+   * 제안서가 없는 경우 각 필드는 null로 반환됩니다.
+   * 
+   * @param roomId 채팅방의 고유 아이디
+   * @returns 최신 제안서의 가격, 배달비, 예상 작업 기간
+   */
+  @Get('/rooms/{roomId}/latest-proposal-price')
+  @Security('jwt')
+  @Example<TsoaResponse<LatestProposalPriceDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      price: 45000,
+      delivery: 3000,
+      expectedWorking: 7
+    }
+  })
+  public async getLatestProposalPrice(
+    @Request() request: express.Request,
+    @Path() roomId: string
+  ): Promise<TsoaResponse<LatestProposalPriceDTO>> {
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getLatestProposalPrice(roomId, request.user.id, userType);
+    return new ResponseHandler<LatestProposalPriceDTO>(result);
+  }
+
+
 }

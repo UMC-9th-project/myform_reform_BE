@@ -260,7 +260,7 @@ export class ReformRepository {
   }
 
   /**
-   * 결제 완료(PAID) 주문이 있는 target_id 목록 조회 (이미 완료된 요청/제안 표시용)
+   * 거래 완료(COMPLETE) 주문이 있는 target_id 목록 조회 (이미 완료된 요청/제안 표시용)
    */
   async findPaidOrderTargetIds(
     targetType: 'REQUEST' | 'PROPOSAL',
@@ -271,7 +271,7 @@ export class ReformRepository {
       where: {
         target_type: targetType,
         target_id: { in: targetIds },
-        status: 'PAID'
+        status: 'COMPLETE'
       },
       select: { target_id: true }
     });

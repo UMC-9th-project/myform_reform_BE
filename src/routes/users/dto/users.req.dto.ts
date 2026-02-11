@@ -1,9 +1,13 @@
 import { processKeywords, validateBio, validateEmail, validateNickname, validatePhoneNumber } from '../../../utils/validators.js';
-import { AuthStatus } from '../../auth/auth.dto.js';
-
+import { reformer_status_enum } from '@prisma/client';
 // 리폼러 상태 업데이트 요청 데이터 (Controller -> Service)
-export interface UpdateReformerStatusRequest {
-  status: AuthStatus;
+export class UpdateReformerStatusRequestDto {
+  status: reformer_status_enum;
+  constructor(
+    status: reformer_status_enum
+  ){
+    this.status = status
+  }
 }
 
 export class UpdateUserProfileRequestDto {

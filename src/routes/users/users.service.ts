@@ -1,15 +1,15 @@
 import { 
-  CheckNicknameResponse, 
   UpdateUserProfileResponseDto, 
-  UsersInfoResponse, 
+  UsersInfoResponseDto, 
   UpdateReformerProfileResponseDto, 
   UserDetailInfoResponseDto, 
   ReformerDetailInfoResponseDto,
-  ReformerPortfolioDto
+  ReformerPortfolioDto,
+  CheckNicknameResponseDto
 } from './dto/users.res.dto.js';
 import { SolapiMessageService} from 'solapi';
 import { 
-  UpdateReformerStatusRequest, 
+  UpdateReformerStatusRequestDto, 
   UpdateUserProfileParams, 
   UpdateUserProfileRequestDto,
   UpdateReformerProfileRequestDto, 
@@ -17,7 +17,6 @@ import {
 } from './dto/users.req.dto.js';
 import { validateNickname } from '../../utils/validators.js';
 import { 
-  UsersModel, 
   UserProfile
 } from './users.model.js';
 import { 
@@ -31,7 +30,7 @@ import {
   PhoneNumberDuplicateError 
 } from './users.error.js';
 import { UsersRepository } from './users.repository.js';
-import { AuthStatus } from '../auth/auth.dto.js';
+import { AuthStatus } from '../auth/dto/auth.dto.js';
 import { reformer_status_enum } from '@prisma/client';
 
 const messageService = new SolapiMessageService(
@@ -42,19 +41,17 @@ const messageService = new SolapiMessageService(
 export class UsersService {
 
   private usersRepository: UsersRepository;
-  private usersModel: UsersModel;
   constructor() {
     this.usersRepository = new UsersRepository();
-    this.usersModel = new UsersModel();
   }
 
   // 리폼러 상태 업데이트
-  async updateReformerStatus(reformerId: string, requestBody: UpdateReformerStatusRequest): Promise<UsersInfoResponse> {
+  async updateReformerStatus(reformerId: string, requestBody: UpdateReformerStatusRequestDto): Promise<UsersInfoResponseDto> {
     const reformer = await this.usersRepository.findReformerbyReformerId(reformerId);
     if (!reformer) {
       throw new AccountNotFoundError('리폼러의 계정이 존재하지 않습니다.')
     }
-    const result = await this.usersModel.updateReformerStatus(reformerId, requestBody);
+    const result = await this.usersRepository.updateReformerStatus(reformerId, requestBody);
     
     
     if (result.auth_status && reformer.status !== result.auth_status) {
@@ -62,26 +59,27 @@ export class UsersService {
         console.error(`[SMS 전송 실패] ID: ${reformerId}, Error: ${err.message}`)
       })
     }
-    return result as UsersInfoResponse;
+    return result;
   }
 
   // 닉네임 중복 검사 (가능 여부 반환)
-  async checkNickname(nickname: string): Promise<CheckNicknameResponse> {
+  async checkNickname(nickname: string): Promise<CheckNicknameResponseDto> {
     await validateNickname(nickname);
     try {
-      const isDuplicate = await this.usersModel.isNicknameDuplicate(nickname);
-      if (isDuplicate) {
+      const isUserDuplicate = await this.usersRepository.isUserNicknameDuplicate(nickname);
+      const isReformerDuplicate = await this.usersRepository.isReformerNicknameDuplicate(nickname);
+      if (isUserDuplicate || isReformerDuplicate) {
         return {
           isAvailable: false,
           nickname: nickname,
           message: '이미 존재하는 닉네임입니다.'
-        } as CheckNicknameResponse;
+        };
       } else {
         return {
           isAvailable: true,
           nickname: nickname,
           message: '사용 가능한 닉네임입니다.'
-        } as CheckNicknameResponse;
+        };
       }
     } catch (error) {
       throw new UnknownAuthError('닉네임 검증 중 알 수 없는 오류가 발생했습니다.');
@@ -116,7 +114,9 @@ export class UsersService {
       reformerId: reformerId,
       ...requestBody
     })
-    if (updateReformerProfileParams.nickname !== undefined) {
+    const reformer = await this.usersRepository.findReformerById(reformerId)
+    if (updateReformerProfileParams.nickname !== undefined 
+      && reformer?.nickname !== updateReformerProfileParams.nickname) {
       await this.checkNicknameDuplicate(updateReformerProfileParams.nickname);
     }
     const updatedReformer = await this.usersRepository.updateReformerProfile(updateReformerProfileParams);
@@ -125,7 +125,9 @@ export class UsersService {
   }
   
   private async checkNicknameDuplicate(nickname: string): Promise<void> {
-    const isDuplicate = await this.usersModel.isNicknameDuplicate(nickname);
+    const isDuplicate = (
+      await this.usersRepository.isUserNicknameDuplicate(nickname)
+      || await this.usersRepository.isReformerNicknameDuplicate(nickname));
     if (isDuplicate) {
       throw new NicknameDuplicateError('이미 존재하는 닉네임입니다.');
     }
@@ -133,14 +135,14 @@ export class UsersService {
 
   // 전화번호 유효성 및 중복 검사
   private async checkPhoneNumberDuplicate(phone: string, userId: string): Promise<void> {
-    const user = await this.usersModel.findUserByPhoneNumber(phone as string);
+    const user = await this.usersRepository.findUserByPhoneNumber(phone as string);
     if (user && user.id !== userId) {
       throw new PhoneNumberDuplicateError('이미 존재하는 전화번호입니다.');
     }
   }
   // 이메일 유효성 및 중복 검사
   private async checkEmailDuplicate(email: string, userId: string): Promise<void> {
-    const user = await this.usersModel.findUserByEmail(email as string);
+    const user = await this.usersRepository.findUserByEmail(email as string);
     if (user && user.id !== userId) {
       throw new EmailDuplicateError('이미 존재하는 이메일입니다.');
     }

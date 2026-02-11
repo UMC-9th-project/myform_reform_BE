@@ -468,6 +468,34 @@ export class ChatRepository {
     }
   }
 
+  /**
+   * 채팅방 내 가장 최근 제안서의 가격 정보 조회
+   */
+  async getLatestProposalPriceByChatRoomId(
+    chatRoomId: string
+  ): Promise<{ price: number | null; delivery: number | null; expected_working: number | null } | null> {
+    try {
+      const result = await prisma.chat_proposal.findFirst({
+        where: {
+          chat_message: {
+            chat_room_id: chatRoomId
+          }
+        },
+        select: {
+          price: true,
+          delivery: true,
+          expected_working: true
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      });
+      return result;
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+
   async createChatProposal(
     proposalId: string | null,
     title: string,
