@@ -318,6 +318,7 @@ export type RawOrderData = Prisma.orderGetPayload<{
     target_type: true;
     quantity: true;
     tracking_number: true;
+    chat_room_id: true;
     owner: {
       select: {
         nickname: true;
@@ -327,12 +328,6 @@ export type RawOrderData = Prisma.orderGetPayload<{
       select: {
         created_at: true;
         receipt_number: true;
-        delivery_address: true;
-        delivery_address_detail: true;
-        delivery_address_name: true;
-        delivery_phone: true;
-        delivery_postal_code: true;
-        delivery_recipient_name: true;
       };
     };
     review: {
@@ -373,7 +368,8 @@ export class Order {
       ownerNickname: raw.owner.nickname ?? '',
       createdAt: raw.receipt?.created_at ?? new Date(),
       reviewAvailable: reviewAvailable,
-      reviewId: raw.review[0]?.review_id ?? null
+      reviewId: raw.review[0]?.review_id ?? null,
+      chat_room_id: raw.chat_room_id ?? ''
     });
   }
 

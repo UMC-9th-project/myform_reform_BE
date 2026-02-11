@@ -154,6 +154,7 @@ export class ReformerPortfolioDto {
   introduction: string | null;
   photos: string[] | null;
   business_number: string | null;
+  status: reformer_status_enum;
 
   constructor(data: {
     owner_id: string;
@@ -164,6 +165,7 @@ export class ReformerPortfolioDto {
     portfolio: string | null;
     photos: string[] | null;
     business_number: string | null;
+    status: reformer_status_enum;
   }) {
     this.owner_id = data.owner_id;
     this.name = data.name;
@@ -173,6 +175,7 @@ export class ReformerPortfolioDto {
     this.introduction = data.portfolio;
     this.photos = data.photos;
     this.business_number = data.business_number;
+    this.status = data.status;
   }
 
   static fromRaw(raw: rawReformerPortfolio): ReformerPortfolioDto {
@@ -184,6 +187,7 @@ export class ReformerPortfolioDto {
       nickname: raw.nickname,
       email: raw.email,
       phone: raw.phone,
+      status: raw.status,
       portfolio: auth?.portfolio ?? null,
       photos: auth?.photo ?? [],
       business_number: auth?.business_number ?? null,

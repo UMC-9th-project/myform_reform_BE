@@ -49,15 +49,23 @@ export class MarketService {
     }
 
     const buildTree = (parentId: string | null): CategoryTreeItemDto[] => {
-      const items = (byParent.get(parentId) ?? []).sort(
-        (a, b) => a.sortOrder - b.sortOrder
-      );
-      return items.map((item) => ({
-        categoryId: item.categoryId,
-        name: item.name,
-        sortOrder: item.sortOrder,
-        children: buildTree(item.categoryId)
-      }));
+      const items = (byParent.get(parentId) ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+      return items.map((item) => {
+        const subChildren = buildTree(item.categoryId);
+        const isSecondDepth = parentId === null;
+        const children: CategoryTreeItemDto[] = isSecondDepth
+          ? [
+              { categoryId: item.categoryId, name: '전체', sortOrder: 0, children: [] },
+              ...subChildren
+            ]
+          : subChildren;
+        return {
+          categoryId: item.categoryId,
+          name: item.name,
+          sortOrder: item.sortOrder,
+          children
+        };
+      });
     };
 
     return {

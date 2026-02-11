@@ -176,12 +176,18 @@ export class UsersService {
   }
 
   // 리폼러 포트폴리오 정보 조회
-  async getReformerPortfolios(status: reformer_status_enum): Promise<ReformerPortfolioDto[]> {
-    const reformerPortfolios = await this.usersRepository.getReformerPortfolios(status);
-    const dtos : ReformerPortfolioDto[] = reformerPortfolios.map((item) => {
-      return ReformerPortfolioDto.fromRaw(item)
-    })
-    return dtos
+  async getReformerPortfolios(
+    status: reformer_status_enum | 'ALL',
+    page: number,
+    limit: number,
+    order: 'asc' | 'desc'
+  ): Promise< { totalCount: number, data: ReformerPortfolioDto[] }> {
+    const { totalCount, items } = await this.usersRepository.getReformerPortfolios(status, page, limit, order);
+    const dtos = items.map((item) => ReformerPortfolioDto.fromRaw(item))
+    return {
+      totalCount, 
+      data: dtos 
+    }
   }
 
   private async sendNotificationSms(phone: string | null, status: string) {

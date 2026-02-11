@@ -22,7 +22,8 @@ import {
   ReformDto,
   Sale,
   SaleDetail,
-  OrderDetail
+  OrderDetail,
+  RawOptionItemsWithGroup,
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -535,19 +536,22 @@ export class ProfileService {
     const itemIds = new Set<string>();
     const requestIds = new Set<string>();
     const proposalIds = new Set<string>();
+    const feedIds = new Set<string>();
 
     actualOrders.forEach((o) => {
       if (!o.target_id) return;
       if (o.target_type === 'ITEM') itemIds.add(o.target_id);
       else if (o.target_type === 'REQUEST') requestIds.add(o.target_id);
       else if (o.target_type === 'PROPOSAL') proposalIds.add(o.target_id);
+      else if (o.target_type === 'FEED') feedIds.add(o.target_id);
     });
 
     // 3. title 과 thumbnail(photo) 조회
-    const [itemInfos, reqInfos, propInfos] = await Promise.all([
+    const [itemInfos, reqInfos, propInfos, feedInfos ] = await Promise.all([
       this.profileRepository.getItemInfos(Array.from(itemIds)),
       this.profileRepository.getRequestInfos(Array.from(requestIds)),
-      this.profileRepository.getProposalInfos(Array.from(proposalIds))
+      this.profileRepository.getProposalInfos(Array.from(proposalIds)),
+      this.profileRepository.getFeedInfos(Array.from(feedIds))
     ]);
 
     const infoMap = new Map<string, { title: string; thumbnail: string }>();
@@ -560,6 +564,7 @@ export class ProfileService {
     addToMap(itemInfos, 'item_id');
     addToMap(reqInfos, 'reform_request_id');
     addToMap(propInfos, 'reform_proposal_id');
+    addToMap(feedInfos, 'chatRequestId')
 
     // 4. 모든 주문 목록 preview 생성
     const ordersPreview = actualOrders.map((order) => {
@@ -595,13 +600,18 @@ export class ProfileService {
     }
 
     // 2. 옵션 조회
-    const [info, optionItemIds] = await Promise.all([
-      this.getTargetInfo(order.target_type, order.target_id),
-      this.profileRepository.getOptionIdsByOrderId(orderId)
-    ]);
-    const optionItemsWithGroup =
-      await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    const optionItemIds 
+      = await this.profileRepository.getOptionIdsByOrderId(orderId)
+    let optionItemsWithGroup: RawOptionItemsWithGroup[] = [];
+    if(optionItemIds.length > 0 ){
+      optionItemsWithGroup 
+      = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    }
 
+    const [info] = await Promise.all([
+      this.getTargetInfo(order.target_type, order.target_id)
+    ])    
+    
     // 3. 결과값 리턴
     const orderDetail = OrderDetail.create(
       order,
@@ -631,12 +641,18 @@ export class ProfileService {
           : undefined;
       case 'REQUEST':
         const requests = await this.profileRepository.getRequestInfos([id]);
-        return requests[0]
-          ? {
-              title: requests[0].title ?? '',
-              thumbnail: requests[0].photo ?? ''
-            }
-          : undefined;
+        return requests[0] 
+        ? { 
+          title: requests[0].title ?? '', 
+          thumbnail: requests[0].photo ?? ''
+        } : undefined;
+      case 'FEED':
+        const feeds = await this.profileRepository.getFeedInfos([id]);
+        return feeds[0] 
+        ? { 
+          title: feeds[0].title ?? '', 
+          thumbnail: feeds[0].photo ?? ''
+        } : undefined;
       default:
         return undefined;
     }
