@@ -17,7 +17,7 @@ import {
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
 import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './dto/chat.req.dto.js';
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, ChatMessageListDTO } from './dto/chat.res.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, ChatMessageListDTO, LatestProposalPriceDTO } from './dto/chat.res.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 import express from 'express';
@@ -416,6 +416,34 @@ export class ChatController extends Controller {
     const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
     const result = await this.chatService.getChatMessages(request.user.id, userType, roomId, cursor, limit);
     return new ResponseHandler<ChatMessageListDTO>(result);
+  }
+
+  /**
+   * @summary 채팅방 내 최신 제안서 가격 정보 조회
+   * @description 특정 채팅방에서 가장 최근에 작성된 제안서의 가격, 배달비, 예상 작업 기간을 조회합니다.
+   * 제안서가 없는 경우 각 필드는 null로 반환됩니다.
+   * 
+   * @param roomId 채팅방의 고유 아이디
+   * @returns 최신 제안서의 가격, 배달비, 예상 작업 기간
+   */
+  @Get('/rooms/{roomId}/latest-proposal-price')
+  @Security('jwt')
+  @Example<TsoaResponse<LatestProposalPriceDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      price: 45000,
+      delivery: 3000,
+      expectedWorking: 7
+    }
+  })
+  public async getLatestProposalPrice(
+    @Request() request: express.Request,
+    @Path() roomId: string
+  ): Promise<TsoaResponse<LatestProposalPriceDTO>> {
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getLatestProposalPrice(roomId, request.user.id, userType);
+    return new ResponseHandler<LatestProposalPriceDTO>(result);
   }
 
 
