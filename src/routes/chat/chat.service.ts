@@ -1,9 +1,10 @@
-import { CreateChatRoomWithProposalDTO, ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './chat.dto.js';
+import { ChatMessageListDTO, ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO } from './dto/chat.res.dto.js';
+import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO   } from './dto/chat.req.dto.js';
 import { ChatRepository,  TargetRepository } from './chat.repository.js';
-import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,ChatMessage, CreateMessageParams, ChatMessagePayload, MessageType } from './chat.model.js';
-import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, InvalidChatMessageTypeError, ChatRoomAccessDeniedError } from './chat.error.js';
+import { ChatRoomFactory, ChatRoomFilter, ChatMessageFactory,CreateMessageParams, } from './chat.model.js';
+import { InvalidChatRoomTypeError, CreateTargetNotFoundError, InvalidChatRoomFilterError, ChatRoomAccessDeniedError } from './chat.error.js';
 import { runInTransaction } from '../../config/prisma.config.js';
-import { v4, v7 } from 'uuid';
+import { v4 } from 'uuid';
 import { UploadService } from '../common/upload.service.js';
 import { ImageUrls } from '../common/upload.dto.js';
 import { OrdersService } from '../orders/orders.service.js';
