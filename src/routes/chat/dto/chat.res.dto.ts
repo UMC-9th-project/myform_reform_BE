@@ -150,7 +150,7 @@ export class ChatMessageDTO {
   messageId!: UUID;
   senderId!: UUID | null;
   senderType!: 'USER' | 'OWNER' | null;
-  messageType!: 'text' | 'image' | 'request' | 'proposal' | 'payment' | 'result';
+  messageType!: 'text' | 'image' | 'request' | 'proposal' | 'payment' | 'result' | 'accept';
   textContent!: string | null;
   payload!: any | null;
   createdAt!: Date;
