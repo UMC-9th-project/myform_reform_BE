@@ -2,8 +2,8 @@ import { processKeywords, validateBio, validateEmail, validateNickname, validate
 import { AuthStatus } from '../../auth/auth.dto.js';
 
 // 리폼러 상태 업데이트 요청 데이터 (Controller -> Service)
-export class UpdateReformerStatusRequest {
-  status!: AuthStatus;
+export interface UpdateReformerStatusRequest {
+  status: AuthStatus;
 }
 
 export class UpdateUserProfileRequestDto {
