@@ -156,4 +156,25 @@ export class ChatMessageDTO {
   createdAt!: Date;
 }
 
+/**
+ * 채팅방 내 최신 제안서 가격 정보 응답 DTO
+ */
+export class LatestProposalPriceDTO {
+  /**
+   * 제안 가격
+   * @example 45000
+   */
+  price!: number | null;
+  /**
+   * 배달비
+   * @example 3000
+   */
+  delivery!: number | null;
+  /**
+   * 예상 작업 기간 (일)
+   * @example 7
+   */
+  expectedWorking!: number | null;
+}
+
 
