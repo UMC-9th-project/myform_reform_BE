@@ -89,6 +89,14 @@ export class CreateChatRoomWithProposalDTO {
 
 }
 
+export class ReformQuoteRequest {
+  images!: string[];
+  targetId!: string;
+  price!: number;
+  contents!: string;
+  delivery!: number;
+  expectedWorking!: number;
+}
 
 export class ChatRoomPreviewDTO {
   chatRoomId!: UUID;
