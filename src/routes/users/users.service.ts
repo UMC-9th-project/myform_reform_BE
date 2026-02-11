@@ -114,7 +114,10 @@ export class UsersService {
       reformerId: reformerId,
       ...requestBody
     })
-    if (updateReformerProfileParams.nickname !== undefined) {
+    const reformer = await this.usersRepository.findReformerById(reformerId)
+    console.log(reformer?.nickname, updateReformerProfileParams.nickname)
+    if (updateReformerProfileParams.nickname !== undefined 
+      && reformer?.nickname !== updateReformerProfileParams.nickname) {
       await this.checkNicknameDuplicate(updateReformerProfileParams.nickname);
     }
     const updatedReformer = await this.usersRepository.updateReformerProfile(updateReformerProfileParams);
