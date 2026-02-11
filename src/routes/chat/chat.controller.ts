@@ -16,10 +16,11 @@ import {
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
+import { CreateChatRoomWithProposalDTO,ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO, ChatMessageListDTO } from './chat.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 import express from 'express';
+import { BasicError } from '../../middleware/error.js';
 
 @Route('chat')
 @Tags('채팅 기능')
@@ -36,7 +37,7 @@ export class ChatController extends Controller {
    * @summary 채팅방 생성
    * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다. 
    * **채팅방 타입별 생성 규칙:**
-   * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설
+   * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설(현재 취소)
    * - PROPOSAL: 유저가 리폼러의 제안서를 보고 채팅방 개설
    * - FEED: 유저가 리폼러의 피드를 보고 문의 채팅방 개설
    * 각 대상의 id를 입력, feed의 경우 ownerId 입력
@@ -62,6 +63,33 @@ export class ChatController extends Controller {
   ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
     const result = await this.chatService.createChatRoom(body.dto, request.user.id);
     return new ResponseHandler<CreateChatRoomResponseDTO>(result);
+  }
+  /**
+   * @summary 채팅방 생성 (요청서를 기반으로 제안서와 함께)
+   * @param body 채팅방 생성 요청 데이터와 제안서 작성 데이터
+   * @returns 생성된 채팅방의 고유 아이디와 생성 일시
+   */
+  @Post('/rooms/request')
+  @Security('jwt')
+  @SuccessResponse('201', 'Created')
+  @Example<TsoaResponse<CreateChatRoomResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: new Date(),
+      isNew: true
+    }
+  })
+  public async createChatRoomWithProposal(
+    @Request() request: express.Request,
+    @Body() body: CreateChatRoomWithProposalDTO
+  ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
+    const {chatRoomResponse, message, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
+    if(chatRoomResponse.isNew == true){
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    }
+    return new ResponseHandler<CreateChatRoomResponseDTO>(chatRoomResponse);
   }
 
   /**

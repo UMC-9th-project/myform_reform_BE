@@ -1,30 +1,30 @@
 import { Category } from '../../../@types/item.js';
 import { ImageUrls } from '../../common/upload.dto.js';
 
-export interface AddQuoteReq {
-  images: string[];
-  ownerId: string;
-  reform_request_id: string;
-  price: number;
-  delivery: number;
-  content: string;
-  expected_working: number;
+export class AddQuoteReq {
+  images!: string[];
+  ownerId!: string;
+  reform_request_id!: string;
+  price!: number;
+  delivery!: number;
+  content!: string;
+  expected_working!: number;
 }
 
-export interface ReformQuoteRequest {
-  images: string[];
-  targetId: string;
-  price: number;
-  contents: string;
-  delivery: number;
-  expectedWorking: number;
+export class ReformQuoteRequest {
+  images!: string[];
+  targetId!: string;
+  price!: number;
+  contents!: string;
+  delivery!: number;
+  expectedWorking!: number;
 }
 
-export interface ReformRequestRequest {
+export class ReformRequestRequest {
   /** @example ["https://image.png"] */
-  images: string[];
+  images!: string[];
   /** @example  "제 소중한 기아 쿠로미 유니폼 짐색으로 만들어주실 리폼 장인을 찾아요"*/
-  title: string;
+  title!: string;
   /**
    * @example
    * "기아 유니폼(쿠로미 콜라보)을 짐색으로 만들고 싶어요. 유니폼이 소장용이라 로고/쿠로미 프린트 손상 없이 최대한 예쁘게 살려주실 분 찾습니다!
@@ -35,18 +35,18 @@ export interface ReformRequestRequest {
    * 스트랩은 길이 조절 가능, 어깨패드 있으면 선호
    * 소장품이라 작업 전/후 사진 공유해주시면 감사해요!"
    */
-  contents: string;
+  contents!: string;
   /**@example 0 */
-  minBudget: number;
+  minBudget!: number;
   /**@example 50000 */
-  maxBudget: number;
+  maxBudget!: number;
   /**@example 2026-01-31T00:49:39.236Z */
-  dueDate: Date;
+  dueDate!: Date;
   /** @example {"major" : "의류", "sub" : "상의"} */
-  category: Category;
+  category!: Category;
 }
 
-export interface ModifyRequestRequest {
+export class ModifyRequestRequest {
   /** @example ["https://image.png"] */
   images?: string[];
   /** @example  "제목 수정"*/
@@ -63,24 +63,24 @@ export interface ModifyRequestRequest {
   category?: Category;
 }
 
-export interface ReformProposalRequest {
+export class ReformProposalRequest {
   /** @example ["https://image.png"] */
-  images: string[];
+  images!: string[];
   /** @example "맞춤 자켓 제작" */
-  title: string;
+  title!: string;
   /** @example "고객님의 사이즈에 맞춰 자켓을 제작해드립니다" */
-  contents: string;
+  contents!: string;
   /** @example 150000 */
-  price: number;
+  price!: number;
   /** @example 3000 */
-  delivery: number;
+  delivery!: number;
   /** @example 14 */
-  expectedWorking: number;
+  expectedWorking!: number;
   /** @example {"major" : "의류", "sub" : "상의"} */
-  category: Category;
+  category!: Category;
 }
 
-export interface ModifyProposalRequest {
+export class ModifyProposalRequest {
   /** @example ["https://image.png"] */
   images?: string[];
   /** @example "제목 수정" */

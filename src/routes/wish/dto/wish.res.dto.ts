@@ -1,27 +1,27 @@
 import { UUID } from '../../../@types/common.js';
 import { WishType } from './wish.req.dto.js';
 
-export interface WishResDTO {
-  wishId: UUID;
-  createdAt: Date;
+export class WishResDTO {
+  wishId!: UUID;
+  createdAt!: Date;
 }
 
-export interface DeleteWishResDTO {
-  wishId: UUID;
-  deletedAt: Date;
+export class DeleteWishResDTO {
+  wishId!: UUID;
+  deletedAt!: Date;
 }
 
-export interface WishDetailDTO {
-  wishType: WishType;
-  itemId: UUID;
-  content: string;
-  title: string;
+export class WishDetailDTO {
+  wishType!: WishType;
+  itemId!: UUID;
+  content!: string;
+  title!: string;
   avgStar?: number | null;
   reviewCount?: number | null;
-  price: number;
-  name: string; // sellerName or userName
+  price!: number;
+  name!: string; // sellerName or userName
 }
 
-export interface WishListResDTO {
-  list: WishDetailDTO[];
+export class WishListResDTO {
+  list!: WishDetailDTO[];
 }
