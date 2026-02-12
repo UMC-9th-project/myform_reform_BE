@@ -14,12 +14,12 @@ import {
 import { Category, OptionGroup } from '../../@types/item.js';
 
 const ORDER_STATUS_LABELS: Record<order_status_enum, string> = {
-  PENDING: '결제 대기',
+  PENDING: '상품준비 중',
   PAID: '결제 완료',
   SENT: '발송 완료',
   WORKING: '작업 중',
   DELIVERY: '배송 중',
-  COMPLETE: '거래 완료',
+  COMPLETE: '결제 완료',
   SETTLEMENT: '정산 완료',
   CANCELLED: '취소됨',
   REFUNDED: '환불됨'
