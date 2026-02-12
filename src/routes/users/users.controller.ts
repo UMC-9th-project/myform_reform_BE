@@ -28,7 +28,7 @@ import { Request as ExRequest } from 'express';
 import { reformer_status_enum } from '@prisma/client';
 
 @Route('users')
-@Tags('Users')
+@Tags('유저 관련 기능')
 export class UsersController extends Controller {
   private usersService = new UsersService();
 

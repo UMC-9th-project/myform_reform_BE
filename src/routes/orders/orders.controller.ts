@@ -37,7 +37,7 @@ import { ChatService } from '../chat/chat.service.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 
 @Route('orders')
-@Tags('Orders')
+@Tags('주문 기능')
 @Security('jwt')
 export class OrdersController extends Controller {
   private ordersService: OrdersService;

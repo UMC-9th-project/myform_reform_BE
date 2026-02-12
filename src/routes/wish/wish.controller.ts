@@ -27,7 +27,7 @@ import {
 import { Request as ExRequest } from 'express';
 
 @Route('/wish')
-@Tags('Wish')
+@Tags('찜하기 기능')
 export class WishController extends Controller {
   private wishService = new WishService();
 

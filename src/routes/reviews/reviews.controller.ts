@@ -37,7 +37,7 @@ import { validateDto } from '../../middleware/validator.js';
 
 
 @Route('reviews')
-@Tags('Reviews')
+@Tags('리뷰 기능')
 export class ReviewsController extends Controller {
   private reviewService: ReviewsService;
   constructor() {

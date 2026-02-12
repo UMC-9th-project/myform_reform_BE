@@ -20,7 +20,7 @@ import { validateOrThrow } from '../../middleware/validator.js';
 import { Request as ExRequest } from 'express';
 
 @Route('/cart')
-@Tags('Cart')
+@Tags('장바구니 기능')
 export class CartController extends Controller {
   private cartService: CartService;
 

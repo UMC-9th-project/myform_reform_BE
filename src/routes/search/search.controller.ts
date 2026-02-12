@@ -15,7 +15,7 @@ import { SearchListResDTO } from './search.res.dto.js';
 import { Request as ExRequest } from 'express';
 
 @Route('/search')
-@Tags('Search')
+@Tags('상품 검색 기능')
 export class SearchController extends Controller {
   private searchService = new SearchService();
 

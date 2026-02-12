@@ -10,7 +10,11 @@ import {
   Request,
   Security
 } from 'tsoa';
-import { TsoaResponse, ErrorResponse, commonError } from '../../config/tsoaResponse.js';
+import {
+  TsoaResponse,
+  ErrorResponse,
+  commonError
+} from '../../config/tsoaResponse.js';
 import { HomeService } from './home.service.js';
 import { AuthUser, GetHomeRequestDto } from './dto/home.req.dto.js';
 import { HomeDataResponseDto } from './dto/home.res.dto.js';
@@ -18,7 +22,7 @@ import { validateDto } from '../../middleware/validator.js';
 import type { Request as ExpressRequest } from 'express';
 
 @Route('home')
-@Tags('Main Page')
+@Tags('메인 페이지')
 export class HomeController extends Controller {
   private homeService: HomeService;
 
@@ -37,7 +41,12 @@ export class HomeController extends Controller {
       return undefined;
     }
 
-    const role = req.user.role === 'user' ? 'USER' : req.user.role === 'reformer' ? 'OWNER' : undefined;
+    const role =
+      req.user.role === 'user'
+        ? 'USER'
+        : req.user.role === 'reformer'
+          ? 'OWNER'
+          : undefined;
     if (!role) {
       return undefined;
     }
@@ -123,100 +132,80 @@ export class HomeController extends Controller {
       }
     }
   )
-  @Response<ErrorResponse>(
-    404,
-    '배너 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-002',
-        reason: '배너를 찾을 수 없습니다.',
-        data: '배너 데이터 조회에 실패했습니다.'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '사용자 세션 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-003',
-        reason: '사용자 세션 조회에 실패했습니다.',
-        data: '사용자 또는 오너 정보 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '인기 상품 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-004',
-        reason: '인기 상품 조회에 실패했습니다.',
-        data: '인기 상품 데이터 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '커스텀 오더 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-005',
-        reason: '커스텀 오더 조회에 실패했습니다.',
-        data: '커스텀 오더 데이터 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '베스트 리폼러 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-006',
-        reason: '베스트 리폼러 조회에 실패했습니다.',
-        data: '베스트 리폼러 데이터 조회 중 오류가 발생했습니다.'
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    500,
-    '메인 페이지 조회 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'HOME-ERR-001',
-        reason: '메인 페이지 조회 중 오류가 발생했습니다.',
-        data: null
-      },
-      success: null
-    }
-  )
-  @Response<ErrorResponse>(
-    400,
-    '입력값 검증 실패',
-    {
-      resultType: 'FAIL',
-      error: {
-        errorCode: 'ERR-VALIDATION',
-        reason: '입력값 검증 실패',
-        data: [
-          { field: 'userId', value: 'invalid', messages: 'userId는 UUID 형식이어야 합니다' },
-          { field: 'role', value: 'invalid', messages: 'role은 USER 또는 OWNER여야 합니다' }
-        ]
-      },
-      success: null
-    }
-  )
+  @Response<ErrorResponse>(404, '배너 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-002',
+      reason: '배너를 찾을 수 없습니다.',
+      data: '배너 데이터 조회에 실패했습니다.'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '사용자 세션 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-003',
+      reason: '사용자 세션 조회에 실패했습니다.',
+      data: '사용자 또는 오너 정보 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '인기 상품 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-004',
+      reason: '인기 상품 조회에 실패했습니다.',
+      data: '인기 상품 데이터 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '커스텀 오더 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-005',
+      reason: '커스텀 오더 조회에 실패했습니다.',
+      data: '커스텀 오더 데이터 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '베스트 리폼러 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-006',
+      reason: '베스트 리폼러 조회에 실패했습니다.',
+      data: '베스트 리폼러 데이터 조회 중 오류가 발생했습니다.'
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(500, '메인 페이지 조회 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'HOME-ERR-001',
+      reason: '메인 페이지 조회 중 오류가 발생했습니다.',
+      data: null
+    },
+    success: null
+  })
+  @Response<ErrorResponse>(400, '입력값 검증 실패', {
+    resultType: 'FAIL',
+    error: {
+      errorCode: 'ERR-VALIDATION',
+      reason: '입력값 검증 실패',
+      data: [
+        {
+          field: 'userId',
+          value: 'invalid',
+          messages: 'userId는 UUID 형식이어야 합니다'
+        },
+        {
+          field: 'role',
+          value: 'invalid',
+          messages: 'role은 USER 또는 OWNER여야 합니다'
+        }
+      ]
+    },
+    success: null
+  })
   @Response<ErrorResponse>(500, '서버 오류', commonError.serverError)
   @Security('jwt_optional')
   @Get('/')
@@ -225,7 +214,8 @@ export class HomeController extends Controller {
   ): Promise<TsoaResponse<HomeDataResponseDto>> {
     const authUser = this.extractAuthUser(req);
 
-    const homeData: HomeDataResponseDto = await this.homeService.getHomeData(authUser);
+    const homeData: HomeDataResponseDto =
+      await this.homeService.getHomeData(authUser);
 
     return {
       resultType: 'SUCCESS',
