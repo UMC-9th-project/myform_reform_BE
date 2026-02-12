@@ -25,8 +25,11 @@ export class WebSocketServer {
   // 웹소켓 서버 초기화 메서드
   public init(httpServer: HttpServer): void {
     this.io = new Server(httpServer, {
-      cors: { 
-        origin: '*' 
+    cors: { 
+        // 로컬 개발 주소와 실제 서비스 도메인을 같이 허용
+        origin: ["http://localhost:5173", "https://seoki.cloud"], 
+        methods: ["GET", "POST"],
+        credentials: true
       },
       pingInterval: 25000,
       pingTimeout: 5000
