@@ -50,7 +50,7 @@ import { ItemAddError } from './profile.error.js';
 import { CustomJwt } from '../../@types/expreees.js';
 
 @Route('profile')
-@Tags('Profile Router')
+@Tags('프로필 기능')
 export class ProfileController extends Controller {
   private profileService: ProfileService;
   constructor() {
@@ -229,9 +229,8 @@ export class ProfileController extends Controller {
 
   /**
    * 운송장 번호 수정
-   * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
+   * @summary 운송장 번호를 수정, 삭제합니다.
    * @param orderId 판매상품 ID (order_id)
-   * @returns 판매상품 상세 정보
    */
   @Patch('sales/{orderId}/tracking')
   @Security('jwt')

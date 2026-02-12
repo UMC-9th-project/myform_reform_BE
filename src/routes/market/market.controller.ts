@@ -28,7 +28,7 @@ import type {
 import { validateDto } from '../../middleware/validator.js';
 
 @Route('market')
-@Tags('Market')
+@Tags('마켓 기능')
 export class MarketController extends Controller {
   private marketService: MarketService;
 

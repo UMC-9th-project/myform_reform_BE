@@ -10,7 +10,7 @@ import {
 import { ReformerSortOption } from './dto/reformer.req.dto.js';
 
 @Route('/reformer')
-@Tags('Reformer')
+@Tags('리폼러 찾기 기능')
 export class ReformerController extends Controller {
   private reformerService = new ReformerService();
 

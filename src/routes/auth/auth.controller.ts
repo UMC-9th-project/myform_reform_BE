@@ -46,7 +46,7 @@ import passport from './passport.js';
 import { KakaoAuthError } from './auth.error.js';
 
 @Route('auth')
-@Tags('Auth')
+@Tags('인증 기능')
 export class AuthController extends Controller {
   private authService = new AuthService();
   /**
