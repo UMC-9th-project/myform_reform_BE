@@ -1,30 +1,30 @@
-import { 
-  Route, 
-  Controller, 
-  Post, 
+import {
+  Route,
+  Controller,
+  Post,
   Get,
-  SuccessResponse, 
-  Body, 
-  Response, 
-  Example, 
+  SuccessResponse,
+  Body,
+  Response,
+  Example,
   Tags,
   Request,
   Query,
   Security
 } from 'tsoa';
-import { 
-  TsoaResponse, 
-  ResponseHandler, 
-  ErrorResponse 
+import {
+  TsoaResponse,
+  ResponseHandler,
+  ErrorResponse
 } from '../../config/tsoaResponse.js';
 import { AuthService } from './auth.service.js';
-import { 
-  Role 
+import {
+  Role
 } from './dto/auth.dto.js';
-import { 
-  VerifySmsResponseDto, 
-  SendSmsResponseDto, 
-  AuthPublicResponseDto, 
+import {
+  VerifySmsResponseDto,
+  SendSmsResponseDto,
+  AuthPublicResponseDto,
   LogoutResponseDto
 } from './dto/auth.res.dto.js';
 
@@ -36,8 +36,8 @@ import {
   PassportUserInfo
 } from './auth.model.js';
 import { Request as ExRequest } from 'express';
-import { 
-  VerifySmsRequestDto, 
+import {
+  VerifySmsRequestDto,
   SendSmsRequestDto,
   LocalLoginRequestDto
 } from './dto/auth.req.dto.js';
@@ -60,14 +60,14 @@ export class AuthController extends Controller {
   @Example<ResponseHandler<SendSmsResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
-    success: {statusCode: 200, message: 'SMS 전송이 완료되었습니다.'}
+    success: { statusCode: 200, message: 'SMS 전송이 완료되었습니다.' }
   })
 
   @Response<ErrorResponse>('400', '전화번호 형식 오류')
   @Response<ErrorResponse>('429', '인증 시도 횟수 초과')
   @Response<ErrorResponse>('500', '서버 내부 오류')
-  
-  @Post('sms/send') 
+
+  @Post('sms/send')
   public async sendSms(
     @Body() requestBody: SendSmsRequestDto): Promise<TsoaResponse<SendSmsResponseDto>> {
     await this.authService.sendSms(requestBody.phoneNumber);
@@ -87,7 +87,7 @@ export class AuthController extends Controller {
   @Example<ResponseHandler<VerifySmsResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
-    success: {statusCode: 200, message: '인증이 성공적으로 완료되었습니다.'}
+    success: { statusCode: 200, message: '인증이 성공적으로 완료되었습니다.' }
   })
   @Response<ErrorResponse>('429', '인증 시도 횟수 초과')
   @Response<ErrorResponse>('400', '인증 코드 불일치 및 형식 오류, 만료 또는 부재')
@@ -112,10 +112,10 @@ export class AuthController extends Controller {
 
   @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습니다.')
   @Response<ErrorResponse>('500', '서버 내부 오류')
-  @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')  
+  @SuccessResponse(302, '카카오 로그인 페이지로 리다이렉트')
   @Get('kakao')
   public async loginWithKakao(
-    @Request() request: express.Request, 
+    @Request() request: express.Request,
     @Query() mode: Role,
     @Query() redirectUrl?: string
   ): Promise<void> {
@@ -127,7 +127,7 @@ export class AuthController extends Controller {
     }
     const state = JSON.stringify(stateData);
     // 카카오 로그인 페이지로 리다이렉트, state에 mode 값을 전달하여 로그인 모드 구분
-    passport.authenticate('kakao', { session: false, state: state})(request, res, next);
+    passport.authenticate('kakao', { session: false, state: state })(request, res, next);
   }
 
   /**
@@ -145,44 +145,22 @@ export class AuthController extends Controller {
     const res = request.res as express.Response;
     const user = await this.authenticateKakao(request, res);
     const result = await this.authService.handleKakaoLogin(user);
-    if (result.status == 'login'){
-      res.cookie('refreshToken', result.refreshToken, {
-        httpOnly: true, 
-        secure: true, 
-        maxAge: 60 * 60 * 24 * 14 * 1000, 
-        path: '/', 
-        sameSite: 'none'
-      });
-      res.cookie('accessToken', result.accessToken, {
-        httpOnly: false, 
-        secure: true,
-        maxAge: 5 * 60 * 1000, 
-        path: '/', 
-        sameSite: 'none'
-      });
-      const redirectUrl = (user.redirectUrl) 
-        ? `${process.env.FRONTEND_BASE_URL}${user.redirectUrl}`
-        : process.env.FRONTEND_BASE_URL
-      return res.redirect(redirectUrl!);
+    if (result.status == 'login') {
+      const loginUrl = `${process.env.FRONTEND_BASE_URL}/login/callback`
+      const redirectWithToken = `${loginUrl}?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&redirectUrl=${user.redirectUrl ?? ''}`;
+      return res.redirect(redirectWithToken);
     }
 
-    if (result.status == 'signup'){
+    if (result.status == 'signup') {
       const { role, kakaoId, email, redirectUrl } = result.user;
-      // 회원가입 페이지로 리다이렉트, role, kakaoId, email, redirectUrl 정보를 전달
-      res.cookie('signupInfo', JSON.stringify({ role, kakaoId, email, redirectUrl }), {
-        httpOnly: false, 
-        secure: true,
-        maxAge: 5 * 60 * 1000, 
-        path: '/', 
-        sameSite: 'none'
-      });
       const signupUrl = `${process.env.FRONTEND_BASE_URL}/kakao/signup`
-      return res.redirect(signupUrl);
+      const redirectWithSignupInfo = `${signupUrl}?kakaoId=${kakaoId}&email=${email}&role=${role}&redirectUrl=${redirectUrl ?? ''}`;
+      return res.redirect(redirectWithSignupInfo);
     }
   }
 
   // 카카오 인증 후 유저 정보 조회
-  private async authenticateKakao(req: any, res: any): Promise<PassportUserInfo>{
+  private async authenticateKakao(req: any, res: any): Promise<PassportUserInfo> {
     return new Promise((resolve, reject) => {
       passport.authenticate('kakao', { session: false }, (err: any, user: PassportUserInfo) => {
         if (err) return reject(err);
@@ -204,7 +182,7 @@ export class AuthController extends Controller {
   @Example<ResponseHandler<LogoutResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
-    success: {statusCode: 200, message: '로그아웃이 성공적으로 완료되었습니다.'}
+    success: { statusCode: 200, message: '로그아웃이 성공적으로 완료되었습니다.' }
   })
   @Response<ErrorResponse>('401', '로그인 정보를 찾을 수 없습니다.')
   @Response<ErrorResponse>('500', '서버 내부 오류')
@@ -336,8 +314,8 @@ export class AuthController extends Controller {
     : Promise<TsoaResponse<AuthPublicResponseDto>> {
     const refreshTokenFromCookie = req.cookies.refreshToken;
     const result = await this.authService
-      .reissueAccessToken({refreshToken: refreshTokenFromCookie});
-    const { accessToken, refreshToken } = result; 
+      .reissueAccessToken({ refreshToken: refreshTokenFromCookie });
+    const { accessToken, refreshToken } = result;
     this.setStatus(200);
     this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
     return new ResponseHandler<AuthPublicResponseDto>({
