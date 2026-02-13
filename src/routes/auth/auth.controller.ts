@@ -10,7 +10,8 @@ import {
   Tags,
   Request,
   Query,
-  Security
+  Security,
+  Delete
 } from 'tsoa';
 import {
   TsoaResponse,
@@ -25,7 +26,8 @@ import {
   VerifySmsResponseDto,
   SendSmsResponseDto,
   AuthPublicResponseDto,
-  LogoutResponseDto
+  LogoutResponseDto,
+  WithdrawResponseDto
 } from './dto/auth.res.dto.js';
 
 import {
@@ -43,7 +45,7 @@ import {
 } from './dto/auth.req.dto.js';
 import express from 'express';
 import passport from './passport.js';
-import { KakaoAuthError } from './auth.error.js';
+import { KakaoAuthError, UnauthorizedError } from './auth.error.js';
 
 @Route('auth')
 @Tags('인증 기능')
@@ -190,9 +192,14 @@ export class AuthController extends Controller {
   async logout(
     @Request() req: ExRequest,
   ): Promise<TsoaResponse<LogoutResponseDto>> {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader && authHeader.split(' ')[1];
+    if (!accessToken){
+      throw new UnauthorizedError('액세스 토큰을 찾을 수 없어 무효화할 수 없습니다.')
+    }
     const payload = req.user;
     const userId = payload.id;
-    await this.authService.logout(userId);
+    await this.authService.logout(userId, accessToken);
     this.setStatus(200);
     this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
     return new ResponseHandler<LogoutResponseDto>({
@@ -321,5 +328,42 @@ export class AuthController extends Controller {
     return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
+  }
+
+  /**
+   * @summary [프론트 테스트용] 가입된 계정을 삭제합니다.
+   * @description 프론트엔드에서 회원가입 편의성을 위해 만들어진 기능입니다.
+   * @returns 삭제 성공여부
+   */
+  @SuccessResponse(204, '계정 삭제 성공')
+  @Example<ResponseHandler<string>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: "회원 탈퇴가 완료되었습니다. 다시 가입하실 수 있습니다."
+  })
+  @Response<ErrorResponse>(403, '마스터 리폼러 계정은 삭제할 수 없습니다.')
+  @Response<ErrorResponse>(404, '삭제하려는 계정을 찾을 수 없습니다. 이미 삭제되었거나 없는 계정입니다.')
+  @Security('jwt')
+  @Delete('withdraw')
+  public async withdraw(
+    @Request() req: ExRequest,
+  ): Promise<ResponseHandler<WithdrawResponseDto>> {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader && authHeader.split(' ')[1];
+    if (!accessToken){
+      throw new UnauthorizedError('액세스 토큰을 찾을 수 없어 무효화할 수 없습니다.')
+    }
+    const payload = req.user;
+    const userId = payload.id;
+    const role = payload.role;
+    this.setStatus(200);
+    this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
+    await this.authService.withdraw(userId, role, accessToken);
+    return new ResponseHandler<WithdrawResponseDto>(
+      {
+        statusCode: 204,
+        message: '회원 탈퇴가 완료되었습니다. 다시 가입하실 수 있습니다.'
+      }
+    );
   }
 }
