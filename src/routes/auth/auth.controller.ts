@@ -335,7 +335,7 @@ export class AuthController extends Controller {
    * @description 프론트엔드에서 회원가입 편의성을 위해 만들어진 기능입니다.
    * @returns 삭제 성공여부
    */
-  @SuccessResponse(204, '계정 삭제 성공')
+  @SuccessResponse(200, '계정 삭제 성공')
   @Example<ResponseHandler<string>>({
     resultType: 'SUCCESS',
     error: null,
@@ -356,12 +356,12 @@ export class AuthController extends Controller {
     const payload = req.user;
     const userId = payload.id;
     const role = payload.role;
+    await this.authService.withdraw(userId, role, accessToken);
     this.setStatus(200);
     this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
-    await this.authService.withdraw(userId, role, accessToken);
     return new ResponseHandler<WithdrawResponseDto>(
       {
-        statusCode: 204,
+        statusCode: 200,
         message: '회원 탈퇴가 완료되었습니다. 다시 가입하실 수 있습니다.'
       }
     );
