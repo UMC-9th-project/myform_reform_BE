@@ -35,7 +35,8 @@ export class WebSocketServer {
         // 로컬 개발 주소와 실제 서비스 도메인을 같이 허용
         origin: allowedOrigins,
         methods: ['GET', 'POST'],
-        credentials: true
+        credentials: true,
+        allowedHeaders: ['auth']
       },
       pingInterval: 25000,
       pingTimeout: 5000
