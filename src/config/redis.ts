@@ -32,7 +32,8 @@ export const REDIS_KEYS = {
   AUTH_CODE : (phone:string) => `auth:${phone}`,
   VERIFIED: (phone:string) => `verified:${phone}`,
   BLOCK: (phone:string) => `block:${phone}`,
-  REFRESH_TOKEN: (userId:string) => `refreshToken:${userId}`
+  REFRESH_TOKEN: (userId:string) => `refreshToken:${userId}`,
+  BLACKLIST: (accessToken: string | undefined) => `blacklist:${accessToken}`
 };
 
 export { redisClient };

@@ -40,6 +40,20 @@ export class LogoutResponseDto {
   }
 }
 
+// 계정 삭제 응답 데이터
+export class WithdrawResponseDto {
+  statusCode: number;
+  message: string;
+
+  constructor(
+    statusCode: number,
+    message: string
+  ) {
+    this.statusCode = statusCode,
+    this.message = message
+  }
+}
+
 // 공통 인증 응답 dto
 export class AuthPublicResponseDto{
   accessToken: string;

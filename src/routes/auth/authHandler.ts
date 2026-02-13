@@ -1,6 +1,7 @@
 import * as express from 'express';
 import jwt from 'jsonwebtoken';
 import { ForbiddenError, UnauthorizedError } from './auth.error.js';
+import { redisClient, REDIS_KEYS } from '../../config/redis.js';
 
 /**
  * TSOA 전용 인증 핸들러 함수
@@ -9,7 +10,7 @@ import { ForbiddenError, UnauthorizedError } from './auth.error.js';
  * @param _scope scopes 권한 범위
  * @returns 
  */
-export function expressAuthentication(
+export async function expressAuthentication(
   request: express.Request,
   securityName: string,
   scopes?: string[]
@@ -18,9 +19,13 @@ export function expressAuthentication(
   if (securityName === 'jwt') {
     const authHeader = request.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-
+    const isBlacklisted = await redisClient.get(REDIS_KEYS.BLACKLIST(token));
+    if (isBlacklisted) {
+      throw new UnauthorizedError('이미 로그아웃된 토큰입니다. 다시 로그인해주세요.');
+    }
     return new Promise((resolve, reject) => {
-      if (!token) reject(new UnauthorizedError('토큰이 없습니다.'));
+      if (!token) reject(new UnauthorizedError('토큰이 없습니다.'));     
+      
       // Access Token 검증
       jwt.verify(token as string, jwtSecret, (err: any, decoded: any) => {
         if (err) reject(new UnauthorizedError('토큰이 유효하지 않은 Access Token입니다. 재로그인이 필요합니다.'));
