@@ -318,6 +318,26 @@ export class OrdersRepository {
     });
   }
 
+  /** UUID 형식 검증용 정규식 */
+  private static readonly UUID_REGEX =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  /**
+   * @returns 유효한 ID가 있으면 Prisma.Sql (IN 절용), 없으면 null
+   */
+  private optionItemIdsToSqlIn(optionItemIds: string[]): Prisma.Sql | null {
+    if (!optionItemIds?.length) return null;
+    const validIds = optionItemIds.filter(
+      (id): id is string =>
+        typeof id === 'string' && OrdersRepository.UUID_REGEX.test(id.trim())
+    );
+    if (validIds.length === 0) return null;
+    return Prisma.join(
+      validIds.map((id) => Prisma.sql`${id}::uuid`),
+      ', '
+    );
+  }
+
   /**
    * 옵션 아이템 재고 차감
    */
@@ -325,15 +345,21 @@ export class OrdersRepository {
     optionItemIds: string[],
     quantity: number
   ): Promise<number> {
-    return await prisma.$executeRaw(
+    if (optionItemIds.length === 0 || quantity < 1 || !Number.isInteger(quantity)) {
+      return 0;
+    }
+    const idsFragment = this.optionItemIdsToSqlIn(optionItemIds);
+    if (idsFragment === null) return 0;
+    const result = await prisma.$executeRaw(
       Prisma.sql`
         UPDATE option_item
         SET quantity = quantity - ${quantity}
-        WHERE option_item_id = ANY(${optionItemIds}::uuid[])
+        WHERE option_item_id IN (${idsFragment})
           AND quantity >= ${quantity}
           AND quantity IS NOT NULL
       `
     );
+    return Number(result);
   }
 
   /**
@@ -343,14 +369,20 @@ export class OrdersRepository {
     optionItemIds: string[],
     quantity: number
   ): Promise<number> {
-    return await prisma.$executeRaw(
+    if (optionItemIds.length === 0 || quantity < 1 || !Number.isInteger(quantity)) {
+      return 0;
+    }
+    const idsFragment = this.optionItemIdsToSqlIn(optionItemIds);
+    if (idsFragment === null) return 0;
+    const result = await prisma.$executeRaw(
       Prisma.sql`
         UPDATE option_item
         SET quantity = quantity + ${quantity}
-        WHERE option_item_id = ANY(${optionItemIds}::uuid[])
+        WHERE option_item_id IN (${idsFragment})
           AND quantity IS NOT NULL
       `
     );
+    return Number(result);
   }
 
   /**
