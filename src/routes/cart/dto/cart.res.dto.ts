@@ -51,4 +51,10 @@ export class SellerCartDTO {
 
 export type CartGroupedResDTO = SellerCartDTO[];
 
-export default CartGroupedResDTO;
+export class UpdateQuantityResDTO {
+  /**
+   * @format uuid
+   */
+  cartId!: UUID;
+  updatedAt!: Date;
+}
