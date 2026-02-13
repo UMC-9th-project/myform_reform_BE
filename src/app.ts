@@ -23,7 +23,7 @@ const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
 
 app.use(
   cors({
-    origin: '*',
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
