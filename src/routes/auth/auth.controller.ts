@@ -209,7 +209,8 @@ export class AuthController extends Controller {
     const userId = payload.id;
     await this.authService.logout(userId, accessToken);
     this.setStatus(200);
-    this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
+    const cookieOptions = this.getCookieOptions(0);
+    this.setHeader('Set-Cookie', `refreshToken=; ${cookieOptions}`);
     return new ResponseHandler<LogoutResponseDto>({
       statusCode: 200,
       message: '로그아웃이 성공적으로 완료되었습니다.(리프레쉬 토큰 무효화) 쿠키 삭제 후 프론트엔드에서 accessToken 삭제 필요'
@@ -238,7 +239,8 @@ export class AuthController extends Controller {
     const result = await this.authService.signupUser(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
+    const cookieOptions = this.getCookieOptions(1209600);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${cookieOptions}`);
     return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
@@ -269,7 +271,8 @@ export class AuthController extends Controller {
     const result = await this.authService.signupReformer(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(201);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
+    const cookieOptions = this.getCookieOptions(1209600);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${cookieOptions}`);
     return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
@@ -318,7 +321,8 @@ export class AuthController extends Controller {
     const result = await this.authService.loginLocal(requestBody);
     const { accessToken, refreshToken } = result;
     this.setStatus(200);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
+    const cookieOptions = this.getCookieOptions(1209600);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${cookieOptions}`);
     return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
@@ -350,7 +354,8 @@ export class AuthController extends Controller {
       .reissueAccessToken({ refreshToken: refreshTokenFromCookie });
     const { accessToken, refreshToken } = result;
     this.setStatus(200);
-    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; HttpOnly; Secure; Max-Age=1209600; Path=/; SameSite=none`);
+    const setOptions = this.getCookieOptions(1209600);
+    this.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${setOptions}`);
     return new ResponseHandler<AuthPublicResponseDto>({
       accessToken: accessToken
     });
@@ -384,12 +389,20 @@ export class AuthController extends Controller {
     const role = payload.role;
     await this.authService.withdraw(userId, role, accessToken);
     this.setStatus(200);
-    this.setHeader('Set-Cookie', 'refreshToken=; HttpOnly; Secure; Max-Age=0; Path=/; SameSite=none');
+    const cookieOptions = this.getCookieOptions(0);
+    this.setHeader('Set-Cookie', `refreshToken=; ${cookieOptions}`);
     return new ResponseHandler<WithdrawResponseDto>(
       {
         statusCode: 200,
         message: '회원 탈퇴가 완료되었습니다. 다시 가입하실 수 있습니다.'
       }
     );
+  }
+
+  private getCookieOptions(maxAge: number): string {
+    const isDevelopment = process.env.COOKIE_SETUP === 'development';
+    const sameSite = isDevelopment ? 'Lax' : 'None';
+    const secure = isDevelopment ? '' : 'Secure;';
+    return `HttpOnly; ${secure} Max-Age=${maxAge}; Path=/; SameSite=${sameSite}`;
   }
 }
