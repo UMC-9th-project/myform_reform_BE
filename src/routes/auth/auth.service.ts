@@ -13,7 +13,8 @@ import {
   InputValidationError, 
   SocialAccountDuplicateError,
   reformerNotApprovedError,
-  ForbiddenError
+  ForbiddenError,
+  reformerRejectedError
 } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
@@ -181,10 +182,15 @@ export class AuthService {
       throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
     }
     
-    if (user.role === 'reformer' && user.auth_status === 'PENDING'){
-      throw new reformerNotApprovedError('reformerNotApprovedError')
+    if (user.role === 'reformer') {
+      if (user.auth_status === 'PENDING') {
+        throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+      }
+      if (user.auth_status === 'REJECTED') {
+        throw new reformerRejectedError('리폼러 신청이 반려된 계정입니다.')
+      }
     }
-
+    
     const payload: CustomJwt = {
       id: user.id,
       role: user.role,
@@ -299,10 +305,15 @@ export class AuthService {
       throw new passwordInvalidError('비밀번호가 일치하지 않습니다.');
     }
     
-    if (account.role === 'reformer' && account.auth_status === 'PENDING'){
-      throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+    if (account.role === 'reformer') {
+      if (account.auth_status === 'PENDING') {
+        throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+      }
+      if (account.auth_status === 'REJECTED') {
+        throw new reformerRejectedError('리폼러 신청이 반려된 계정입니다.')
+      }
     }
-    
+
     const payload: CustomJwt = {
       id: account.id,
       role: account.role,
