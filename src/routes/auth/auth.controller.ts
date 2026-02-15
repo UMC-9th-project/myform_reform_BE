@@ -141,6 +141,24 @@ export class AuthController extends Controller {
   @SuccessResponse(200, '카카오 로그인 성공')
   @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습니다.')
   @Response<ErrorResponse>('401', '카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.')
+  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
+    resultType: "FAIL",
+    error: {
+      errorCode: "Auth_117",
+      reason: "승인 대기 중인 계정입니다.",
+      data: "승인 대기 중인 계정입니다."
+    },
+    success: null
+  })
+  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
+    resultType: "FAIL",
+    error: {
+      errorCode: "Auth_118",
+      reason: "리폼러 신청이 반려된 계정입니다.",
+      data: "리폼러 신청이 반려된 계정입니다."
+    },
+    success: null
+  })
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Get('kakao/callback')
   public async kakaoCallback(@Request() request: express.Request): Promise<void> {
@@ -276,6 +294,24 @@ export class AuthController extends Controller {
    */
   @SuccessResponse(200, '로컬 로그인 성공')
   @Response<ErrorResponse>('400', '입력한 정보가 올바르지 않습니다.')
+  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
+    resultType: "FAIL",
+    error: {
+      errorCode: "Auth_117",
+      reason: "승인 대기 중인 계정입니다.",
+      data: "승인 대기 중인 계정입니다."
+    },
+    success: null
+  })
+  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
+    resultType: "FAIL",
+    error: {
+      errorCode: "Auth_118",
+      reason: "리폼러 신청이 반려된 계정입니다.",
+      data: "리폼러 신청이 반려된 계정입니다."
+    },
+    success: null
+  })
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Example<ResponseHandler<AuthPublicResponseDto>>({
     resultType: 'SUCCESS',
