@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Path,
   Delete,
   Route,
@@ -15,7 +16,11 @@ import {
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { CartService } from './cart.service.js';
 import { DeleteItemsDTO, AddToCartDTO } from './dto/cart.req.dto.js';
-import { CartGroupedResDTO, CreateCartResDTO } from './dto/cart.res.dto.js';
+import {
+  CartGroupedResDTO,
+  CreateCartResDTO,
+  UpdateQuantityResDTO
+} from './dto/cart.res.dto.js';
 import { validateOrThrow } from '../../middleware/validator.js';
 import { Request as ExRequest } from 'express';
 
@@ -103,5 +108,51 @@ export class CartController extends Controller {
 
     const cart = await this.cartService.getCartByUser(userId);
     return new ResponseHandler<CartGroupedResDTO>(cart);
+  }
+
+  /**
+   * @summary 장바구니 아이템 수량 증가
+   * @param cartId 장바구니 아이템 ID
+   * @returns 변경된 장바구니 아이템 정보
+   */
+  @Patch('/{cartId}/inc')
+  @Security('jwt', ['user'])
+  @SuccessResponse('200', '수량 증가 성공')
+  public async increaseCartQuantity(
+    @Path() cartId: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<UpdateQuantityResDTO>> {
+    const payload = req.user;
+    const userId = payload.id;
+
+    const result = await this.cartService.updateCartQuantity(
+      cartId,
+      userId,
+      'inc'
+    );
+    return new ResponseHandler<UpdateQuantityResDTO>(result);
+  }
+
+  /**
+   * @summary 장바구니 아이템 수량 감소
+   * @param cartId 장바구니 아이템 ID
+   * @returns 변경된 장바구니 아이템 정보 (수량이 0이면 삭제됨)
+   */
+  @Patch('/{cartId}/dec')
+  @Security('jwt', ['user'])
+  @SuccessResponse('200', '수량 감소 성공')
+  public async decreaseCartQuantity(
+    @Path() cartId: string,
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<UpdateQuantityResDTO>> {
+    const payload = req.user;
+    const userId = payload.id;
+
+    const result = await this.cartService.updateCartQuantity(
+      cartId,
+      userId,
+      'dec'
+    );
+    return new ResponseHandler<UpdateQuantityResDTO>(result);
   }
 }

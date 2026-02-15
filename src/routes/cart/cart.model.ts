@@ -41,7 +41,7 @@ export async function findCartsByIdsAndUserId(
 ): Promise<{ cart_id: string; user_id: string }[]> {
   if (!cartIds || cartIds.length === 0) return [];
   return prisma.cart.findMany({
-    where: { 
+    where: {
       cart_id: { in: cartIds },
       user_id: userId
     },
@@ -155,5 +155,29 @@ export async function findOptionGroupsByItemId(
     where: { item_id: itemId },
     include: { option_item: { select: { option_item_id: true, name: true } } },
     orderBy: { sort_order: 'asc' }
+  });
+}
+
+export async function findCartById(cartId: string): Promise<cart | null> {
+  return prisma.cart.findUnique({
+    where: { cart_id: cartId }
+  });
+}
+
+export async function updateCartQuantity(
+  cartId: string,
+  type: 'inc' | 'dec'
+): Promise<cart> {
+  return prisma.cart.update({
+    where: { cart_id: cartId },
+    data: {
+      quantity: type === 'inc' ? { increment: 1 } : { decrement: 1 }
+    }
+  });
+}
+
+export async function deleteCartById(cartId: string): Promise<cart> {
+  return prisma.cart.delete({
+    where: { cart_id: cartId }
   });
 }
