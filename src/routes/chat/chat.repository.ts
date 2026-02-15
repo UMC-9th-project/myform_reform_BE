@@ -77,8 +77,9 @@ export class ChatRepository {
 
   //주문제작(PROPOSAL/REQUEST) 조회
   async getOrderChatRooms(p: RepoParams) {
-    const type = p.isOwner ? 'PROPOSAL' : 'REQUEST';
-    return this.fetchChatRoomList(p, { type });
+    return this.fetchChatRoomList(p, { 
+      type: { in: ['PROPOSAL', 'REQUEST'] } 
+    });
   }
 
   //안읽음 조회
