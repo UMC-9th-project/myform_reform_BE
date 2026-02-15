@@ -141,41 +141,31 @@ export class AuthController extends Controller {
   @SuccessResponse(200, '카카오 로그인 성공')
   @Response<ErrorResponse>('400', '입력한 mode의 값이 유효하지 않습니다.')
   @Response<ErrorResponse>('401', '카카오 인증에 성공했으나 유저 정보를 가져오지 못했습니다.')
-  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
-    resultType: "FAIL",
-    error: {
-      errorCode: "Auth_117",
-      reason: "승인 대기 중인 계정입니다.",
-      data: "승인 대기 중인 계정입니다."
-    },
-    success: null
-  })
-  @Response<ErrorResponse>('403', '리폼러 승인 대기 중 / 반려됨', {
-    resultType: "FAIL",
-    error: {
-      errorCode: "Auth_118",
-      reason: "리폼러 신청이 반려된 계정입니다.",
-      data: "리폼러 신청이 반려된 계정입니다."
-    },
-    success: null
-  })
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Get('kakao/callback')
   public async kakaoCallback(@Request() request: express.Request): Promise<void> {
     const res = request.res as express.Response;
-    const user = await this.authenticateKakao(request, res);
-    const result = await this.authService.handleKakaoLogin(user);
-    if (result.status == 'login') {
-      const loginUrl = `${process.env.FRONTEND_BASE_URL}/login/callback`
-      const redirectWithToken = `${loginUrl}?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&redirectUrl=${user.redirectUrl ?? ''}`;
-      return res.redirect(redirectWithToken);
-    }
+    try {
+      const user = await this.authenticateKakao(request, res);
+      const result = await this.authService.handleKakaoLogin(user);
+      if (result.status == 'login') {
+        const loginUrl = `${process.env.FRONTEND_BASE_URL}/login/callback`
+        const redirectWithToken = `${loginUrl}?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}&redirectUrl=${user.redirectUrl ?? ''}`;
+        return res.redirect(redirectWithToken);
+      }
 
-    if (result.status == 'signup') {
-      const { role, kakaoId, email, redirectUrl } = result.user;
-      const signupUrl = `${process.env.FRONTEND_BASE_URL}/kakao/signup`
-      const redirectWithSignupInfo = `${signupUrl}?kakaoId=${kakaoId}&email=${email}&role=${role}&redirectUrl=${redirectUrl ?? ''}`;
-      return res.redirect(redirectWithSignupInfo);
+      if (result.status == 'signup') {
+        const { role, kakaoId, email, redirectUrl } = result.user;
+        const signupUrl = `${process.env.FRONTEND_BASE_URL}/kakao/signup`
+        const redirectWithSignupInfo = `${signupUrl}?kakaoId=${kakaoId}&email=${email}&role=${role}&redirectUrl=${redirectUrl ?? ''}`;
+        return res.redirect(redirectWithSignupInfo);
+      }
+    } catch (error: any) {
+      console.error('Kakao Login Error:', error);
+      const statusCode = error.status || 500;
+      const errorCode = error.code || 'UnknownError';
+      const loginUrl = `${process.env.FRONTEND_BASE_URL}/login/callback`
+      return res.redirect(`${loginUrl}?error=${errorCode}&status=${statusCode}`);
     }
   }
 
@@ -212,7 +202,7 @@ export class AuthController extends Controller {
   ): Promise<TsoaResponse<LogoutResponseDto>> {
     const authHeader = req.headers.authorization;
     const accessToken = authHeader && authHeader.split(' ')[1];
-    if (!accessToken){
+    if (!accessToken) {
       throw new UnauthorizedError('액세스 토큰을 찾을 수 없어 무효화할 수 없습니다.')
     }
     const payload = req.user;
@@ -386,7 +376,7 @@ export class AuthController extends Controller {
   ): Promise<ResponseHandler<WithdrawResponseDto>> {
     const authHeader = req.headers.authorization;
     const accessToken = authHeader && authHeader.split(' ')[1];
-    if (!accessToken){
+    if (!accessToken) {
       throw new UnauthorizedError('액세스 토큰을 찾을 수 없어 무효화할 수 없습니다.')
     }
     const payload = req.user;
