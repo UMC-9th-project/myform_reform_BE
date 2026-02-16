@@ -130,8 +130,12 @@ export class ReformController extends Controller {
     content: 'string',
     minBudget: 0,
     maxBudget: 50000,
-    name: '홍길동',
+    nickname: '홍길동',
     profile: '',
+    category: {
+      major: '의류',
+      sub: '상의'
+    },
     images: [
       {
         photo: 'https://image.png',

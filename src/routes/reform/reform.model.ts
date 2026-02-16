@@ -118,8 +118,14 @@ export type RawRequestDetail = Prisma.reform_requestGetPayload<{
     reform_request_id: true;
     user: {
       select: {
-        name: true;
+        nickname: true;
         profile_photo: true;
+      };
+    };
+    category: {
+      select: {
+        category_id: true;
+        parent_id: true;
       };
     };
   };
@@ -140,8 +146,14 @@ export type RawProposalDetail = Prisma.reform_proposalGetPayload<{
     owner_id: true;
     owner: {
       select: {
-        name: true;
+        nickname: true;
         profile_photo: true;
+      };
+    };
+    category: {
+      select: {
+        category_id: true;
+        parent_id: true;
       };
     };
   };
@@ -231,7 +243,8 @@ export class ReformRequestFactory {
   static createFromDetailRaw(
     rawBody: RawRequestDetail,
     rawPhoto: RawRequestDetailImages[],
-    isOwner: boolean
+    isOwner: boolean,
+    category: Category
   ): ReformDetailRequestResponse {
     return new ReformDetailRequestResponse({
       isOwner: isOwner,
@@ -241,8 +254,12 @@ export class ReformRequestFactory {
       content: rawBody.content ?? '',
       minBudget: rawBody.min_budget?.toNumber() ?? 0,
       maxBudget: rawBody.max_budget?.toNumber() ?? 0,
-      name: rawBody.user.name ?? '',
+      nickname: rawBody.user.nickname ?? '',
       profile: rawBody.user.profile_photo ?? '',
+      category: {
+        major: category.major ?? '',
+        sub: category.sub ?? ''
+      },
       images: rawPhoto.map((props) => {
         return {
           photo: props.content ?? '',
@@ -351,7 +368,8 @@ export class ReformProposalFactory {
     rawProfile: ProfileInfoResponse,
     isOwner: boolean,
     isWished: boolean,
-    avgStarRecent3m: number = 0
+    avgStarRecent3m: number = 0,
+    category: Category
   ): ReformDetailProposalResponse {
     return new ReformDetailProposalResponse({
       isOwner: isOwner,
@@ -363,6 +381,10 @@ export class ReformProposalFactory {
       price: rawBody.price?.toNumber() ?? 0,
       delivery: rawBody.delivery?.toNumber() ?? 0,
       expectedWorking: rawBody.expected_working?.toNumber() ?? 0,
+      category: {
+        major: category.major ?? '',
+        sub: category.sub ?? ''
+      },
       profile: {
         ownerName: rawProfile.nickname ?? '',
         ownerProfile: rawProfile.profilePhoto ?? '',
