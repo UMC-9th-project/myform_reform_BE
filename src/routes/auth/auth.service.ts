@@ -327,36 +327,32 @@ export class AuthService {
   // 리프레시 토큰을 입력받아 엑세스 토큰과 리프레시 토큰을 재발급
   async reissueAccessToken(requestBody: RefreshTokenRequest): Promise<AuthLoginResponse> {
     const { refreshToken } = requestBody;
-    try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
-      const userId = (decoded as CustomJwt).id;
-      const role = (decoded as CustomJwt).role;
-      const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
-      
-      if (!savedRefreshToken || savedRefreshToken !== refreshToken){
-        await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));
-        throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
-      }
-      
-      const account = (role === 'user'
-        ? await this.usersRepository.findUserById(userId)
-        : await this.usersRepository.findReformerById(userId)) as UsersInfoResponseDto;
-      
-      if (!account){
-        throw new AccountNotFoundError('존재하지 않는 유저입니다.');
-      }
-
-      const payload: CustomJwt = {
-        id: account.id,
-        role: account.role as 'user' | 'reformer',
-        ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
-      };
-
-      const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
-      return { accessToken, refreshToken: newRefreshToken };
-    } catch (error) {
-      throw new RefreshTokenError('액세스 토큰 및 리프레시 토큰 재발급에 실패하였습니다.');
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
+    const userId = (decoded as CustomJwt).id;
+    const role = (decoded as CustomJwt).role;
+    const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
+    
+    if (!savedRefreshToken || savedRefreshToken !== refreshToken){
+      await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));
+      throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
     }
+    
+    const account = (role === 'user'
+      ? await this.usersRepository.findUserById(userId)
+      : await this.usersRepository.findReformerById(userId)) as UsersInfoResponseDto;
+    
+    if (!account){
+      throw new AccountNotFoundError('존재하지 않는 유저입니다.');
+    }
+
+    const payload: CustomJwt = {
+      id: account.id,
+      role: account.role as 'user' | 'reformer',
+      ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
+    };
+
+    const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
   // 계정 하드 딜리트 (로그인 시 테스트용)
