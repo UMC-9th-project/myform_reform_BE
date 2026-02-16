@@ -22,14 +22,18 @@ import { CustomJwt } from '../../@types/expreees.js';
 import { Category } from '../../@types/item.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { ProfileService } from '../profile/profile.service.js';
+import { MarketService } from '../market/market.service.js';
 
 export class ReformService {
   private reformRepository: ReformRepository;
   private profileService: ProfileService;
+  private maretService: MarketService;
+
   private s3: S3;
   constructor() {
     this.reformRepository = new ReformRepository();
     this.profileService = new ProfileService();
+    this.maretService = new MarketService();
     this.s3 = new S3();
   }
 
@@ -213,10 +217,15 @@ export class ReformService {
         await this.reformRepository.selectDetailRequest(requestId);
       if (body === null) throw new ReformError('존재하지 않는 아이템입니다.');
 
+      const category = (await this.maretService.getCategoryName(
+        body.category
+      )) as Category;
+
       const dto = ReformRequestFactory.createFromDetailRaw(
         body,
         images,
-        isOwner
+        isOwner,
+        category
       );
       const paidIds = await this.reformRepository.findPaidOrderTargetIds(
         'REQUEST',
@@ -384,9 +393,12 @@ export class ReformService {
             payload.id
           );
 
-        const [profile, avgStarRecent3mRaw] = await Promise.all([
+        const [profile, avgStarRecent3mRaw, category] = await Promise.all([
           this.profileService.getProfileInfo(body.owner_id),
-          this.reformRepository.findAvgStarRecent3MonthsByOwnerId(body.owner_id)
+          this.reformRepository.findAvgStarRecent3MonthsByOwnerId(
+            body.owner_id
+          ),
+          this.maretService.getCategoryName(body.category)
         ]);
         const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
 
@@ -396,7 +408,8 @@ export class ReformService {
           profile,
           isOwner,
           isWished,
-          avgStarRecent3m
+          avgStarRecent3m,
+          category as Category
         );
       });
 

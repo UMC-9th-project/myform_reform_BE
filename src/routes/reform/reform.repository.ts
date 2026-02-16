@@ -343,8 +343,14 @@ export class ReformRepository {
           due_date: true,
           user: {
             select: {
-              name: true,
+              nickname: true,
               profile_photo: true
+            }
+          },
+          category: {
+            select: {
+              category_id: true,
+              parent_id: true
             }
           }
         }
@@ -385,8 +391,14 @@ export class ReformRepository {
           owner_id: true,
           owner: {
             select: {
-              name: true,
+              nickname: true,
               profile_photo: true
+            }
+          },
+          category: {
+            select: {
+              category_id: true,
+              parent_id: true
             }
           }
         }
