@@ -527,7 +527,17 @@ export class OrdersController extends Controller {
           return undefined;
         });
         if (result?.receiverInfo != null && result?.message != null) {
-          this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            // 수신자(유저)에게 웹소켓 알림
+            this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            
+            // 발신자(오너)에게도 웹소켓 알림
+            const messageProps = result.message['props'] || result.message;
+            const senderAsReceiver = {
+              receiverId: messageProps.sender_id,
+              nickname: undefined,
+              receiverType: messageProps.sender_type
+            };
+            this.wsServer.getHandler().notifyNewMessage(senderAsReceiver, result.message);
         }
       }
     }
@@ -712,7 +722,17 @@ export class OrdersController extends Controller {
             return undefined;
           });
           if (result?.receiverInfo != null && result?.message != null) {
+            // 수신자(유저)에게 웹소켓 알림
             this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            
+            // 발신자(오너)에게도 웹소켓 알림
+            const messageProps = result.message['props'] || result.message;
+            const senderAsReceiver = {
+              receiverId: messageProps.sender_id,
+              nickname: undefined,
+              receiverType: messageProps.sender_type
+            };
+            this.wsServer.getHandler().notifyNewMessage(senderAsReceiver, result.message);
           }
         }
       }
