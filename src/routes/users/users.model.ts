@@ -44,6 +44,7 @@ export type rawReformerPortfolio = Prisma.ownerGetPayload<{
     name: true,
     nickname: true,
     phone: true,
+    created_at: true,
     reformer_auth: {
       select: {
         portfolio: true,
