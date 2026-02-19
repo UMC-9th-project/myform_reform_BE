@@ -154,6 +154,7 @@ export class ReformerPortfolioDto {
   introduction: string | null;
   photos: string[] | null;
   business_number: string | null;
+  SubmissionDate: Date | null;
   status: reformer_status_enum;
 
   constructor(data: {
@@ -166,6 +167,7 @@ export class ReformerPortfolioDto {
     photos: string[] | null;
     business_number: string | null;
     status: reformer_status_enum;
+    created_at: Date | null;
   }) {
     this.owner_id = data.owner_id;
     this.name = data.name;
@@ -176,6 +178,7 @@ export class ReformerPortfolioDto {
     this.photos = data.photos;
     this.business_number = data.business_number;
     this.status = data.status;
+    this.SubmissionDate = data.created_at;
   }
 
   static fromRaw(raw: rawReformerPortfolio): ReformerPortfolioDto {
@@ -188,6 +191,7 @@ export class ReformerPortfolioDto {
       email: raw.email,
       phone: raw.phone,
       status: raw.status,
+      created_at: raw.created_at,
       portfolio: auth?.portfolio ?? null,
       photos: auth?.photo ?? [],
       business_number: auth?.business_number ?? null,
