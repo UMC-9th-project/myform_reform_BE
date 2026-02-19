@@ -151,15 +151,6 @@ export class ChatService {
       if (params.messageType === 'payment' && params.senderType === 'OWNER' && params.content) {
         const room = await this.chatRepository.getChatRoomById(params.chatRoomId);
         if (!room) throw new CreateTargetNotFoundError('채팅방을 찾을 수 없습니다.');
-        let targetId: string | null;
-        if (room.type === 'FEED') {
-          const chatRequestId = await this.chatRepository.getLatestChatRequestIdByChatRoomId(params.chatRoomId);
-          if (!chatRequestId) throw new CreateTargetNotFoundError('문의하기 거래는 요청서가 있어야 결제할 수 있습니다.');
-          targetId = chatRequestId;
-        } else {
-          const targetPayload = room.target_payload as { id?: string } | null;
-          targetId = targetPayload?.id ?? null;
-        }
         const price = Number(params.content.price) || 0;
         const deliveryFee = Number(params.content.delivery) ?? 0;
         const result = await this.ordersService.createReformOrderFromChat({
@@ -167,7 +158,7 @@ export class ChatService {
           userId: room.requester_id,
           ownerId: room.owner_id,
           targetType: room.type,
-          targetId,
+          targetId: room.target_payload ? (room.target_payload as any).id : null,
           price,
           deliveryFee
         });
