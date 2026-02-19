@@ -9,6 +9,8 @@ type ItemWithRelations = Prisma.itemGetPayload<{
         nickname: true;
         avg_star: true;
         trade_count: true;
+        review_count: true;
+        bio: true;
       };
     };
     item_photo: {
@@ -31,6 +33,12 @@ type ItemWithRelations = Prisma.itemGetPayload<{
             sort_order: true;
           };
         };
+      };
+    };
+    category: {
+      select: {
+        category_id: true;
+        parent_id: true;
       };
     };
   };
@@ -94,6 +102,8 @@ export interface ReformerInfo {
   nickname: string | null;
   star: number;
   order_count: number;
+  review_count: number;
+  bio: string;
 }
 
 export interface ItemDetail {

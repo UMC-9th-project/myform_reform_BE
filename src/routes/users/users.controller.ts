@@ -1,13 +1,35 @@
-import { Body, Path, Post, Patch, Controller, Route, Tags, Query, SuccessResponse, Example, Response, Request, Security, Get } from 'tsoa';
+import {
+  Body,
+  Path,
+  Post,
+  Patch,
+  Controller,
+  Route,
+  Tags,
+  Query,
+  SuccessResponse,
+  Example,
+  Response,
+  Request,
+  Security,
+  Get
+} from 'tsoa';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
-import { CheckNicknameResponse, UpdateReformerProfileResponseDto, UsersInfoResponse } from './dto/users.res.dto.js';
-import { UpdateReformerStatusRequest, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
-import { UpdateUserProfileResponseDto, UserDetailInfoResponseDto, ReformerDetailInfoResponseDto } from './dto/users.res.dto.js';
+import { CheckNicknameResponseDto, UpdateReformerProfileResponseDto, UserProfileResponseDto, UsersInfoResponseDto } from './dto/users.res.dto.js';
+import { UpdateReformerStatusRequestDto, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
+import {
+  UpdateUserProfileResponseDto,
+  UserDetailInfoResponseDto,
+  ReformerDetailInfoResponseDto,
+  ReformerPortfolioDto
+} from './dto/users.res.dto.js';
 import { UsersService } from './users.service.js';
 import { UnauthorizedError } from '../auth/auth.error.js';
+import { Request as ExRequest } from 'express';
+import { reformer_status_enum } from '@prisma/client';
 
 @Route('users')
-@Tags('Users')
+@Tags('유저 관련 기능')
 export class UsersController extends Controller {
   private usersService = new UsersService();
 
@@ -19,7 +41,7 @@ export class UsersController extends Controller {
    * @returns 닉네임 중복 검사 결과 (사용 가능 여부, 닉네임, 메시지)
    */
   @SuccessResponse(200, '닉네임 중복 검사 성공')
-  @Example<ResponseHandler<CheckNicknameResponse>>({
+  @Example<ResponseHandler<CheckNicknameResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -33,19 +55,20 @@ export class UsersController extends Controller {
   @Post('nickname-check')
   public async checkNickname(
     @Query() nickname: string
-  ): Promise<TsoaResponse<CheckNicknameResponse>> {
+  ): Promise<TsoaResponse<CheckNicknameResponseDto>> {
     const result = await this.usersService.checkNickname(nickname);
-    return new ResponseHandler<CheckNicknameResponse>(result);
+    return new ResponseHandler<CheckNicknameResponseDto>(result);
   }
 
   /**
-   * @summary 리폼러 인증 상태를 업데이트합니다.
+   * @summary 리폼러 인증 상태를 업데이트합니다. 상태가 변경되면 리폼러에게 문자로 변경 사항을 안내합니다.
    * @param reformerId 리폼러 ID
    * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED)
    * @returns 리폼러 상태 업데이트 결과
    */
+  @Security('jwt', ['master'])
   @SuccessResponse(200, '리폼러 상태 업데이트 성공')
-  @Example<ResponseHandler<UsersInfoResponse>>({
+  @Example<ResponseHandler<UsersInfoResponseDto>>({
     resultType: 'SUCCESS',
     error: null,
     success: {
@@ -57,14 +80,15 @@ export class UsersController extends Controller {
     }
   })
   @Response<ErrorResponse>('400', '목표 상태 형식 오류')
+  @Response<ErrorResponse>('403', '권한 없음, 마스터 리폼러 계정만 이용 가능')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Patch('reformer/{reformerId}/status')
   public async updateReformerStatus(
     @Path() reformerId: string,
-    @Body() requestBody: UpdateReformerStatusRequest
-  ): Promise<TsoaResponse<UsersInfoResponse>> {
+    @Body() requestBody: UpdateReformerStatusRequestDto
+  ): Promise<TsoaResponse<UsersInfoResponseDto>> {
     const result = await this.usersService.updateReformerStatus(reformerId, requestBody);
-    return new ResponseHandler<UsersInfoResponse>(result);
+    return new ResponseHandler<UsersInfoResponseDto>(result);
   }
 
   /**
@@ -167,5 +191,59 @@ export class UsersController extends Controller {
       result = await this.usersService.getReformerDetailInfo(userId);
     }
     return new ResponseHandler<UserDetailInfoResponseDto | ReformerDetailInfoResponseDto>(result);
+  }
+
+  /**
+   * 일반 유저 프로필 내용 불러오기
+   * @summary 일반 유저의 프로필 내용을 불러옵니다.
+   * @returns 유저 프로필 내용
+   */
+  @Security('jwt', ['user'])
+  @SuccessResponse(200, '유저 프로필 조회 성공')
+  @Response<ErrorResponse>('404', '존재하지 않는 계정 조회 시도')
+  @Example<ResponseHandler<UserDetailInfoResponseDto>>({
+    resultType: 'SUCCESS',
+    error: null,
+    success: {
+      userId: '123e4567-e89b-12d3-a456-426614174000',
+      email: 'user@example.com',
+      name: '홍길동',
+      nickname: 'nickname',
+      phone: '01012345678',
+      role: 'user',
+      profileImageUrl: 'https://myform-reform.s3.ap-northeast-2.amazonaws.com/profileImages/1234567890.jpg',
+    }
+  })
+  @Get('user/me/profile')
+  public async getUserProfile(
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<UserProfileResponseDto>> {
+    const payload = req.user;
+    const userId = payload.id;
+    const userProfile =  await this.usersService.getUserProfile(userId);
+    const userProfileDto = userProfile.toDto();
+    return new ResponseHandler<UserProfileResponseDto>(userProfileDto);
+  }
+
+/**
+   * 인증 상태 별 리폼러 가입 시 입력 정보 불러오기
+   * @summary 인증 상태 별로 리폼러의 포트폴리오 정보를 불러옵니다.
+   * @param status 리폼러의 인증 상태 (ALL: 전체, PENDING: 대기, APPROVED: 승인, REJECTED: 반려)
+   * @param page 조회할 페이지 번호 (기본값: 1)
+   * @param limit 한 페이지에 표시할 아이템 개수 (기본값: 10)
+   * @param order 정렬 기준 (desc: 최신순, asc: 오래된순) (기본값: 최신순)
+   * @returns 리폼러 회원 정보 및 회원가입 시 입력 내용
+   */
+  @SuccessResponse(200, '리폼러 포트폴리오 정보 조회 성공')
+  @Response<ErrorResponse>('500', '서버 오류')
+  @Get('reformers')
+  public async getReformersPortfolio(
+    @Query() status: reformer_status_enum | 'ALL',
+    @Query() page: number = 1,
+    @Query() limit: number = 10,
+    @Query() order: 'desc' | 'asc' = 'desc'
+  ): Promise<TsoaResponse< {totalCount: number, data: ReformerPortfolioDto[]}>> {
+    const result = await this.usersService.getReformerPortfolios(status, page, limit, order);
+    return new ResponseHandler< { totalCount: number; data: ReformerPortfolioDto[]}>(result)
   }
 }

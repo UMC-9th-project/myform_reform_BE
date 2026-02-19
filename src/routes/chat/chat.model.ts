@@ -1,22 +1,25 @@
-import { text } from 'express';
 import { InvalidChatRoomTypeError, InvalidChatMessageTypeError } from './chat.error.js';
 import { chat_message } from '@prisma/client';
 
 export type ChatRoomType = 'REQUEST' | 'PROPOSAL' | 'FEED'
 export type ChatRoomFilter = 'INQUIRY' | 'ORDER' | 'UNREAD';
-export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' | 'result';
+export type MessageType = 'image' | 'request' | 'proposal' | 'text' | 'payment' | 'result' | 'accept';
 
 // 채팅방 payload에 담길 타입 정의
 export type ChatRoomPayload = 
-    | { id: string, title: string, price : number, image: string }
-    | { id: string, title: string, minBudget : number, maxBudget : number, image: string }
-    | { id: string };
+    | { id: string, title: string | null, price : number | null, image: string | null }                          // 제안서로 접근
+    | { id: string, title: string | null, minBudget : number | null, maxBudget : number | null, image: string | null }  // 요청서로 접근
+    | null;                                                                                 // 피드로 접근
 
 // 채팅메시지 payload에 담길 타입 정의
 export type ChatMessagePayload = 
-    | {id: string, price: number, delivery: number, expected_working: Date }  //제안서
-    | {id: string, title: string, minBudget: number, maxBudget: number}              //요청서
-    | undefined;                                                              //텍스트
+    | {id: string, price: number, delivery: number, expectedWorking: number }  //제안서
+    | {id: string, title: string, minBudget: number, maxBudget: number}       //요청서
+    | {urls: string[]}                                                        //이미지
+    | { price: number; delivery: number; expectedWorking: number; receiptNumber?: string; orderId?: string }  //결제정보
+    | { receiptNumber: string; totalAmount: number; currency: string; paymentMethod: { type: string; provider: string | null; cardNumber: string | null; }; approvedAt: string | null;}  //결과정보
+    | { isAccepted: boolean }                                                  //제안서 승인/거절
+    | null;                                                                   //텍스트
 
 // 채팅 메세지 생성 파라미터 인터페이스
 export interface CreateMessageParams {
@@ -53,21 +56,19 @@ export class ChatRoomFactory {
     case 'PROPOSAL':
       return {
         id: target.reform_proposal_id,
-        title: target.title,
-        price: target.price.toNumber(),
-        image: target.reform_proposal_photo?.[0]?.content
+        title: target.title || null,
+        price: target.price ? target.price.toNumber() : null,
+        image: target.reform_proposal_photo?.[0]?.content || null
       };
     case 'FEED':
-      return {  
-        id: target.feed_id
-      };
+      return null; // 피드 채팅방은 payload 없음
     case 'REQUEST':
       return {
         id: target.reform_request_id,
-        title: target.title,
-        minBudget: target.min_budget?.toNumber(),
-        maxBudget: target.max_budget?.toNumber(),
-        image: target.reform_request_photo?.[0]?.content
+        title: target.title || null,
+        minBudget: target.min_budget ? target.min_budget.toNumber() : null,
+        maxBudget: target.max_budget ? target.max_budget.toNumber() : null,
+        image: target.reform_request_photo?.[0]?.content || null
       };  
     default:
       throw new InvalidChatRoomTypeError('채팅방 생성 시 잘못된 target 타입이 전달되었습니다.');  
@@ -119,7 +120,7 @@ export class ChatRoom {
 
 export class ChatMessageFactory {
 
-  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'payment', 'result'];
+  private static readonly PAYLOAD_TYPES: MessageType[] = ['request', 'proposal', 'result', 'image'];
 
   private static assemble(
     chatRoomId : string, 
@@ -148,7 +149,16 @@ export class ChatMessageFactory {
     if (messageType === 'text') {
       textContent = content as string;
       payload = undefined; // 텍스트 메시지는 페이로드가 없어야 함
-    } else if (this.PAYLOAD_TYPES.includes(messageType!)) {
+    } else if (messageType === 'image') {
+      payload = this.mapToImagePayload(content as string[]) as ChatMessagePayload;
+      textContent = undefined; // 이미지 타입은 텍스트 내용이 없어야 함 
+    }else if ( messageType === 'payment'){
+      payload = this.mapToPaymentPayload(content) as ChatMessagePayload;
+      textContent = undefined;  // 결제 정보 타입은 텍스트 내용이 없어야 함
+    }else if ( messageType === 'accept'){
+      payload = this.mapToAcceptPayload(content) as ChatMessagePayload;
+      textContent = undefined; // 요청서 타입은 텍스트 내용이 없어야 함
+    }else if (this.PAYLOAD_TYPES.includes(messageType!)) {
       payload = content as ChatMessagePayload;
       textContent = undefined; // 페이로드 타입은 텍스트 내용이 없어야 함
     } else {
@@ -165,6 +175,11 @@ export class ChatMessageFactory {
       payload
     );
   }
+  static mapToAcceptPayload(target: any): ChatMessagePayload {
+    return {
+      isAccepted: target.isAccepted
+    };
+  }
 
   static mapToRequestPayload(target: any): ChatMessagePayload {
     return {
@@ -180,10 +195,24 @@ export class ChatMessageFactory {
       id : target.chatProposalId,
       price : target.price,
       delivery : target.delivery,
-      expected_working : target.expected_working
+      expectedWorking : target.expectedWorking
     };
   }
 
+  static mapToImagePayload(target : string[]): ChatMessagePayload {
+    return {
+      urls: target
+    };
+  }  
+  static mapToPaymentPayload(target: any): ChatMessagePayload {
+    return {
+      price: target.price,
+      delivery: target.delivery,
+      expectedWorking: target.expectedWorking ?? target.expectedWorking ?? 0,
+      ...(target.receiptNumber != null && { receiptNumber: target.receiptNumber }),
+      ...(target.orderId != null && { orderId: target.orderId })
+    };
+  }
 
 
   // 타입별 payload 변환로직 필요시 구현

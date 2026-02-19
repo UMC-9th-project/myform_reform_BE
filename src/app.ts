@@ -17,20 +17,34 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({
-  origin: process.env.FRONTEND_URL!,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
+  ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
+  : [];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+      'Origin',
+      'Access-Control-Allow-Headers'
+    ]
+  })
+);
 RegisterRoutes(app);
 
 app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerJson));
+app.use('/chat-test', express.static('chat-test.html'));
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const server = app.listen(3001);
+const server = app.listen(process.env.PORT);
 
 // 웹소켓 서버 초기화
 const webSocketServer = WebSocketServer.getInstance();

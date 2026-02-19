@@ -240,13 +240,19 @@ export class HomeService {
   }
 
   private mapProposalToCustomOrderDto(
-    proposal: Awaited<ReturnType<typeof this.repository.findRecentProposals>>[0]
+    proposal: Awaited<ReturnType<typeof this.repository.findRecentProposals>>[0],
+    wishedProposalIds: Set<string>
   ): CustomOrderDto {
+    const avgStar = proposal.avg_star != null ? Number(proposal.avg_star) : 0;
+    const reviewCount = proposal.review_count ?? 0;
     return {
       proposal_id: proposal.reform_proposal_id,
       thumbnail: proposal.reform_proposal_photo[0]?.content || '',
       title: proposal.title || '',
       min_price: proposal.price ? Number(proposal.price) : 0,
+      star: Math.round(avgStar * 10) / 10,
+      review_count: reviewCount,
+      is_wished: wishedProposalIds.has(proposal.reform_proposal_id),
       owner_id: proposal.owner_id,
       owner_nickname: proposal.owner.nickname || ''
     };
@@ -254,8 +260,15 @@ export class HomeService {
 
   async getCustomOrders(userId?: string): Promise<CustomOrderDto[]> {
     try {
-      const proposals = await this.fetchCustomOrdersFromDb();
-      return proposals.map((proposal) => this.mapProposalToCustomOrderDto(proposal));
+      const [proposals, wishedProposalIds] = await Promise.all([
+        this.fetchCustomOrdersFromDb(),
+        userId
+          ? this.repository.findUserWishProposalIdsByUserId(userId)
+          : Promise.resolve(new Set<string>())
+      ]);
+      return proposals.map((proposal) =>
+        this.mapProposalToCustomOrderDto(proposal, wishedProposalIds)
+      );
     } catch (error) {
       if (error instanceof CustomOrdersError) {
         throw error;
@@ -283,7 +296,11 @@ export class HomeService {
       owner_id: owner.owner_id,
       nickname: owner.nickname || '',
       profile_image: owner.profile_photo || '',
-      bio: owner.bio || ''
+      bio: owner.bio || '',
+      avg_star: owner.avg_star != null ? Number(owner.avg_star) : null,
+      review_count: owner.review_count ?? null,
+      trade_count: owner.trade_count ?? null,
+      keywords: owner.keywords ?? []
     };
   }
 

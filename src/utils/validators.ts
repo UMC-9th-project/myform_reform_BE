@@ -76,7 +76,7 @@ export const validateRegistrationType = (
 };
 
 export const validateBusinessNumber = (businessNumber: string): void => {
-  if (!/^[0-9]{3}-[0-9]{2}-[0-9]{5}$/.test(businessNumber)){
+  if (!/^[0-9]{10}$/.test(businessNumber)){
     throw new InvalidBusinessNumberError(`${businessNumber} 는 올바른 사업자 번호 형식이 아닙니다.`);
   }
 };
@@ -87,9 +87,9 @@ export const validateDescription = (description: string): void => {
   }
 };
 
-export const validatePortfolioPhotos = (portfolioPhotos: Express.Multer.File[]): void => {
-  if (portfolioPhotos.length === 0 || portfolioPhotos.length > 9){
-    throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 9장 이하로 업로드해주세요.');
+export const validatePortfolioPhotos = (portfolioPhotos: string[]): void => {
+  if (portfolioPhotos.length === 0 || portfolioPhotos.length > 8){
+    throw new InvalidPhotoNumberError('입력한 사진의 개수가 올바르지 않습니다. 1장 이상 8장 이하로 업로드해주세요.');
   }
 };
 
@@ -113,3 +113,10 @@ export const processKeywords = (keywords: string[]): string[] => {
   )];
   return uniqueKeywords;
 }
+
+export const validatePostalCode = (postalCode: string): void => {
+  const postalCodeRegex = /^[0-9]{5}$/;
+  if (!postalCodeRegex.test(postalCode)){
+    throw new InputValidationError(`유효하지 않은 우편번호 형식입니다. 입력받은 우편번호 : ${postalCode}`);
+  }
+};

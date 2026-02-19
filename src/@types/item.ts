@@ -12,5 +12,5 @@ export interface Option {
 
 export interface Category {
   major: string;
-  sub: string;
+  sub?: string;
 }

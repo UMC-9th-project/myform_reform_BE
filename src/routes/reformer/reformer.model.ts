@@ -8,8 +8,8 @@ export type ReformerSearchResult = Omit<owner, 'search_vector'> & {
 };
 
 export type NameCursor = [string, string]; // [nickname, owner_id]
-export type RatingCursor = [number, string]; // [avg_star, owner_id]
-export type TradeCursor = [number, string]; // [trade_count, owner_id]
+export type RatingCursor = [number | null, string]; // [avg_star, owner_id]
+export type TradeCursor = [number | null, string]; // [trade_count, owner_id]
 export type SearchCursor = [number, number, string]; // [rank, avg_star, owner_id]
 export type FeedCursor = [string]; // [feed_id]
 
@@ -20,6 +20,17 @@ type FeedRow = {
   created_at: Date;
   photo_content: string | null;
   photo_count: bigint;
+};
+
+type OwnerRow = {
+  owner_id: string;
+  nickname: string | null;
+  keywords: string[];
+  bio: string | null;
+  profile_photo: string | null;
+  avg_star: number;
+  review_count: number;
+  trade_count: number;
 };
 
 const REFORMER_SELECT: Prisma.ownerSelect = {
@@ -169,47 +180,43 @@ export class ReformerModel {
 
     if (sort === 'rating') {
       const parts = cursorParts as RatingCursor | undefined;
-      const lastAvg = parts ? new Prisma.Decimal(parts[0]) : undefined;
-      const lastId = parts ? parts[1] : undefined;
+      const lastAvg = parts ? parts[0] : null;
+      const lastId = parts ? parts[1] : null;
 
-      const where: Prisma.ownerWhereInput = {
-        avg_star: { not: null },
-        ...(parts && {
-          OR: [
-            { avg_star: { lt: lastAvg } },
-            { AND: [{ avg_star: lastAvg }, { owner_id: { lt: lastId } }] }
-          ]
-        })
-      };
-
-      return await prisma.owner.findMany({
-        where,
-        orderBy: [{ avg_star: 'desc' }, { owner_id: 'desc' }],
-        take: limit + 1,
-        select: REFORMER_SELECT
-      });
+      // COALESCE로 null을 0으로 처리하여 정렬
+      return await prisma.$queryRaw<OwnerRow[]>`
+        SELECT owner_id, nickname, keywords, bio, profile_photo, 
+               COALESCE(avg_star, 0) as avg_star, 
+               COALESCE(review_count, 0) as review_count, 
+               COALESCE(trade_count, 0) as trade_count
+        FROM "owner"
+        WHERE (
+          ${lastAvg}::numeric IS NULL 
+          OR (COALESCE(avg_star, 0), owner_id) < (${lastAvg}::numeric, ${lastId}::uuid)
+        )
+        ORDER BY COALESCE(avg_star, 0) DESC, owner_id DESC
+        LIMIT ${limit + 1}
+      `;
     }
 
     const parts = cursorParts as TradeCursor | undefined;
-    const lastTrades = parts ? parts[0] : undefined;
-    const lastId = parts ? parts[1] : undefined;
+    const lastTrades = parts ? parts[0] : null;
+    const lastId = parts ? parts[1] : null;
 
-    const where: Prisma.ownerWhereInput = {
-      trade_count: { not: null },
-      ...(parts && {
-        OR: [
-          { trade_count: { lt: lastTrades } },
-          { AND: [{ trade_count: lastTrades }, { owner_id: { lt: lastId } }] }
-        ]
-      })
-    };
-
-    return await prisma.owner.findMany({
-      where,
-      orderBy: [{ trade_count: 'desc' }, { owner_id: 'desc' }],
-      take: limit + 1,
-      select: REFORMER_SELECT
-    });
+    // COALESCE로 null을 0으로 처리하여 정렬
+    return await prisma.$queryRaw<OwnerRow[]>`
+      SELECT owner_id, nickname, keywords, bio, profile_photo, 
+             COALESCE(avg_star, 0) as avg_star, 
+             COALESCE(review_count, 0) as review_count, 
+             COALESCE(trade_count, 0) as trade_count
+      FROM "owner"
+      WHERE (
+        ${lastTrades}::int IS NULL 
+        OR (COALESCE(trade_count, 0), owner_id) < (${lastTrades}::int, ${lastId}::uuid)
+      )
+      ORDER BY COALESCE(trade_count, 0) DESC, owner_id DESC
+      LIMIT ${limit + 1}
+    `;
   }
 
   public async countAll(): Promise<number> {

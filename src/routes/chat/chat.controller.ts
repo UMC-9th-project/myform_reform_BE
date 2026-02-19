@@ -10,24 +10,21 @@ import {
   Request,
   Response,
   Route,
+  Security,
   SuccessResponse,
   Tags
 } from 'tsoa';
 import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ChatService } from './chat.service.js';
-import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, SimplePostResponseDTO,  ChatRoomListDTO, CreateChatRequestDTO, CreateChatProposalDTO } from './chat.dto.js';
+import { CreateChatRoomWithProposalDTO, CreateChatRequestDTO, CreateChatProposalDTO, UpdateChatRequestDTO, UpdateChatProposalDTO } from './dto/chat.req.dto.js';
+import { ChatProposalResponseDTO, ChatRequestResponseDTO, CreateChatRoomDTO, CreateChatRoomResponseDTO, SimplePostResponseDTO, SimplePatchResponseDTO, ChatRoomListDTO, ChatMessageListDTO, LatestProposalPriceDTO } from './dto/chat.res.dto.js';
 import { ChatRoomFilter } from './chat.model.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
-// import { DatabaseForeignKeyError, DatabaseRecordNotFoundError, DbConnectionError, DatabaseUniqueConstraintError } from '../../utils/dbErrorHandler.js';
-// import { CreateTargetNotFoundError, InvalidChatRoomTypeError, InvalidChatRoomFilterError } from './chat.error.js';
+import express from 'express';
+import { BasicError } from '../../middleware/error.js';
 
 @Route('chat')
 @Tags('채팅 기능')
-// 오류 있음 BasicError상속클래스에 <T> 제너릭 타입 미선언시 tsoa 빌드 범위안에 들어가면 오류가 발생
-// @Response<DatabaseForeignKeyError>(409, '연관된 데이터가 없거나 참조 중인 데이터가 있습니다.')
-// @Response<DatabaseRecordNotFoundError>(404, '해당 데이터를 찾을 수 없어 수정/삭제할 수 없습니다.')
-// @Response<DbConnectionError>(500, '데이터베이스 연결에 실패했습니다.')
-// @Response<DatabaseUniqueConstraintError>(409, '중복된 데이터가 존재합니다.')
 export class ChatController extends Controller {
   
   private chatService: ChatService;
@@ -39,103 +36,421 @@ export class ChatController extends Controller {
   }
   /**
    * @summary 채팅방 생성
-   * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다.
-   * @param 생성위치ID, 타입, 요청자ID(테스트용) 등이 포함된 요청 객체
+   * @description 요청글, 제안서, 피드등을 기반으로 채팅방을 생성합니다. 
+   * **채팅방 타입별 생성 규칙:**
+   * - REQUEST: 리폼러가 유저의 요청글을 보고 채팅방 개설(현재 취소)
+   * - PROPOSAL: 유저가 리폼러의 제안서를 보고 채팅방 개설
+   * - FEED: 유저가 리폼러의 피드를 보고 문의 채팅방 개설
+   * 각 대상의 id를 입력, feed의 경우 ownerId 입력
+   * 
+   * @param body 채팅방 생성 요청 데이터
    * @returns 생성된 채팅방의 고유 아이디와 생성 일시
    */
   @Post('/rooms')
+  @Security('jwt')
   @SuccessResponse('201', 'Created')
-  // @Response<CreateTargetNotFoundError>(404, '채팅방 생성 대상 리소스를 찾을 수 없습니다.')
-  // @Response<InvalidChatRoomTypeError>(400, '유효하지 않은 채팅방 타입입니다.')
+  @Example<TsoaResponse<CreateChatRoomResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: new Date(),
+      isNew: true
+    }
+  })
   public async createChatRoom(
-    @Body() body: {request: CreateChatRoomDTO}
-  ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const result = await this.chatService.createChatRoom(body.request);
-    return new ResponseHandler<SimplePostResponseDTO>(result);
+    @Request() request: express.Request,
+    @Body() body: {dto: CreateChatRoomDTO}
+  ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
+    const result = await this.chatService.createChatRoom(body.dto, request.user.id);
+    return new ResponseHandler<CreateChatRoomResponseDTO>(result);
+  }
+  /**
+   * @summary 채팅방 생성 (요청서를 기반으로 제안서와 함께)
+   * @param body 채팅방 생성 요청 데이터와 제안서 작성 데이터
+   * @returns 생성된 채팅방의 고유 아이디와 생성 일시
+   */
+  @Post('/rooms/request')
+  @Security('jwt')
+  @SuccessResponse('201', 'Created')
+  @Example<TsoaResponse<CreateChatRoomResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: new Date(),
+      isNew: true
+    }
+  })
+  public async createChatRoomWithProposal(
+    @Request() request: express.Request,
+    @Body() body: CreateChatRoomWithProposalDTO
+  ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
+    const {chatRoomResponse, messages, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
+    if(chatRoomResponse.isNew == true){
+      // 두 개의 메시지를 모두 웹소켓으로 전송
+      messages.forEach((message: any) => {
+        this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+      });
+    }
+    return new ResponseHandler<CreateChatRoomResponseDTO>(chatRoomResponse);
   }
 
   /**
    * @summary 채팅방 목록 조회
-   * @description 특정 사용자가 참여중인 채팅방 목록을 조회합니다.
-   * @param myId 채팅방 목록을 조회할 사용자 고유 아이디(테스트용)
+   * @description 특정 사용자가 참여중인 채팅방 목록을 조회합니다. 
+   * 커서 기반 페이지네이션을 지원하며, 마지막 메시지 시간 기준 최신순으로 정렬됩니다.
+   * (주의사항) 페이지네이션으로 개발 하였지만 로딩되지 않은 채팅방에서 메시지가 도착할 경우
+   * 문제가 될 수 있어 일단 널널하게 50개를 기본값으로 설정해두었습니다.
+   * 
    * @param type 채팅방 목록 필터 타입
    * - 없음 : 전체 조회
-   * - INQUIRY: 문의 채팅방
-   * - ORDER: 주문제작 채팅방
+   * - INQUIRY: 문의 채팅방 (FEED 타입)
+   * - ORDER: 주문제작 채팅방 (REQUEST/PROPOSAL 타입)
    * - UNREAD: 안 읽은 메시지가 있는 채팅방
    * @param cursor 커서 기반 페이지네이션을 위한 커서 값, 마지막으로 조회된 채팅방의 ID
-   * @param myType 사용자 유형(테스트용)
-   * @returns 채팅방 목록 배열
+   * @param limit 페이지네이션을 위한 조회 제한 수 (기본값: 50)
+   * @returns 채팅방 목록 배열 및 페이지네이션 정보
   */
-  @Get('/rooms/list/{myId}')
-  // @Response<InvalidChatRoomFilterError>(400, '유효하지 않은 채팅방 필터입니다.')
+  @Get('/rooms/list')
+  @Security('jwt')
+  @Example<TsoaResponse<ChatRoomListDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      data: [
+        {
+          chatRoomId: "550e8400-e29b-41d4-a716-446655440000",
+          image: "https://s3.example.com/thumb.jpg",
+          title: "리폼마스터",
+          roomType: "FEED",
+          messageType: "text",
+          type: "INQUIRY",
+          lastMessage: "안녕하세요, 문의드립니다.",
+          lastMessageAt: new Date(),
+          unreadCount: 3
+        }
+      ],
+      meta: {
+        nextCursor: "660e8400-e29b-41d4-a716-446655440111",
+        hasMore: true
+      }
+    }
+  })
   public async getChatRooms(
-    @Path() myId: string,       // 테스트용
+    @Request() request: express.Request,
     @Query() type?: ChatRoomFilter,
     @Query() cursor?: string,
-    @Query() myType?: 'owner' | 'requester'    // 테스트용
+    @Query() limit?: number
   ): Promise<TsoaResponse<ChatRoomListDTO>> {
-    const result = await this.chatService.getChatRooms(myId, myType as 'owner' | 'requester', type, cursor, 3);
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatRooms(request.user.id, userType, type, cursor, limit);
     return new ResponseHandler<ChatRoomListDTO>(result);
   }
 
   /**
    * @summary 채팅 요청서 생성
-   * @description 특정 요청글에 대해 채팅 요청을 생성합니다.
-   * @param 요청글ID, 요청자ID(테스트용) 등이 포함된 요청 객체
+   * @description 채팅방 내에서 리폼 요청서를 생성합니다. 
+   * 요청서는 메시지 형태로 저장되며, 수신자에게 실시간 알림이 전송됩니다.
+   * 
+   * 
+   * @param request 채팅 요청서 생성 데이터
    * @returns 생성된 채팅 요청의 고유 아이디와 생성 일시
    */
   @Post('/request')
+  @Security('jwt', ['user'])
+  @SuccessResponse('201', 'Created')
+  @Example<TsoaResponse<SimplePostResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      createdAt: new Date()
+    }
+  })
   public async createChatRequest(
-    @Body() request: CreateChatRequestDTO
+    @Request() request: express.Request,
+    @Body() dto: CreateChatRequestDTO
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatRequest(request);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const { result, message, receiverInfo } = await this.chatService.createChatRequest(dto, request.user.id, userType);
+    this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 
   /**
    * @summary 채팅 요청서 조회
-   * @description 특정 채팅 요청의 상세 정보를 조회합니다.
-   * @param requestId 채팅 요청의 고유 아이디
-   * @returns 채팅 요청 상세 정보
+   * @description 채팅 요청서의 상세 정보를 조회합니다. 
+   * 요청자 정보, 본문 내용, 예산 범위, 첨부 이미지 등을 포함합니다.
+   * 
+   * @param requestId 채팅 요청서의 고유 아이디
+   * @returns 채팅 요청서 상세 정보
    */
   @Get('/request/{requestId}')
+  @Security('jwt')
+  @Example<TsoaResponse<ChatRequestResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      chatRequestId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      messageId: "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      requester: {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        nickname: "홍길동",
+        profileImage: "https://s3.example.com/profile.jpg"
+      },
+      body: {
+        title: "청바지 리폼 의뢰합니다",
+        content: "청바지 기장을 줄이고 밑단을 수선해주세요.",
+        minBudget: 30000,
+        maxBudget: 50000,
+        images: ["https://s3.example.com/image1.jpg"]
+      },
+      createdAt: new Date()
+    }
+  })
   public async getChatRequest(
+    @Request() request: express.Request,
     @Path() requestId: string
   ): Promise<TsoaResponse<ChatRequestResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.getChatRequest(requestId);
+    const userId = (request.user as any).id;
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatRequest(requestId, userId, userType);
     return new ResponseHandler<ChatRequestResponseDTO>(result);
   }
 
   /**
+   * @summary 채팅 요청서 수정
+   * @description 이미 생성된 채팅 요청서의 내용을 수정합니다. 
+   * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
+   * 
+   * **수정 가능 필드:** 제목, 내용, 예산 범위, 첨부 이미지
+   * 
+   * @param requestId 채팅 요청서의 고유 아이디
+   * @param request 수정할 요청서 정보 (부분 수정 지원)
+   * @returns 수정된 요청서의 고유 아이디와 수정 일시
+   */
+  @Patch('/request/{requestId}')
+  @Security('jwt', ['user'])
+  @Example<TsoaResponse<SimplePatchResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      updatedAt: new Date()
+    }
+  })
+  public async updateChatRequest(
+    @Request() request: express.Request,
+    @Path() requestId: string,
+    @Body() dto: UpdateChatRequestDTO
+  ): Promise<TsoaResponse<SimplePatchResponseDTO>> {
+    const result = await this.chatService.updateChatRequest(requestId, dto, request.user.id);
+    return new ResponseHandler<SimplePatchResponseDTO>(result);
+  }
+
+  /**
    * @summary 채팅 제안서 생성
-   * @description 특정 요청글에 대해 채팅 제안서를 생성합니다.
-   * @param 요청글ID, 제안자ID(테스트용) 등이 포함된 요청 객체
+   * @description 채팅방 내에서 리폼 제안서를 생성합니다. 
+   * 리폼러가 유저의 요청에 대해 구체적인 견적(가격, 배송비, 예상 작업일)을 제안합니다.
+   * 제안서는 메시지 형태로 저장되며, 수신자에게 실시간 알림이 전송됩니다.
+   * 
+   * **사용 시나리오:** 리폼러가 유저의 요청을 검토한 후 구체적인 작업 조건을 제안
+   * 
+   * @param request 채팅 제안서 생성 데이터
    * @returns 생성된 채팅 제안서의 고유 아이디와 생성 일시
    */
   @Post('/proposal')
+  @SuccessResponse('201', 'Created')
+  @Security('jwt', ['reformer'])
+  @Example<TsoaResponse<SimplePostResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "c3d4e5f6-a7b8-9012-cdef-123456789abc",
+      createdAt: new Date()
+    }
+  })
   public async createChatProposal(
-    @Body() request: CreateChatProposalDTO  
+    @Request() request: express.Request,
+    @Body() dto: CreateChatProposalDTO  
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
-    const { result, message, receiverInfo } = await this.chatService.createChatProposal(request);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo.receiverId, message);
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const { result, messages, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, userType);
+    // 두 개의 메시지를 모두 웹소켓으로 전송
+    messages.forEach((message: any) => {
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    });
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 
   /**
    * @summary 채팅 제안서 조회
-   * @description 특정 채팅 제안서의 상세 정보를 조회합니다.
+   * @description 채팅 제안서의 상세 정보를 조회합니다. 
+   * 리폼러 정보, 제안 가격, 배송비, 예상 작업 기간 등을 포함합니다.
+   * 
    * @param proposalId 채팅 제안서의 고유 아이디
    * @returns 채팅 제안서 상세 정보
    */
   @Get('/proposal/{proposalId}')
+  @Security('jwt')
+  @Example<TsoaResponse<ChatProposalResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      chatProposalId: "c3d4e5f6-a7b8-9012-cdef-123456789abc",
+      messageId: "d4e5f6a7-b8c9-0123-def0-123456789def",
+      owner: {
+        id: "789e4567-e89b-12d3-a456-426614174000",
+        nickname: "리폼마스터",
+        profileImage: "https://s3.example.com/owner-profile.jpg"
+      },
+      body: {
+        title: "청바지 리폼 의뢰합니다",
+        price: 45000,
+        delivery: 3000,
+        expectedWorking: 7,
+        content: "청바지 리폼은 저희가 최고입니다! 빠르고 깔끔하게 작업해드리겠습니다.",
+        images: ["https://s3.example.com/proposal-image1.jpg"]
+      },
+      createdAt: new Date()
+    }
+  })
   public async getChatProposal(
-    @Path() proposalId: string
+    @Path() proposalId: string,
+    @Request() request: express.Request
   ): Promise<TsoaResponse<ChatProposalResponseDTO>> {
-    // 권한 검사는 로그인 완성되면
-    const result = await this.chatService.getChatProposal(proposalId);
+    // 권한 검사 필요
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatProposal(proposalId, request.user.id, userType);
     return new ResponseHandler<ChatProposalResponseDTO>(result);
   }
+
+  /**
+   * @summary 채팅 제안서 수정
+   * @description 이미 생성된 채팅 제안서의 내용을 수정합니다. 
+   * 수정할 필드만 전송하면 되며, 전송되지 않은 필드는 기존 값을 유지합니다.
+   * 
+   * **수정 가능 필드:** 제안 가격, 배송비, 예상 작업 일수, 본문 내용, 첨부 이미지
+   * **사용 시나리오:** 리폼러가 견적을 재조정하거나 작업 기간을 변경할 때
+   * 
+   * @param proposalId 채팅 제안서의 고유 아이디
+   * @param request 수정할 제안서 정보 (부분 수정 지원)
+   * @returns 수정된 제안서의 고유 아이디와 수정 일시
+   */
+  @Patch('/proposal/{proposalId}')
+  @Security('jwt', ['reformer'])
+  @Example<TsoaResponse<SimplePatchResponseDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      id: "c3d4e5f6-a7b8-9012-cdef-123456789abc",
+      updatedAt: new Date()
+    }
+  })
+  public async updateChatProposal(
+    @Path() proposalId: string,
+    @Body() dto: UpdateChatProposalDTO,
+    @Request() request: express.Request
+  ): Promise<TsoaResponse<SimplePatchResponseDTO>> {
+    const result = await this.chatService.updateChatProposal(proposalId, dto, request.user.id);
+    return new ResponseHandler<SimplePatchResponseDTO>(result);
+  }
+
+  /**
+   * @summary 채팅 메시지 목록 조회 (무한 스크롤)
+   * @description 특정 채팅방의 메시지 목록을 조회합니다. 
+   * 커서 기반 페이지네이션을 지원하며, 최신 메시지부터 과거 순으로 조회됩니다.
+   * cursor가 없으면 최신 메시지부터, 있으면 해당 메시지 이전부터 조회합니다.
+   * 
+   * @param roomId 채팅방의 고유 아이디
+   * @param cursor 커서 기반 페이지네이션을 위한 커서 값 (마지막으로 조회된 메시지 ID)
+   * @param limit 한 번에 조회할 메시지 개수 (기본값: 20)
+   * @returns 채팅 메시지 목록 및 페이지네이션 정보
+   */
+  @Get('/rooms/{roomId}/messages')
+  @Security('jwt')
+  @Example<TsoaResponse<ChatMessageListDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      data: [
+        {
+          messageId: "d4e5f6a7-b8c9-0123-def0-123456789def",
+          senderId: "123e4567-e89b-12d3-a456-426614174000",
+          senderType: "USER",
+          messageType: "text",
+          textContent: "안녕하세요",
+          payload: null,
+          createdAt: new Date()
+        }
+      ],
+      meta: {
+        nextCursor: "c3d4e5f6-a7b8-9012-cdef-123456789abc",
+        hasMore: true
+      },
+      chatRoomInfo: {
+        chatRoomId: "550e8400-e29b-41d4-a716-446655440000",
+        lastMessageId: "880e8400-e29b-41d4-a716-446655440333",
+        ownerLastReadId: "990e8400-e29b-41d4-a716-446655440444",
+        requesterLastReadId: "aa0e8400-e29b-41d4-a716-446655440555",
+        targetPayload: { 
+          type: "REQUEST", 
+          id: "bb0e8400-e29b-41d4-a716-446655440666",
+          title: "청바지 리폼 요청합니다"
+        },
+        type: "REQUEST",
+        owner: {
+          id: "660e8400-e29b-41d4-a716-446655440111",
+          nickname: "리폼마스터",
+          profileImage: "https://s3.example.com/owner-profile.jpg"
+        },
+        requester: {
+          id: "770e8400-e29b-41d4-a716-446655440222",
+          nickname: "홍길동",
+          profileImage: "https://s3.example.com/user-profile.jpg"
+        }
+      }
+    }
+  })
+  public async getChatMessages(
+    @Request() request: express.Request,
+    @Path() roomId: string,
+    @Query() cursor?: string,
+    @Query() limit: number = 20,
+  ): Promise<TsoaResponse<ChatMessageListDTO>> {
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getChatMessages(request.user.id, userType, roomId, cursor, limit);
+    return new ResponseHandler<ChatMessageListDTO>(result);
+  }
+
+  /**
+   * @summary 채팅방 내 최신 제안서 가격 정보 조회
+   * @description 특정 채팅방에서 가장 최근에 작성된 제안서의 가격, 배달비, 예상 작업 기간을 조회합니다.
+   * 제안서가 없는 경우 각 필드는 null로 반환됩니다.
+   * 
+   * @param roomId 채팅방의 고유 아이디
+   * @returns 최신 제안서의 가격, 배달비, 예상 작업 기간
+   */
+  @Get('/rooms/{roomId}/latest-proposal-price')
+  @Security('jwt')
+  @Example<TsoaResponse<LatestProposalPriceDTO>>({
+    resultType: "SUCCESS",
+    error: null,
+    success: {
+      price: 45000,
+      delivery: 3000,
+      expectedWorking: 7
+    }
+  })
+  public async getLatestProposalPrice(
+    @Request() request: express.Request,
+    @Path() roomId: string
+  ): Promise<TsoaResponse<LatestProposalPriceDTO>> {
+    const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
+    const result = await this.chatService.getLatestProposalPrice(roomId, request.user.id, userType);
+    return new ResponseHandler<LatestProposalPriceDTO>(result);
+  }
+
+
 }

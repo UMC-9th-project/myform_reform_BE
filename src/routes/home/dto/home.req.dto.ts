@@ -3,7 +3,7 @@ import { IsOptional, IsUUID, IsIn } from 'class-validator';
 /**
  * JWT 토큰에서 추출할 사용자 정보 (임시 - JWT 구현 시 사용)
  */
-export interface AuthUser {
+export class AuthUser {
   userId?: string;
   role?: 'USER' | 'OWNER';
 }

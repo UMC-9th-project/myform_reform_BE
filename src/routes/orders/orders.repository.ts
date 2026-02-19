@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.config.js';
 import { Prisma, order_status_enum, target_type_enum } from '@prisma/client';
+import { CreateReviewInput } from './orders.model.js';
 
 export class OrdersRepository {
   /**
@@ -8,7 +9,7 @@ export class OrdersRepository {
   async findReceiptByReceiptNumber(receiptNumber: string) {
     return await prisma.receipt.findUnique({
       where: { receipt_number: receiptNumber },
-      select: { 
+      select: {
         receipt_id: true,
         payment_status: true
       }
@@ -156,7 +157,10 @@ export class OrdersRepository {
   /**
    * receipt_number로 receipt와 모든 order 조회
    */
-  async findReceiptByReceiptNumberWithOrders(receiptNumber: string, userId: string) {
+  async findReceiptByReceiptNumberWithOrders(
+    receiptNumber: string,
+    userId: string
+  ) {
     return await prisma.receipt.findFirst({
       where: {
         receipt_number: receiptNumber,
@@ -314,6 +318,26 @@ export class OrdersRepository {
     });
   }
 
+  /** UUID 형식 검증용 정규식 */
+  private static readonly UUID_REGEX =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  /**
+   * @returns 유효한 ID가 있으면 Prisma.Sql (IN 절용), 없으면 null
+   */
+  private optionItemIdsToSqlIn(optionItemIds: string[]): Prisma.Sql | null {
+    if (!optionItemIds?.length) return null;
+    const validIds = optionItemIds.filter(
+      (id): id is string =>
+        typeof id === 'string' && OrdersRepository.UUID_REGEX.test(id.trim())
+    );
+    if (validIds.length === 0) return null;
+    return Prisma.join(
+      validIds.map((id) => Prisma.sql`${id}::uuid`),
+      ', '
+    );
+  }
+
   /**
    * 옵션 아이템 재고 차감
    */
@@ -321,15 +345,21 @@ export class OrdersRepository {
     optionItemIds: string[],
     quantity: number
   ): Promise<number> {
-    return await prisma.$executeRaw(
+    if (optionItemIds.length === 0 || quantity < 1 || !Number.isInteger(quantity)) {
+      return 0;
+    }
+    const idsFragment = this.optionItemIdsToSqlIn(optionItemIds);
+    if (idsFragment === null) return 0;
+    const result = await prisma.$executeRaw(
       Prisma.sql`
         UPDATE option_item
         SET quantity = quantity - ${quantity}
-        WHERE option_item_id = ANY(${optionItemIds}::uuid[])
+        WHERE option_item_id IN (${idsFragment})
           AND quantity >= ${quantity}
           AND quantity IS NOT NULL
       `
     );
+    return Number(result);
   }
 
   /**
@@ -339,14 +369,20 @@ export class OrdersRepository {
     optionItemIds: string[],
     quantity: number
   ): Promise<number> {
-    return await prisma.$executeRaw(
+    if (optionItemIds.length === 0 || quantity < 1 || !Number.isInteger(quantity)) {
+      return 0;
+    }
+    const idsFragment = this.optionItemIdsToSqlIn(optionItemIds);
+    if (idsFragment === null) return 0;
+    const result = await prisma.$executeRaw(
       Prisma.sql`
         UPDATE option_item
         SET quantity = quantity + ${quantity}
-        WHERE option_item_id = ANY(${optionItemIds}::uuid[])
+        WHERE option_item_id IN (${idsFragment})
           AND quantity IS NOT NULL
       `
     );
+    return Number(result);
   }
 
   /**
@@ -390,7 +426,7 @@ export class OrdersRepository {
   }
 
   /**
-   * 배송지 생성
+   * 배송지 생성 (수령인·연락처 필수, 배송지명 선택)
    */
   async createDeliveryAddress(data: {
     user_id: string;
@@ -398,6 +434,9 @@ export class OrdersRepository {
     postal_code: string;
     address: string;
     address_detail: string | null;
+    recipient?: string | null;
+    phone?: string | null;
+    address_name?: string | null;
     is_default: boolean;
   }) {
     return await prisma.delivery_address.create({
@@ -414,7 +453,6 @@ export class OrdersRepository {
     owner_id: string;
     target_type: target_type_enum;
     target_id: string;
-    user_address: string | undefined;
     price: number;
     delivery_fee: number;
     quantity: number;
@@ -426,13 +464,45 @@ export class OrdersRepository {
   }
 
   /**
+   * 채팅 기반 리폼 주문 생성
+   * target_id, chat_room_id
+   */
+  async createReformOrderFromChat(data: {
+    receipt_id: string;
+    user_id: string;
+    owner_id: string;
+    target_type: target_type_enum;
+    target_id: string | null;
+    price: number;
+    delivery_fee: number;
+    quantity: number;
+    status: order_status_enum;
+    chat_room_id: string | null;
+  }) {
+    return await prisma.order.create({
+      data: {
+        receipt_id: data.receipt_id,
+        user_id: data.user_id,
+        owner_id: data.owner_id,
+        target_type: data.target_type,
+        target_id: data.target_id,
+        price: data.price,
+        delivery_fee: data.delivery_fee,
+        quantity: data.quantity,
+        status: data.status,
+        chat_room_id: data.chat_room_id
+      }
+    });
+  }
+
+  /**
    * 주문 옵션 생성
    */
   async createOrderOptions(orderId: string, optionItemIds: string[]) {
     if (optionItemIds.length === 0) {
       return;
     }
-    
+
     return await prisma.order_option.createMany({
       data: optionItemIds.map((optionItemId) => ({
         order_id: orderId,
@@ -442,7 +512,7 @@ export class OrdersRepository {
   }
 
   /**
-   * 영수증 생성
+   * 영수증 생성 (결제 시점 배송지 스냅샷 포함)
    */
   async createReceipt(data: {
     receipt_number: string;
@@ -451,6 +521,12 @@ export class OrdersRepository {
     payment_method: string | null;
     payment_gateway: string;
     transaction: string | null;
+    delivery_postal_code?: string | null;
+    delivery_address?: string | null;
+    delivery_address_detail?: string | null;
+    delivery_recipient_name?: string | null;
+    delivery_phone?: string | null;
+    delivery_address_name?: string | null;
   }) {
     return await prisma.receipt.create({
       data
@@ -494,6 +570,24 @@ export class OrdersRepository {
         }
       }
     });
+  }
+
+  /**
+   * 리폼(채팅) 주문의 채팅방 정보 조회 (결제 완료 후 알림용)
+   * target_type REQUEST/PROPOSAL/FEED 이고 chat_room_id가 있는 order만
+   * 채팅 기반 리폼 주문은 하나의 receipt에 하나의 order만 존재
+   */
+  async findReformOrderChatRoomsByReceiptId(receiptId: string): Promise<{ chat_room_id: string; owner_id: string } | null> {
+    const order = await prisma.order.findFirst({
+      where: {
+        receipt_id: receiptId,
+        chat_room_id: { not: null },
+        target_type: { in: ['REQUEST', 'PROPOSAL', 'FEED'] }
+      },
+      select: { chat_room_id: true, owner_id: true }
+    });
+    if (!order || !order.chat_room_id) return null;
+    return { chat_room_id: order.chat_room_id, owner_id: order.owner_id };
   }
 
   /**
@@ -559,12 +653,22 @@ export class OrdersRepository {
   /**
    * 영수증 업데이트
    */
-  async updateReceipt(receiptId: string, data: {
-    payment_status?: string;
-    payment_method?: string;
-    payment_gateway?: string;
-    transaction?: string | null;
-  }) {
+  async updateReceipt(
+    receiptId: string,
+    data: {
+      payment_status?: string;
+      payment_method?: string;
+      payment_gateway?: string;
+      transaction?: string | null;
+      approved_at?: Date | null;
+      delivery_postal_code?: string | null;
+      delivery_address?: string | null;
+      delivery_address_detail?: string | null;
+      delivery_recipient_name?: string | null;
+      delivery_phone?: string | null;
+      delivery_address_name?: string | null;
+    }
+  ) {
     return await prisma.receipt.update({
       where: { receipt_id: receiptId },
       data
@@ -603,13 +707,13 @@ export class OrdersRepository {
       where: { order_id: orderId },
       select: { receipt_id: true }
     });
-    
+
     if (!order) {
       return null;
     }
-    
+
     return await prisma.receipt.findUnique({
-      where: { receipt_id: order.receipt_id }
+      where: { receipt_id: order.receipt_id! }
     });
   }
 
@@ -620,5 +724,45 @@ export class OrdersRepository {
     return await prisma.delivery_address.findUnique({
       where: { delivery_address_id: addressId }
     });
+  }
+
+  /**
+   * 주문 건에 대한 리뷰 작성
+   */
+  async createReview(createReviewInput: CreateReviewInput) {
+    return await prisma.review.create({
+      data: {
+        order_id: createReviewInput.orderId,
+        user_id: createReviewInput.userId,
+        owner_id: createReviewInput.ownerId,
+        star: createReviewInput.star,
+        content: createReviewInput.content,
+        review_photo: {
+          createMany: {
+            data: createReviewInput.photos.map((photo) => ({
+              content: photo
+            }))
+          }
+        }
+      },
+      include: {
+        review_photo: true
+      }
+    });
+  }
+
+  /**
+   * 주문 건에 대한 리뷰 조회
+   */
+  async findReviewByOrderId(orderId: string): Promise<boolean> {
+    const review = await prisma.review.findFirst({
+      where: {
+        order_id: orderId
+      },
+      select: {
+        review_id: true
+      }
+    });
+    return !!review;
   }
 }

@@ -16,7 +16,7 @@ import { ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { ImageUrl, ImageUrls } from './upload.dto.js';
 
 @Route('/upload')
-@Tags('Upload Router')
+@Tags('사진 업로드 기능')
 export class UploadController extends Controller {
   private uploadService: UploadService;
   constructor() {

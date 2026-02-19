@@ -46,3 +46,23 @@ export class PaymentAmountMismatchError extends BasicError {
     );
   }
 }
+
+export class ReviewAlreadyExistsError extends BasicError {
+  constructor(description?: string) {
+    super(
+      400, 
+      'REVIEW-ALREADY-EXISTS', 
+      '해당 주문에 대한 리뷰가 이미 작성되었습니다.', 
+      description || '');
+  }
+}
+
+export class ReviewNotAllowedError extends BasicError {
+  constructor(description?: string) {
+    super(
+      400, 
+      'REVIEW-NOT-ALLOWED', 
+      '해당 주문은 리뷰 작성 가능한 상태가 아닙니다.', 
+      description || '');
+  }
+}

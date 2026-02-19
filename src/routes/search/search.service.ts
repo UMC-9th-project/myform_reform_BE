@@ -1,8 +1,9 @@
 import { esClient } from '../../config/elasticsearch.js';
 import prisma from '../../config/prisma.config.js';
 import { CursorUtil } from '../../utils/cursorUtil.js';
-import { SearchResDTO, SearchListResDTO } from './search.dto.js';
+import { SearchResDTO, SearchListResDTO } from './search.res.dto.js';
 import type { target_type_enum } from '@prisma/client';
+import { Role } from '../auth/dto/auth.dto.js';
 
 type UserTargetType = Exclude<target_type_enum, 'REQUEST'>;
 type SearchCursor = [number, number, string]; // [score, createdAt, id]
@@ -12,7 +13,8 @@ export class SearchService {
   public async search(
     type: target_type_enum,
     query: string,
-    userId: string,
+    userId?: string,
+    role?: Role,
     cursor?: string
   ): Promise<SearchListResDTO> {
     const searchAfter = CursorUtil.decode<SearchCursor>(cursor);
@@ -60,7 +62,7 @@ export class SearchService {
     const resultIds = results.map((item: any) => item.id).filter(Boolean);
 
     // DB에서 찜 여부(isLiked)확인 및 결합
-    const isLikedSet = await this.getIsLikedSet(userId, type, resultIds);
+    const isLikedSet = await this.getIsLikedSet(userId, type, resultIds, role);
 
     const finalResults = results.map((item: any) => ({
       ...item,
@@ -83,17 +85,15 @@ export class SearchService {
   }
 
   private async getIsLikedSet(
-    userId: string,
+    userId: string | undefined,
     type: target_type_enum,
-    resultIds: string[]
+    resultIds: string[],
+    role: Role | undefined
   ): Promise<Set<string>> {
     const isLikedSet = new Set<string>();
     if (!userId || resultIds.length === 0) return isLikedSet;
 
-    // HACK
-    const role = 'user';
-
-    if (role === 'user') {
+    if (role === 'user' && userId) {
       const wishes = await prisma.user_wish.findMany({
         where: {
           user_id: userId,

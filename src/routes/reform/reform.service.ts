@@ -1,81 +1,583 @@
 import { S3 } from '../../config/s3.js';
+import { ReformFilter, ReformQuoteRequest } from './dto/reform.req.dto.js';
 import {
-  OrderQuoteDto,
-  ProposalDetailDto,
-  ReformRequestDto,
-  RequestDetailDto
-} from './reform.dto.js';
+  ReformHomeResponse,
+  ReformProposalResponseDto,
+  ReformRequestResponseDto
+} from './dto/reform.res.dto.js';
 import { ReformError } from './reform.error.js';
-import { ReformModel } from './reform.model.js';
+import {
+  ReformRequestFactory,
+  ReformProposalFactory,
+  ReformRequestCreate,
+  ReformDetailRequestResponse,
+  ReformDetailProposalResponse,
+  ReformRequestUpdate,
+  ReformProposalUpdate,
+  ReformQuoteFactory
+} from './reform.model.js';
+import { ReformRepository } from './reform.repository.js';
+import { addSearchSyncJob } from '../../worker/search.queue.js';
+import { CustomJwt } from '../../@types/expreees.js';
+import { Category } from '../../@types/item.js';
+import { runInTransaction } from '../../config/prisma.config.js';
+import { ProfileService } from '../profile/profile.service.js';
+import { MarketService } from '../market/market.service.js';
+import { ReviewsRepository } from '../reviews/reviews.repository.js';
 
 export class ReformService {
-  private refromModel: ReformModel;
+  private reformRepository: ReformRepository;
+  private profileService: ProfileService;
+  private maretService: MarketService;
+  private reviewsRepository: ReviewsRepository;
+
   private s3: S3;
   constructor() {
-    this.refromModel = new ReformModel();
+    this.reviewsRepository = new ReviewsRepository();
+    this.reformRepository = new ReformRepository();
+    this.profileService = new ProfileService();
+    this.maretService = new MarketService();
     this.s3 = new S3();
   }
 
-  async addRequest(dto: ReformRequestDto, images: Express.Multer.File[]) {
-    try {
-      const image: {
-        content: string;
-        photo_order: number;
-      }[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const ans = await this.s3.uploadToS3(images[i]);
-        const obj = {
-          content: ans,
-          photo_order: i + 1
-        };
-        image.push(obj);
-      }
-      dto.images = image;
-      await this.refromModel.addRequest(dto);
-    } catch (err: any) {
-      throw new ReformError(err);
+  private async getCategoryIds(category: Category): Promise<string[]> {
+    // 먼저 대분류를 찾음
+    const majorCategory = await this.reformRepository.findMajorCategory(
+      category.major
+    );
+
+    if (!majorCategory) return [];
+
+    // 소분류가 있으면 해당 대분류 하위의 소분류 ID만 반환
+    if (category.sub) {
+      const subCategory = await this.reformRepository.findSubCategory(
+        category.sub,
+        majorCategory.category_id
+      );
+      return subCategory ? [subCategory.category_id] : [];
     }
+
+    // 대분류만 있으면 대분류 + 모든 소분류 ID 반환
+    const subCategories = await this.reformRepository.findSubCategories(
+      majorCategory.category_id
+    );
+
+    return [
+      majorCategory.category_id,
+      ...subCategories.map((c) => c.category_id)
+    ];
   }
 
-  async findDetailRequest(id: string): Promise<RequestDetailDto> {
+  async selectHomeReform(
+    payload?: CustomJwt | null
+  ): Promise<ReformHomeResponse> {
     try {
-      const ans = await this.refromModel.findDetailRequest(id);
-      const dto = new RequestDetailDto(ans.body, ans.images);
-      return dto;
-    } catch (err: any) {
-      throw new ReformError(err);
-    }
-  }
-  async findDetailProposal(id: string): Promise<ProposalDetailDto> {
-    try {
-      const ans = await this.refromModel.findDetailProposal(id);
-      const dto = new ProposalDetailDto(ans.body, ans.images);
-      return dto;
+      return await runInTransaction(async () => {
+        const [requestData, proposalData] = await Promise.all([
+          this.reformRepository.selectRequestLatest(),
+          this.reformRepository.selectProposalLatest()
+        ]);
+
+        const requests = await Promise.all(
+          requestData.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        const proposals = await Promise.all(
+          proposalData.map(async (o) => {
+            const avgStar =
+              await this.reviewsRepository.findAverageStarForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              );
+
+            const review = {
+              avgStar: avgStar._avg?.star ? Number(avgStar._avg.star) : 0,
+              totalCount: await this.reviewsRepository.countReviewsForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              )
+            };
+            let isWished = false;
+            if (payload?.role === 'user') {
+              isWished = await this.reformRepository.checkIsWishUser(
+                o.reform_proposal_id,
+                payload.id
+              );
+            }
+            return ReformProposalFactory.createFromRaw(
+              o,
+              isWished,
+              review
+            ).toDto();
+          })
+        );
+
+        return { requests, proposals };
+      });
     } catch (err: any) {
       console.error(err);
+      throw new ReformError('조회중 에러가 발생했습니다.');
+    }
+  }
+
+  async getRequest(
+    filter: ReformFilter,
+    payload?: CustomJwt
+  ): Promise<ReformRequestResponseDto[] | null> {
+    try {
+      return await runInTransaction(async () => {
+        const categoryId = await this.getCategoryIds(filter.category);
+
+        let requests;
+        switch (filter.sortBy) {
+          case 'RECENT':
+            requests = await this.reformRepository.getRequestByRecent(
+              filter,
+              categoryId
+            );
+            break;
+          case 'POPULAR':
+            requests = await this.reformRepository.getRequestByPopular(
+              filter,
+              categoryId
+            );
+            break;
+          default:
+            return null;
+        }
+
+        const results = await Promise.all(
+          requests.map(async (o) => {
+            let isWished = false;
+            if (payload?.role === 'reformer') {
+              isWished = await this.reformRepository.checkIsWishReformer(
+                o.reform_request_id,
+                payload.id
+              );
+            }
+            return ReformRequestFactory.createFromRaw(o, isWished).toDto();
+          })
+        );
+
+        const ids = results.map((d) => d.reformRequestId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+          'REQUEST',
+          ids
+        );
+        return results.map((d) => ({
+          ...d,
+          isCompleted: paidIds.has(d.reformRequestId)
+        }));
+      });
+    } catch (err: any) {
+      console.error(err);
+      throw new ReformError('요청서 조회중 에러가 발생했습니다.');
+    }
+  }
+
+  async addRequest(dto: ReformRequestCreate): Promise<string> {
+    try {
+      const data = dto.toCreateData();
+      if (data.title.length > 40)
+        throw new ReformError('제목은 40자를 넘길 수 없습니다');
+
+      if (data.contents.length > 1000)
+        throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+      if (data.images.length > 10)
+        throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+      if (data.minBudget < 0 || data.maxBudget > 999999999)
+        throw new ReformError('예상 예산은 0원~999999999원 까지입니다.');
+
+      if (data.minBudget > data.maxBudget)
+        throw new ReformError('예산 범위가 잘못 설정 되었습니다.');
+
+      const categoryId = await this.getCategoryIds(data.category);
+
+      if (categoryId.length === 0)
+        throw new ReformError('존재하지 않는 카테고리입니다');
+
+      const ans = await this.reformRepository.insertRequest(dto, categoryId[0]);
+
+      await addSearchSyncJob({
+        type: 'REQUEST',
+        id: ans,
+        action: 'UPSERT'
+      });
+      return ans;
+    } catch (err: any) {
       throw new ReformError(err);
     }
   }
 
-  // async addQuoteOrder(dto: OrderQuoteDto, images: Express.Multer.File[]) {
-  //   try {
-  //     const image: {
-  //       content: string;
-  //       photo_order: number;
-  //     }[] = [];
-  //     for (let i = 0; i < images.length; i++) {
-  //       const ans = await this.s3.uploadToS3(images[i]);
-  //       const obj = {
-  //         content: ans,
-  //         photo_order: i + 1
-  //       };
-  //       image.push(obj);
-  //     }
+  async findDetailRequest(
+    payload: CustomJwt | null,
+    requestId: string
+  ): Promise<ReformDetailRequestResponse> {
+    try {
+      let isOwner = false;
+      if (payload !== null) {
+        isOwner = await this.reformRepository.checkRequestOwner(
+          payload.id,
+          requestId
+        );
+      }
 
-  //     dto.images = image;
-  //     await this.refromModel.addQuoteOrder(dto);
-  //   } catch (err: any) {
-  //     throw new ReformError(err);
-  //   }
-  // }
+      const { images, body } =
+        await this.reformRepository.selectDetailRequest(requestId);
+      if (body === null) throw new ReformError('존재하지 않는 아이템입니다.');
+
+      const category = (await this.maretService.getCategoryName(
+        body.category
+      )) as Category;
+
+      const dto = ReformRequestFactory.createFromDetailRaw(
+        body,
+        images,
+        isOwner,
+        category
+      );
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+        'REQUEST',
+        [requestId]
+      );
+      return {
+        toDto: () => ({ ...dto.toDto(), isCompleted: paidIds.has(requestId) })
+      } as ReformDetailRequestResponse;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async modifyRequest(dto: ReformRequestUpdate): Promise<string> {
+    try {
+      const data = dto.toUpdateData();
+
+      // 소유자 확인
+      const isOwner = await this.reformRepository.checkRequestOwner(
+        data.userId,
+        data.requestId
+      );
+      if (!isOwner)
+        throw new ReformError('본인의 요청서만 수정할 수 있습니다.');
+
+      // 유효성 검사
+      if (data.title !== undefined && data.title.length > 40)
+        throw new ReformError('제목은 40자를 넘길 수 없습니다');
+
+      if (data.contents !== undefined && data.contents.length > 1000)
+        throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+      if (data.images !== undefined && data.images.length > 10)
+        throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+      if (data.minBudget !== undefined || data.maxBudget !== undefined) {
+        const minBudget = data.minBudget ?? 0;
+        const maxBudget = data.maxBudget ?? 999999999;
+        if (minBudget < 0 || maxBudget > 999999999)
+          throw new ReformError('예상 예산은 0원~999999999원 까지입니다.');
+        if (minBudget > maxBudget)
+          throw new ReformError('예산 범위가 잘못 설정 되었습니다.');
+      }
+
+      // 카테고리 ID 조회
+      let categoryId: string | undefined;
+      if (data.category !== undefined) {
+        const categoryIds = await this.getCategoryIds(data.category);
+        if (categoryIds.length === 0)
+          throw new ReformError('존재하지 않는 카테고리입니다');
+        categoryId = categoryIds[0];
+      }
+
+      const ans = await this.reformRepository.updateRequest(dto, categoryId);
+
+      await addSearchSyncJob({
+        type: 'REQUEST',
+        id: ans,
+        action: 'UPSERT'
+      });
+
+      return ans;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async deleteRequest(requestId: string, userId: string): Promise<string> {
+    const isOwner = await this.reformRepository.checkRequestOwner(
+      userId,
+      requestId
+    );
+    if (!isOwner) throw new ReformError('본인의 요청서만 삭제할 수 있습니다.');
+
+    try {
+      return await runInTransaction(async () => {
+        await this.reformRepository.deleteRequestPhotos(requestId);
+        await this.reformRepository.deleteRequest(requestId, userId);
+        await this.reformRepository.deleteRequestWishList(requestId);
+        return '요청글이 성공적으로 삭제되었습니다.';
+      });
+    } catch (err: any) {
+      console.error(`[DeleteRequest Error] ID: ${requestId}`, err);
+      throw new ReformError('요청글 삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  async getProposal(
+    filter: ReformFilter,
+    payload?: CustomJwt
+  ): Promise<ReformProposalResponseDto[] | null> {
+    try {
+      return await runInTransaction(async () => {
+        const categoryId = await this.getCategoryIds(filter.category);
+
+        let proposals;
+        switch (filter.sortBy) {
+          case 'POPULAR':
+            proposals = await this.reformRepository.getProposalByRecent(
+              filter,
+              categoryId
+            );
+            break;
+          case 'RECENT':
+            proposals = await this.reformRepository.getProposalByPopular(
+              filter,
+              categoryId
+            );
+            break;
+          default:
+            return null;
+        }
+
+        const results = await Promise.all(
+          proposals.map(async (o) => {
+            let isWished = false;
+            const avgStar =
+              await this.reviewsRepository.findAverageStarForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              );
+
+            const review = {
+              avgStar: avgStar._avg?.star ? Number(avgStar._avg.star) : 0,
+              totalCount: await this.reviewsRepository.countReviewsForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              )
+            };
+            if (payload?.role === 'user') {
+              isWished = await this.reformRepository.checkIsWishUser(
+                o.reform_proposal_id,
+                payload.id
+              );
+            }
+            return ReformProposalFactory.createFromRaw(
+              o,
+              isWished,
+              review
+            ).toDto();
+          })
+        );
+
+        const ids = results.map((d) => d.reformProposalId);
+        const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+          'PROPOSAL',
+          ids
+        );
+        return results.map((d) => ({
+          ...d,
+          isCompleted: paidIds.has(d.reformProposalId)
+        }));
+      });
+    } catch (err: any) {
+      console.error(err);
+      throw new ReformError('제안서 조회중 에러가 발생했습니다.');
+    }
+  }
+
+  async findDetailProposal(
+    payload: CustomJwt | null,
+    proposalId: string
+  ): Promise<ReformDetailProposalResponse> {
+    try {
+      let isOwner = false;
+      if (payload !== null) {
+        isOwner = await this.reformRepository.checkProposalOwner(
+          payload.id,
+          proposalId
+        );
+      }
+
+      const detail = await runInTransaction(async () => {
+        const { images, body } =
+          await this.reformRepository.selectDetailProposal(proposalId);
+        if (body === null) throw new ReformError('존재하지 않는 제안서입니다.');
+
+        let isWished = false;
+        if (payload?.role === 'user')
+          isWished = await this.reformRepository.checkIsWishUser(
+            body.reform_proposal_id,
+            payload.id
+          );
+
+        const [profile, category] = await Promise.all([
+          this.profileService.getProfileInfo(body.owner_id),
+          this.maretService.getCategoryName(body.category)
+        ]);
+        // const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
+        const avg = await this.reviewsRepository.findAverageStarForTarget(
+          'PROPOSAL',
+          body.reform_proposal_id
+        );
+        const avgStar = {
+          avgStar: avg._avg?.star ? Number(avg._avg.star) : 0,
+          avgStar3m: avg._avg?.star ? Number(avg._avg.star) : 0
+        };
+
+        return ReformProposalFactory.createFromDetailRaw(
+          body,
+          images,
+          profile,
+          avgStar,
+          isOwner,
+          isWished,
+          category as Category
+        );
+      });
+
+      const paidIds = await this.reformRepository.findPaidOrderTargetIds(
+        'PROPOSAL',
+        [proposalId]
+      );
+      return {
+        toDto: () => ({
+          ...detail.toDto(),
+          isCompleted: paidIds.has(proposalId)
+        })
+      } as ReformDetailProposalResponse;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async modifyProposal(dto: ReformProposalUpdate): Promise<string> {
+    try {
+      const data = dto.toUpdateData();
+
+      // 소유자 확인
+      const isOwner = await this.reformRepository.checkProposalOwner(
+        data.ownerId,
+        data.proposalId
+      );
+      if (!isOwner)
+        throw new ReformError('본인의 제안서만 수정할 수 있습니다.');
+
+      // 유효성 검사
+      if (data.title !== undefined && data.title.length > 40)
+        throw new ReformError('제목은 40자를 넘길 수 없습니다');
+
+      if (data.contents !== undefined && data.contents.length > 1000)
+        throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+      if (data.images !== undefined && data.images.length > 10)
+        throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+      if (
+        data.price !== undefined &&
+        (data.price < 0 || data.price > 999999999)
+      )
+        throw new ReformError('가격은 0원~999999999원 까지입니다.');
+
+      if (
+        data.delivery !== undefined &&
+        (data.delivery < 0 || data.delivery > 999999999)
+      )
+        throw new ReformError('배송비는 0원~999999999원 까지입니다.');
+
+      if (
+        data.expectedWorking !== undefined &&
+        (data.expectedWorking < 0 || data.expectedWorking > 365)
+      )
+        throw new ReformError('예상 작업일은 0일~365일 까지입니다.');
+
+      // 카테고리 ID 조회
+      let categoryId: string | undefined;
+      if (data.category !== undefined) {
+        const categoryIds = await this.getCategoryIds(data.category);
+        if (categoryIds.length === 0)
+          throw new ReformError('존재하지 않는 카테고리입니다');
+        categoryId = categoryIds[0];
+      }
+
+      const ans = await this.reformRepository.updateProposal(dto, categoryId);
+
+      await addSearchSyncJob({
+        type: 'PROPOSAL',
+        id: ans,
+        action: 'UPSERT'
+      });
+
+      return ans;
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
+
+  async addReformQuote(data: ReformQuoteRequest, ownerId: string) {
+    try {
+      return await runInTransaction(async () => {
+        const check = await this.reformRepository.selectReformRequestUser(
+          data.targetId
+        );
+
+        if (check === null)
+          throw new ReformError('요청서가 존재하지 않습니다.');
+
+        if (data.contents !== undefined && data.contents.length > 1000)
+          throw new ReformError('내용은 1000자를 넘길 수 없습니다');
+
+        if (data.images !== undefined && data.images.length > 10)
+          throw new ReformError('이미지는 최대 10장 까지 첨부 가능합니다');
+
+        if (
+          data.price !== undefined &&
+          (data.price < 0 || data.price > 999999999)
+        )
+          throw new ReformError('가격은 0원~999999999원 까지입니다.');
+
+        if (
+          data.delivery !== undefined &&
+          (data.delivery < 0 || data.delivery > 999999999)
+        )
+          throw new ReformError('배송비는 0원~999999999원 까지입니다.');
+
+        if (
+          data.expectedWorking !== undefined &&
+          (data.expectedWorking < 0 || data.expectedWorking > 365)
+        )
+          throw new ReformError('예상 작업일은 0일~365일 까지입니다.');
+
+        const userId = check.user_id;
+        const dto = ReformQuoteFactory.create(data, userId, ownerId);
+        const ans = await this.reformRepository.insertReformQuote(dto);
+
+        if (ans === null) throw new ReformError('생성중 오류가 발생했습니다.');
+        await this.reformRepository.insertReformQuotePhoto(dto, ans.order_id);
+
+        return ans;
+      });
+    } catch (err: any) {
+      throw new ReformError(err);
+    }
+  }
 }

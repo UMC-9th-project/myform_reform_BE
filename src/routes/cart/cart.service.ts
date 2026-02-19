@@ -4,24 +4,28 @@ import { DeleteItemsDTO, AddToCartDTO } from './dto/cart.req.dto.js';
 import {
   CreateCartResDTO,
   CartGroupedResDTO,
+  UpdateQuantityResDTO,
   SellerCartDTO,
   CartItemDTO,
   OptionDTO
 } from './dto/cart.res.dto.js';
 import {
   CartNotFoundError,
-  PartialCartNotFoundError,
   ItemNotFoundError,
   PartialOptionItemNotFoundError,
-  IncompleteOptionSelectionError
+  IncompleteOptionSelectionError,
+  UnauthorizedCartAccessError
 } from '../../routes/cart/cart.error.js';
 
 export class CartService {
   constructor() {}
 
-  async removeItemsFromCart(req: DeleteItemsDTO): Promise<number> {
+  async removeItemsFromCart(
+    req: DeleteItemsDTO,
+    userId: string
+  ): Promise<number> {
     const cartIds = req.cartIds || [];
-    await this.validateExistingCartIds(cartIds);
+    await this.validateUserCartOwnership(cartIds, userId);
 
     const result = await cartModel.deleteByCartIds(cartIds);
     return result.count;
@@ -56,15 +60,49 @@ export class CartService {
     return this.assembleCartResponse(rows, itemsMap);
   }
 
+  async updateCartQuantity(
+    cartId: string,
+    userId: string,
+    type: 'inc' | 'dec'
+  ): Promise<UpdateQuantityResDTO> {
+    // 권한 검증
+    await this.validateUserCartOwnership([cartId], userId);
+
+    const cart = await cartModel.findCartById(cartId);
+    if (!cart) {
+      throw new CartNotFoundError();
+    }
+
+    // 감소 시 수량 검증
+    if (type === 'dec') {
+      const newQuantity = cart.quantity - 1;
+      if (newQuantity <= 0) {
+        await cartModel.deleteCartById(cartId);
+        return { cartId, updatedAt: new Date() };
+      }
+    }
+
+    const updated = await cartModel.updateCartQuantity(cartId, type);
+    return { cartId: updated.cart_id, updatedAt: new Date() };
+  }
+
   // Private Helper Methods
-  private async validateExistingCartIds(cartIds: string[]): Promise<void> {
+  private async validateUserCartOwnership(
+    cartIds: string[],
+    userId: string
+  ): Promise<void> {
     if (cartIds.length === 0) return;
 
-    const existingIds = await cartModel.findExistingCartIds(cartIds);
+    const existingCarts = await cartModel.findCartsByIdsAndUserId(
+      cartIds,
+      userId
+    );
+    const existingIds = existingCarts.map((c) => c.cart_id);
+
     if (existingIds.length === 0) throw new CartNotFoundError();
     if (existingIds.length !== cartIds.length) {
       const missing = cartIds.filter((id) => !existingIds.includes(id));
-      throw new PartialCartNotFoundError(missing);
+      throw new UnauthorizedCartAccessError(missing);
     }
   }
 

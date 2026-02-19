@@ -1,5 +1,5 @@
 import 'express';
-import { AuthStatus, Role } from '../routes/auth/auth.dto.ts';
+import { AuthStatus, Role } from '../routes/auth/dto/auth.dto.ts';
 
 export interface CustomJwt {
   id: string;

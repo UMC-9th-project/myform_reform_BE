@@ -35,6 +35,20 @@ export async function findExistingCartIds(
   return rows.map((r) => r.cart_id);
 }
 
+export async function findCartsByIdsAndUserId(
+  cartIds: string[],
+  userId: string
+): Promise<{ cart_id: string; user_id: string }[]> {
+  if (!cartIds || cartIds.length === 0) return [];
+  return prisma.cart.findMany({
+    where: {
+      cart_id: { in: cartIds },
+      user_id: userId
+    },
+    select: { cart_id: true, user_id: true }
+  });
+}
+
 export async function findItemById(
   itemId: string
 ): Promise<ItemWithDetails | null> {
@@ -141,5 +155,29 @@ export async function findOptionGroupsByItemId(
     where: { item_id: itemId },
     include: { option_item: { select: { option_item_id: true, name: true } } },
     orderBy: { sort_order: 'asc' }
+  });
+}
+
+export async function findCartById(cartId: string): Promise<cart | null> {
+  return prisma.cart.findUnique({
+    where: { cart_id: cartId }
+  });
+}
+
+export async function updateCartQuantity(
+  cartId: string,
+  type: 'inc' | 'dec'
+): Promise<cart> {
+  return prisma.cart.update({
+    where: { cart_id: cartId },
+    data: {
+      quantity: type === 'inc' ? { increment: 1 } : { decrement: 1 }
+    }
+  });
+}
+
+export async function deleteCartById(cartId: string): Promise<cart> {
+  return prisma.cart.delete({
+    where: { cart_id: cartId }
   });
 }

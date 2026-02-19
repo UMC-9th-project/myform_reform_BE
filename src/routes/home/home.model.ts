@@ -43,6 +43,9 @@ export interface CustomOrder {
   thumbnail: string;
   title: string;
   min_price: number;
+  star: number;
+  review_count: number;
+  is_wished: boolean;
   owner_id: string;
   owner_nickname: string;
 }
@@ -55,6 +58,10 @@ export interface BestReformer {
   nickname: string;
   profile_image: string;
   bio: string;
+  avg_star: number | null;
+  review_count: number | null;
+  trade_count: number | null;
+  keywords: string[];
 }
 
 /**
@@ -141,5 +148,7 @@ export type OwnerForBestReformers = Prisma.ownerGetPayload<{
     bio: true;
     avg_star: true;
     review_count: true;
+    trade_count: true;
+    keywords: true;
   };
 }>;

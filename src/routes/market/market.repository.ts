@@ -14,11 +14,47 @@ export class MarketRepository {
   }
 
   /**
+   * 해당 카테고리 ID 및 모든 하위 카테고리 ID 목록 조회
+   */
+  async findDescendantCategoryIds(parentId: string): Promise<string[]> {
+    const rows = await this.findCategories();
+    const byParent = new Map<string | null, typeof rows>();
+    for (const r of rows) {
+      const key = r.parent_id;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(r);
+    }
+    const collect = (id: string): string[] => {
+      const children = byParent.get(id) ?? [];
+      return [id, ...children.flatMap((c) => collect(c.category_id))];
+    };
+    return collect(parentId);
+  }
+
+  /**
+   * 카테고리 전체 목록 조회 (sort_order, depth 기준 정렬)
+   */
+  async findCategories() {
+    return await prisma.category.findMany({
+      orderBy: [{ depth: 'asc' }, { sort_order: 'asc' }],
+      select: {
+        category_id: true,
+        name: true,
+        parent_id: true,
+        depth: true,
+        sort_order: true
+      }
+    });
+  }
+
+  /**
    * 상품 목록 조회 (필터 및 정렬 적용)
    */
   async findItemsWithFilters(
-    categoryFilter: { category_id?: string } | {},
-    orderBy: Prisma.itemOrderByWithRelationInput | Prisma.itemOrderByWithRelationInput[],
+    categoryFilter: Prisma.itemWhereInput,
+    orderBy:
+      | Prisma.itemOrderByWithRelationInput
+      | Prisma.itemOrderByWithRelationInput[],
     skip: number,
     take: number
   ) {
@@ -50,7 +86,7 @@ export class MarketRepository {
   /**
    * 상품 개수 조회
    */
-  async countItems(categoryFilter: { category_id?: string } | {}): Promise<number> {
+  async countItems(categoryFilter: Prisma.itemWhereInput): Promise<number> {
     return await prisma.item.count({
       where: categoryFilter
     });
@@ -59,7 +95,9 @@ export class MarketRepository {
   /**
    * 상품 ID로 상품 조회 (관계 포함)
    */
-  async findItemWithRelations(itemId: string): Promise<ItemWithRelations | null> {
+  async findItemWithRelations(
+    itemId: string
+  ): Promise<ItemWithRelations | null> {
     return await prisma.item.findUnique({
       where: { item_id: itemId },
       include: {
@@ -69,7 +107,9 @@ export class MarketRepository {
             profile_photo: true,
             nickname: true,
             avg_star: true,
-            trade_count: true
+            trade_count: true,
+            review_count: true,
+            bio: true
           }
         },
         item_photo: {
@@ -102,8 +142,21 @@ export class MarketRepository {
           orderBy: {
             sort_order: 'asc'
           }
+        },
+        category: {
+          select: {
+            category_id: true,
+            parent_id: true
+          }
         }
       }
+    });
+  }
+
+  async findCategoryName(categortId: string) {
+    return await prisma.category.findFirst({
+      where: { category_id: categortId },
+      select: { name: true }
     });
   }
 
@@ -204,9 +257,30 @@ export class MarketRepository {
   }
 
   /**
+   * 해당 오너(리폼러)의 최근 3개월 리뷰 평균 별점
+   */
+  async findAvgStarRecent3MonthsByOwnerId(
+    ownerId: string
+  ): Promise<number | null> {
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const result = await prisma.review.aggregate({
+      where: {
+        owner_id: ownerId,
+        created_at: { gte: threeMonthsAgo }
+      },
+      _avg: { star: true }
+    });
+    return result._avg.star != null ? Number(result._avg.star) : null;
+  }
+
+  /**
    * 상품의 리뷰 목록 조회 (제한된 개수)
    */
-  async findReviewsForItemPreview(itemId: string, limit: number): Promise<ReviewWithPhotos[]> {
+  async findReviewsForItemPreview(
+    itemId: string,
+    limit: number
+  ): Promise<ReviewWithPhotos[]> {
     return await prisma.review.findMany({
       where: {
         order: {
@@ -253,7 +327,9 @@ export class MarketRepository {
    */
   async findReviewsForItem(
     itemId: string,
-    orderBy: Prisma.reviewOrderByWithRelationInput | Prisma.reviewOrderByWithRelationInput[],
+    orderBy:
+      | Prisma.reviewOrderByWithRelationInput
+      | Prisma.reviewOrderByWithRelationInput[],
     skip: number,
     take: number
   ): Promise<ReviewWithPhotos[]> {
@@ -284,7 +360,9 @@ export class MarketRepository {
   /**
    * 사진이 있는 리뷰 목록 조회
    */
-  async findReviewsWithPhotosForItem(itemId: string): Promise<ReviewWithPhotos[]> {
+  async findReviewsWithPhotosForItem(
+    itemId: string
+  ): Promise<ReviewWithPhotos[]> {
     return await prisma.review.findMany({
       where: {
         order: {
@@ -315,7 +393,10 @@ export class MarketRepository {
   /**
    * 리뷰 상세 조회 (사진 포함)
    */
-  async findReviewWithPhotos(itemId: string, reviewId: string): Promise<ReviewWithPhotos | null> {
+  async findReviewWithPhotos(
+    itemId: string,
+    reviewId: string
+  ): Promise<ReviewWithPhotos | null> {
     return await prisma.review.findFirst({
       where: {
         review_id: reviewId,
@@ -385,16 +466,20 @@ export class MarketRepository {
     itemId: string,
     offset: number,
     limit: number
-  ): Promise<Array<{
-    review_id: string;
-    photo_url: string;
-    photo_order: number;
-  }>> {
-    const photos = await prisma.$queryRaw<Array<{
+  ): Promise<
+    Array<{
       review_id: string;
-      content: string;
-      photo_order: number | null;
-    }>>`
+      photo_url: string;
+      photo_order: number;
+    }>
+  > {
+    const photos = await prisma.$queryRaw<
+      Array<{
+        review_id: string;
+        content: string;
+        photo_order: number | null;
+      }>
+    >`
       SELECT 
         rp.review_id,
         rp.content,
@@ -411,7 +496,7 @@ export class MarketRepository {
       OFFSET ${offset}
     `;
 
-    return photos.map(photo => ({
+    return photos.map((photo) => ({
       review_id: photo.review_id,
       photo_url: photo.content,
       photo_order: photo.photo_order ?? 0

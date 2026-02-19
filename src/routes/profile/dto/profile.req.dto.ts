@@ -7,17 +7,20 @@ export class SaleRequestDto {
   page: number;
   limit: number;
   ownerId: UUID;
+  sort: 'asc' | 'desc';
 
   constructor(
     type: 'ITEM' | 'REFORM',
     page: number,
     limit: number,
-    ownerId: UUID
+    ownerId: UUID,
+    sort: 'asc' | 'desc'
   ) {
     this.ownerId = ownerId;
     this.type = type;
     this.page = page;
     this.limit = limit;
+    this.sort = sort;
   }
 }
 
@@ -37,6 +40,23 @@ export class AddItemRequestDto {
   imageUrls!: string[];
 }
 
+// 판매 상품 수정 요청 DTO (클라이언트 → Controller)
+export class UpdateItemRequest {
+  /** @example ["https://example.com/images/denim-jacket-front.jpg"] */
+  imageUrls?: string[];
+  /** @example "빈티지 데님 자켓 수정" */
+  title?: string;
+  /** @example "수정된 상품 설명입니다." */
+  content?: string;
+  /** @example 50000 */
+  price?: number;
+  /** @example 3500 */
+  delivery?: number;
+  option?: OptionGroup[];
+  /** @example {"major" : "의류", "sub" : "상의"} */
+  category?: Category;
+}
+
 // 주문제작 상품 등록 요청 DTO (클라이언트 → Controller)
 export class AddReformRequestDto {
   /** @example "청바지 리폼 - 와이드 팬츠 변경" */
@@ -52,6 +72,12 @@ export class AddReformRequestDto {
   category!: Category;
   /** @example ["https://example.com/images/reform-before.jpg", "https://example.com/images/reform-after.jpg"] */
   imageUrls!: string[];
+}
+
+/** 프로필 피드 사진 등록 요청 DTO */
+export class AddFeedRequestDto {
+  imageUrls!: string[];
+  isPinned?: boolean;
 }
 
 // 판매 상품 내부 전달 DTO (Service → Repository)
@@ -106,3 +132,45 @@ export class AddReformRequestDto {
 //     this.category = body.category;
 //   }
 // }
+
+export class OrderRequestDto {
+  type: 'ITEM' | 'REFORM' | 'ALL';
+  cursor: string;
+  limit: number;
+  userId: UUID;
+  onlyReviewAvailable: boolean;
+  order: 'asc' | 'desc';
+  constructor(
+    type: 'ITEM' | 'REFORM' | 'ALL',
+    cursor: string | undefined,
+    limit: number,
+    userId: UUID,
+    onlyReviewAvailable: boolean,
+    order: 'asc' | 'desc' = 'desc'
+  ) {
+    this.userId = userId;
+    this.type = type;
+    this.cursor = cursor ?? '';
+    this.limit = limit;
+    this.onlyReviewAvailable = onlyReviewAvailable;
+    this.order = order;
+  }
+}
+
+export class RequestListRequestDto {
+  cursor: string;
+  limit: number;
+  userId: UUID;
+  order: 'asc' | 'desc' = 'desc';
+  constructor(
+    cursor: string | undefined,
+    limit: number,
+    userId: UUID,
+    order: 'asc' | 'desc' = 'desc'
+  ) {
+    this.cursor = cursor ?? '';
+    this.limit = limit;
+    this.userId = userId;
+    this.order = order;
+  }
+}

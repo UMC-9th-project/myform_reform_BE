@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅 기능 테스트 페이지</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        
+        #auth-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; }
+        #auth-section input { width: 500px; padding: 8px; }
+        #auth-section button { padding: 8px 15px; margin-left: 10px; }
+        
+        #main-container { display: none; }
+        #main-container.active { display: flex; gap: 20px; }
+        
+        #room-list-section { width: 300px; border: 1px solid #ccc; padding: 10px; height: 600px; overflow-y: auto; flex-shrink: 0; }
+        #room-list-section h3 { margin-bottom: 10px; }
+        .room-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .room-item:hover { background-color: #f5f5f5; }
+        .room-item.active { background-color: #e3f2fd; }
+        .room-item .title { font-weight: bold; }
+        .room-item .last-message { font-size: 12px; color: #666; margin-top: 5px; }
+        .room-item .unread-badge { background-color: red; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; float: right; }
+        
+        #chat-section { flex: 1; border: 1px solid #ccc; display: flex; flex-direction: column; min-width: 0; }
+        #chat-header { padding: 15px; border-bottom: 1px solid #ccc; background-color: #f5f5f5; flex-shrink: 0; }
+        #chat-messages { flex: 1; padding: 15px; overflow-y: auto; height: 450px; max-height: 450px; }
+        .message { margin-bottom: 15px; display: flex; flex-direction: column; }
+        .message.mine { align-items: flex-end; }
+        .message.theirs { align-items: flex-start; }
+        .message .content { max-width: 70%; padding: 10px; border-radius: 8px; }
+        .message.mine .content { background-color: #dcf8c6; }
+        .message.theirs .content { background-color: #fff; border: 1px solid #ddd; }
+        .message .time { font-size: 11px; color: #999; margin-top: 5px; }
+        .message .read-status { font-size: 10px; color: #4a90e2; }
+        
+        #chat-input-section { padding: 15px; border-top: 1px solid #ccc; display: flex; gap: 10px; }
+        #chat-input-section input { flex: 1; padding: 8px; }
+        #chat-input-section button { padding: 8px 15px; }
+        
+        #status { margin-bottom: 10px; padding: 10px; background-color: #f0f0f0; }
+        .loading { text-align: center; padding: 20px; color: #999; }
+    </style>
+</head>
+<body>
+    <h1>채팅 기능 테스트 페이지</h1>
+    
+    <div id="status">상태: 미연결</div>
+    
+    <div id="auth-section">
+        <h3>인증</h3>
+        <input type="text" id="token-input" placeholder="JWT 토큰을 입력하세요">
+        <button onclick="connectWebSocket()">웹소켓 연결</button>
+        <button onclick="disconnect()">연결 해제</button>
+    </div>
+    
+    <div id="main-container">
+        <div id="room-list-section">
+            <h3>채팅방 목록</h3>
+            <div id="room-list"></div>
+            <div id="room-list-loading" class="loading" style="display: none;">로딩 중...</div>
+        </div>
+        
+        <div id="chat-section">
+            <div id="chat-header">
+                <div id="chat-room-info">채팅방을 선택하세요</div>
+            </div>
+            <div id="chat-messages"></div>
+            <div id="chat-input-section">
+                <input type="text" id="message-input" placeholder="메시지를 입력하세요" disabled>
+                <button onclick="sendMessage()" disabled id="send-btn">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 상태 관리
+        const state = {
+            socket: null,
+            token: null,
+            currentRoomId: null,
+            rooms: [], // 채팅방 목록
+            messages: {}, // 방별 메시지 { roomId: [messages] }
+            roomInfo: {}, // 방별 상세정보 { roomId: {...} }
+            userId: null,
+            userType: null, // 'owner' or 'requester'
+            nextCursor: null,
+            hasMore: true,
+            isLoadingRooms: false
+        };
+
+        // API 기본 URL (환경에 맞게 수정)
+        const API_BASE_URL = 'http://localhost:3001/myform_reform/api/v1';
+        const WS_URL = 'http://localhost:3001';
+
+        // 웹소켓 연결
+        function connectWebSocket() {
+            const token = document.getElementById('token-input').value.trim();
+            if (!token) {
+                alert('토큰을 입력하세요');
+                return;
+            }
+
+            state.token = token;
+            
+            // JWT 토큰 디코딩하여 사용자 정보 추출
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                state.userId = payload.id;
+                state.userType = payload.role === 'reformer' ? 'owner' : 'requester';
+                console.log('사용자 정보:', { userId: state.userId, userType: state.userType });
+            } catch (e) {
+                alert('유효하지 않은 토큰입니다');
+                return;
+            }
+
+            // UI 활성화 및 채팅방 목록 즉시 로드
+            document.getElementById('main-container').classList.add('active');
+            loadChatRooms();
+            updateStatus('채팅방 목록 로딩 중...');
+
+            // 웹소켓 연결
+            state.socket = io(WS_URL, {
+                extraHeaders: {
+                    'auth': token
+                }
+            });
+
+            state.socket.on('connect', () => {
+                updateStatus('웹소켓 연결됨');
+            });
+
+            state.socket.on('disconnect', () => {
+                updateStatus('웹소켓 연결 해제됨');
+            });
+
+            state.socket.on('connect_error', (error) => {
+                updateStatus('연결 오류: ' + error.message);
+                alert('웹소켓 연결 실패: ' + error.message);
+            });
+
+            // 새 메시지 수신
+            state.socket.on('newMessage', (message) => {
+                console.log('새 메시지 수신:', message);
+                handleNewMessage(message);
+            });
+
+            // 읽음 상태 수신
+            state.socket.on('readStatus', (readInfo) => {
+                console.log('읽음 상태 수신:', readInfo);
+                handleReadStatus(readInfo);
+            });
+
+            state.socket.on('error', (error) => {
+                console.error('소켓 에러:', error);
+                alert('에러: ' + error.message);
+            });
+        }
+
+        // 연결 해제
+        function disconnect() {
+            // 현재 채팅방에서 나가기
+            if (state.currentRoomId && state.socket) {
+                state.socket.emit('leaveRoom', { roomId: state.currentRoomId });
+            }
+            
+            if (state.socket) {
+                state.socket.disconnect();
+                state.socket = null;
+            }
+            state.token = null;
+            state.currentRoomId = null;
+            state.rooms = [];
+            state.messages = {};
+            state.roomInfo = {};
+            state.nextCursor = null;
+            state.hasMore = true;
+            
+            document.getElementById('main-container').classList.remove('active');
+            document.getElementById('room-list').innerHTML = '';
+            document.getElementById('chat-messages').innerHTML = '';
+            updateStatus('미연결');
+        }
+
+        // 상태 업데이트
+        function updateStatus(message) {
+            document.getElementById('status').textContent = '상태: ' + message;
+        }
+
+        // 채팅방 목록 로드
+        async function loadChatRooms(isLoadMore = false) {
+            if (state.isLoadingRooms || (!isLoadMore && !state.hasMore && state.rooms.length > 0)) {
+                return;
+            }
+
+            state.isLoadingRooms = true;
+            document.getElementById('room-list-loading').style.display = 'block';
+
+            try {
+                const cursor = isLoadMore ? state.nextCursor : null;
+                const url = `${API_BASE_URL}/chat/rooms/list?limit=50${cursor ? '&cursor=' + cursor : ''}`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.resultType === 'SUCCESS') {
+                    const { data, meta } = result.success;
+                    
+                    if (isLoadMore) {
+                        state.rooms = [...state.rooms, ...data];
+                    } else {
+                        state.rooms = data;
+                    }
+                    
+                    state.nextCursor = meta.nextCursor;
+                    state.hasMore = meta.hasMore;
+                    
+                    renderRoomList();
+                } else {
+                    console.error('채팅방 목록 로드 실패:', result.error);
+                }
+            } catch (error) {
+                console.error('채팅방 목록 로드 에러:', error);
+            } finally {
+                state.isLoadingRooms = false;
+                document.getElementById('room-list-loading').style.display = 'none';
+            }
+        }
+
+        // 채팅방 목록 렌더링
+        function renderRoomList() {
+            const roomListEl = document.getElementById('room-list');
+            roomListEl.innerHTML = state.rooms.map(room => `
+                <div class="room-item ${state.currentRoomId === room.chatRoomId ? 'active' : ''}" 
+                     onclick="selectRoom('${room.chatRoomId}')" 
+                     data-room-id="${room.chatRoomId}">
+                    <div class="title">
+                        ${room.title}
+                        ${room.unreadCount > 0 ? `<span class="unread-badge">${room.unreadCount}</span>` : ''}
+                    </div>
+                    <div class="last-message">${room.lastMessage || `[${room.messageType || room.roomType}]`}</div>
+                    <div style="font-size: 11px; color: #999; margin-top: 3px;">
+                        ${room.lastMessageAt ? new Date(room.lastMessageAt).toLocaleString('ko-KR') : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 채팅방 선택
+        async function selectRoom(roomId) {
+            // 이전 방에서 나가기
+            if (state.currentRoomId && state.currentRoomId !== roomId) {
+                state.socket?.emit('leaveRoom', { roomId: state.currentRoomId });
+            }
+            
+            state.currentRoomId = roomId;
+            
+            // 채팅방 목록에서 활성화 표시
+            document.querySelectorAll('.room-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.roomId === roomId);
+            });
+            
+            // 메시지 로드
+            await loadMessages(roomId);
+            
+            // 입력 활성화
+            document.getElementById('message-input').disabled = false;
+            document.getElementById('send-btn').disabled = false;
+            
+            // 읽음 처리 및 unreadCount 초기화
+            const room = state.rooms.find(r => r.chatRoomId === roomId);
+            if (room) {
+                room.unreadCount = 0;
+                renderRoomList();
+                document.getElementById('chat-room-info').textContent = room.title;
+            }
+            
+            // 채팅방 입장 및 읽음 처리
+            state.socket?.emit('joinRoom', { roomId });
+            sendReadEvent(roomId);
+        }
+
+        // 메시지 목록 로드
+        async function loadMessages(roomId, cursor = null) {
+            try {
+                const url = `${API_BASE_URL}/chat/rooms/${roomId}/messages?limit=50${cursor ? '&cursor=' + cursor : ''}`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.resultType === 'SUCCESS') {
+                    const { data, chatRoomInfo } = result.success;
+                    
+                    // 메시지를 시간순으로 정렬 (오래된 것부터)
+                    state.messages[roomId] = data.reverse();
+                    state.roomInfo[roomId] = chatRoomInfo;
+                    
+                    renderMessages();
+                    scrollToBottom();
+                } else {
+                    console.error('메시지 로드 실패:', result.error);
+                }
+            } catch (error) {
+                console.error('메시지 로드 에러:', error);
+            }
+        }
+
+        // 메시지 렌더링
+        function renderMessages() {
+            if (!state.currentRoomId) return;
+            
+            const messages = state.messages[state.currentRoomId] || [];
+            const roomInfo = state.roomInfo[state.currentRoomId];
+            
+            if (!roomInfo) return;
+            
+            const messagesEl = document.getElementById('chat-messages');
+            
+            // 내가 누구인지 판단
+            const isOwner = state.userId === roomInfo.owner.id;
+            const myLastReadId = isOwner ? roomInfo.ownerLastReadId : roomInfo.requesterLastReadId;
+            const otherLastReadId = isOwner ? roomInfo.requesterLastReadId : roomInfo.ownerLastReadId;
+            
+            messagesEl.innerHTML = messages.map(msg => {
+                const isMine = msg.senderId === state.userId;
+                const isRead = compareUUIDv7(msg.messageId, otherLastReadId) <= 0;
+                
+                // 메시지 내용 결정
+                let messageContent = '';
+                if (msg.messageType === 'TEXT') {
+                    messageContent = msg.textContent || '';
+                } else if (msg.payload) {
+                    messageContent = JSON.stringify(msg.payload, null, 2);
+                } else {
+                    messageContent = msg.textContent || '';
+                }
+                
+                return `
+                    <div class="message ${isMine ? 'mine' : 'theirs'}" data-message-id="${msg.messageId}">
+                        <div class="content">
+                            ${messageContent ? `<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">${messageContent}</pre>` : ''}
+                        </div>
+                        <div>
+                            <span class="time">${new Date(msg.createdAt).toLocaleTimeString('ko-KR')}</span>
+                            ${isMine && isRead ? '<span class="read-status"> 읽음</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // UUID v7 비교 함수 (문자열 비교로 가능)
+        function compareUUIDv7(uuid1, uuid2) {
+            if (!uuid1 || !uuid2) return 0;
+            if (uuid1 === uuid2) return 0;
+            return uuid1 < uuid2 ? -1 : 1;
+        }
+
+        // 메시지 전송
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const content = input.value.trim();
+            
+            if (!content || !state.currentRoomId) return;
+            
+            state.socket.emit('sendMessage', {
+                roomId: state.currentRoomId,
+                contentType: 'TEXT',
+                content: content
+            });
+            
+            input.value = '';
+        }
+
+        // Enter 키로 전송
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('message-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // 채팅방 목록 스크롤 이벤트 (무한 스크롤)
+            document.getElementById('room-list-section').addEventListener('scroll', (e) => {
+                const element = e.target;
+                if (element.scrollHeight - element.scrollTop <= element.clientHeight + 100) {
+                    if (state.hasMore && !state.isLoadingRooms) {
+                        loadChatRooms(true);
+                    }
+                }
+            });
+        });
+
+        // 읽음 이벤트 전송
+        function sendReadEvent(roomId) {
+            if (!state.socket) return;
+            
+            state.socket.emit('readChatRoom', {
+                chatRoomId: roomId
+            });
+        }
+
+        // 새 메시지 처리
+        function handleNewMessage(message) {
+            const roomId = message.chatRoomId;
+            
+            // 메시지를 해당 방에 추가
+            if (!state.messages[roomId]) {
+                state.messages[roomId] = [];
+            }
+            state.messages[roomId].push(message);
+            
+            // 현재 보고 있는 방이면 화면에 표시
+            if (state.currentRoomId === roomId) {
+                renderMessages();
+                scrollToBottom();
+                
+                // 읽음 처리
+                sendReadEvent(roomId);
+            } else {
+                // 현재 보고 있지 않은 방이면 unreadCount 증가
+                const room = state.rooms.find(r => r.chatRoomId === roomId);
+                if (room) {
+                    room.unreadCount = (room.unreadCount || 0) + 1;
+                }
+            }
+            
+            // 채팅방 목록 업데이트
+            updateRoomInList(roomId, message);
+        }
+
+        // 채팅방 목록에서 특정 방 업데이트
+        function updateRoomInList(roomId, message) {
+            const roomIndex = state.rooms.findIndex(r => r.chatRoomId === roomId);
+            
+            if (roomIndex !== -1) {
+                const room = state.rooms[roomIndex];
+                
+                // 마지막 메시지 정보 업데이트
+                room.lastMessage = message.messageType === 'TEXT' ? message.textContent : `[${message.messageType}]`;
+                room.lastMessageAt = message.createdAt;
+                room.messageType = message.messageType;
+                
+                // 방을 최상단으로 이동
+                state.rooms.splice(roomIndex, 1);
+                state.rooms.unshift(room);
+                
+                renderRoomList();
+            }
+        }
+
+        // 읽음 상태 처리
+        function handleReadStatus(readInfo) {
+            const { chatRoomId, readerId, lastReadMessageId } = readInfo;
+            
+            // 룸 정보 업데이트
+            if (state.roomInfo[chatRoomId]) {
+                const roomInfo = state.roomInfo[chatRoomId];
+                
+                // 읽은 사람이 owner인지 requester인지 확인
+                if (readerId === roomInfo.owner.id) {
+                    roomInfo.ownerLastReadId = lastReadMessageId;
+                } else if (readerId === roomInfo.requester.id) {
+                    roomInfo.requesterLastReadId = lastReadMessageId;
+                }
+                
+                // 현재 보고 있는 방이면 화면 갱신
+                if (state.currentRoomId === chatRoomId) {
+                    renderMessages();
+                }
+            }
+        }
+
+        // 스크롤을 맨 아래로
+        function scrollToBottom() {
+            const messagesEl = document.getElementById('chat-messages');
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+    </script>
+</body>
+</html>
