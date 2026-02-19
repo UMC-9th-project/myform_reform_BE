@@ -86,8 +86,8 @@ export class ProposalItem {
   isWished!: boolean;
   title!: string | null;
   price!: number | null;
-  avgStar!: number | null;
-  reviewCount!: number | null;
+  avgStar!: number;
+  reviewCount!: number;
   sellerName!: string | null;
 }
 

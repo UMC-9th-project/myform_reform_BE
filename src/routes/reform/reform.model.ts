@@ -367,9 +367,12 @@ export class ReformProposalFactory {
     rawBody: RawProposalDetail,
     rawPhoto: RawProposalDetailImages[],
     rawProfile: ProfileInfoResponse,
+    avgStar: {
+      avgStar: number;
+      avgStar3m: number;
+    },
     isOwner: boolean,
     isWished: boolean,
-    avgStarRecent3m: number = 0,
     category: Category
   ): ReformDetailProposalResponse {
     return new ReformDetailProposalResponse({
@@ -379,6 +382,8 @@ export class ReformProposalFactory {
       ownerId: rawBody.owner_id,
       title: rawBody.title ?? '',
       content: rawBody.content ?? '',
+      avgStar: avgStar.avgStar ?? 0,
+      avgStar3m: avgStar.avgStar3m ?? 0,
       price: rawBody.price?.toNumber() ?? 0,
       delivery: rawBody.delivery?.toNumber() ?? 0,
       expectedWorking: rawBody.expected_working?.toNumber() ?? 0,
@@ -390,7 +395,6 @@ export class ReformProposalFactory {
         ownerName: rawProfile.nickname ?? '',
         ownerProfile: rawProfile.profilePhoto ?? '',
         avgStar: rawProfile.avgStar ?? 0,
-        avgStarRecent3m,
         reviewCount: rawProfile.reviewCount ?? 0,
         toatalSaleCount: rawProfile.totalSaleCount ?? 0,
         keywords: rawProfile.keywords ?? [],

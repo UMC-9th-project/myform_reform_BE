@@ -37,12 +37,15 @@ import type {
   RequestsListResponseDto
 } from './dto/profile.res.dto.js';
 import { MarketService } from '../market/market.service.js';
+import { ReviewsRepository } from '../reviews/reviews.repository.js';
 export class ProfileService {
   private profileRepository: ProfileRepository;
   private marketService: MarketService;
+  private reviewsRepository: ReviewsRepository;
 
   constructor() {
     this.profileRepository = new ProfileRepository();
+    this.reviewsRepository = new ReviewsRepository();
     this.marketService = new MarketService();
   }
 
@@ -408,19 +411,35 @@ export class ProfileService {
           avg_star: unknown;
           review_count: number | null;
           category: { category_id: string; parent_id: string };
-        }) => ({
-          proposalId: proposal.reform_proposal_id,
-          photo: proposal.reform_proposal_photo[0]?.content ?? null,
-          isWished: wishedProposalIds.includes(proposal.reform_proposal_id),
-          title: proposal.title,
-          content: proposal.content,
-          category: await this.marketService.getCategoryName(proposal.category),
-          price: proposal.price !== null ? Number(proposal.price) : null,
-          avgStar:
-            proposal.avg_star !== null ? Number(proposal.avg_star) : null,
-          reviewCount: proposal.review_count,
-          sellerName: owner.nickname
-        })
+        }) => {
+          const avgStar = await this.reviewsRepository.findAverageStarForTarget(
+            'PROPOSAL',
+            proposal.reform_proposal_id
+          );
+
+          const review = {
+            avgStar: avgStar._avg?.star ? Number(avgStar._avg.star) : 0,
+            totalCount: await this.reviewsRepository.countReviewsForTarget(
+              'PROPOSAL',
+              proposal.reform_proposal_id
+            )
+          };
+
+          return {
+            proposalId: proposal.reform_proposal_id,
+            photo: proposal.reform_proposal_photo[0]?.content ?? null,
+            isWished: wishedProposalIds.includes(proposal.reform_proposal_id),
+            title: proposal.title,
+            content: proposal.content,
+            category: await this.marketService.getCategoryName(
+              proposal.category
+            ),
+            price: proposal.price !== null ? Number(proposal.price) : null,
+            avgStar: review.avgStar,
+            reviewCount: review.totalCount,
+            sellerName: owner.nickname
+          };
+        }
       )
     );
 

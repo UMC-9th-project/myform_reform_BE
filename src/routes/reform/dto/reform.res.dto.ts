@@ -53,6 +53,8 @@ export class ReformDetailProposalResponseDto {
   ownerId!: UUID;
   title!: string;
   price!: number;
+  avgStar!: number;
+  avgStar3m!: number;
   delivery!: number;
   expectedWorking!: number;
   category!: Category;
@@ -65,7 +67,6 @@ export class ReformDetailProposalResponseDto {
     ownerName: string;
     ownerProfile: string;
     avgStar: number;
-    avgStarRecent3m: number;
     reviewCount: number;
     toatalSaleCount: number;
     keywords: string[];
