@@ -97,6 +97,7 @@ export class UsersRepository {
           name: true,
           nickname: true,
           phone: true,
+          created_at: true,
           reformer_auth: {
             select: {
               portfolio: true,
