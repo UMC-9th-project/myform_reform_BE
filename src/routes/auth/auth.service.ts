@@ -431,7 +431,7 @@ export class AuthService {
 
   // JWT 토큰 생성 및 Redis에 저장
   private async generateAndSaveTokens(payload: CustomJwt): Promise<AuthLoginResponse> {
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '5m' });
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
     const refreshToken = jwt.sign({id: payload.id, role: payload.role}, process.env.JWT_SECRET!, { expiresIn: '14d' });
     // Refresh Token Redis에 저장
     try {
