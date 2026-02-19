@@ -430,22 +430,27 @@ export class ReformService {
             payload.id
           );
 
-        const [profile, avgStarRecent3mRaw, category] = await Promise.all([
+        const [profile, category] = await Promise.all([
           this.profileService.getProfileInfo(body.owner_id),
-          this.reformRepository.findAvgStarRecent3MonthsByOwnerId(
-            body.owner_id
-          ),
           this.maretService.getCategoryName(body.category)
         ]);
-        const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
+        // const avgStarRecent3m = avgStarRecent3mRaw ?? 0;
+        const avg = await this.reviewsRepository.findAverageStarForTarget(
+          'PROPOSAL',
+          body.reform_proposal_id
+        );
+        const avgStar = {
+          avgStar: avg._avg?.star ? Number(avg._avg.star) : 0,
+          avgStar3m: avg._avg?.star ? Number(avg._avg.star) : 0
+        };
 
         return ReformProposalFactory.createFromDetailRaw(
           body,
           images,
           profile,
+          avgStar,
           isOwner,
           isWished,
-          avgStarRecent3m,
           category as Category
         );
       });
