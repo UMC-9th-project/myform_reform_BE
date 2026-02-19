@@ -86,9 +86,12 @@ export class ChatController extends Controller {
     @Request() request: express.Request,
     @Body() body: CreateChatRoomWithProposalDTO
   ): Promise<TsoaResponse<CreateChatRoomResponseDTO>> {
-    const {chatRoomResponse, message, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
+    const {chatRoomResponse, messages, receiverInfo} = await this.chatService.createChatRoomWithProposal(body, request.user.id);
     if(chatRoomResponse.isNew == true){
-      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+      // 두 개의 메시지를 모두 웹소켓으로 전송
+      messages.forEach((message: any) => {
+        this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+      });
     }
     return new ResponseHandler<CreateChatRoomResponseDTO>(chatRoomResponse);
   }
@@ -273,8 +276,11 @@ export class ChatController extends Controller {
     @Body() dto: CreateChatProposalDTO  
   ): Promise<TsoaResponse<SimplePostResponseDTO>> {
     const userType = request.user.role === 'reformer' ? 'owner' : 'requester';
-    const { result, message, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, userType);
-    this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    const { result, messages, receiverInfo } = await this.chatService.createChatProposal(dto, request.user.id, userType);
+    // 두 개의 메시지를 모두 웹소켓으로 전송
+    messages.forEach((message: any) => {
+      this.wsServer.getHandler().notifyNewMessage(receiverInfo, message);
+    });
     return new ResponseHandler<SimplePostResponseDTO>(result);
   }
 

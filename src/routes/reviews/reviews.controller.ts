@@ -16,8 +16,16 @@ import { ReviewsService } from './reviews.service.js';
 import {
   ReviewResponseDto,
   ProposalReviewListResponseDto,
-  ProposalReviewSortBy
+  ProposalReviewSortBy,
+  GetItemReviewsResponseDto,
+  GetItemReviewPhotosResponseDto,
+  GetReviewDetailResponseDto
 } from './reviews.model.js';
+import {
+  GetItemReviewsRequestDto,
+  GetItemReviewPhotosRequestDto,
+  GetReviewDetailRequestDto
+} from './dto/reviews.req.dto.js';
 import {
   ErrorResponse,
   ResponseHandler,
@@ -25,10 +33,11 @@ import {
   commonError
 } from '../../config/tsoaResponse.js';
 import { UnauthorizedError } from '../auth/auth.error.js';
+import { validateDto } from '../../middleware/validator.js';
 
 
 @Route('reviews')
-@Tags('Reviews')
+@Tags('리뷰 기능')
 export class ReviewsController extends Controller {
   private reviewService: ReviewsService;
   constructor() {
@@ -113,6 +122,86 @@ export class ReviewsController extends Controller {
       limit,
       cursor,
       sortBy
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * @summary 리뷰 목록 조회. targetType: ITEM|PROPOSAL|FEED|REQUEST, targetId: 해당 타입의 PK
+   */
+  @Get('/target/{targetType}/{targetId}/reviews')
+  @SuccessResponse(200, '리뷰 목록 조회 성공')
+  @Response<ErrorResponse>(400, '입력값 검증 실패')
+  @Response<ErrorResponse>(500, '리뷰 목록 조회 실패', commonError.serverError)
+  public async getTargetReviews(
+    @Path() targetType: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST',
+    @Path() targetId: string,
+    @Query() page: number = 1,
+    @Query() limit: number = 4,
+    @Query() sort: 'latest' | 'star_high' | 'star_low' = 'latest'
+  ): Promise<TsoaResponse<GetItemReviewsResponseDto>> {
+    const dto = await validateDto(GetItemReviewsRequestDto, {
+      page,
+      limit,
+      sort
+    });
+    const result = await this.reviewService.getTargetReviews(
+      targetType,
+      targetId,
+      dto.page ?? 1,
+      dto.limit ?? 4,
+      dto.sort ?? 'latest'
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * @summary 사진 후기 조회
+   */
+  @Get('/target/{targetType}/{targetId}/reviews/photos')
+  @SuccessResponse(200, '사진 후기 조회 성공')
+  @Response<ErrorResponse>(400, '입력값 검증 실패')
+  @Response<ErrorResponse>(500, '사진 후기 조회 실패', commonError.serverError)
+  public async getTargetReviewPhotos(
+    @Path() targetType: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST',
+    @Path() targetId: string,
+    @Query() offset: number = 0,
+    @Query() limit: number = 15
+  ): Promise<TsoaResponse<GetItemReviewPhotosResponseDto>> {
+    const dto = await validateDto(GetItemReviewPhotosRequestDto, {
+      offset,
+      limit
+    });
+    const result = await this.reviewService.getTargetReviewPhotos(
+      targetType,
+      targetId,
+      dto.offset ?? 0,
+      dto.limit ?? 15
+    );
+    return new ResponseHandler(result);
+  }
+
+  /**
+   * @summary 리뷰 상세 조회
+   */
+  @Get('/target/{targetType}/{targetId}/reviews/{reviewId}')
+  @SuccessResponse(200, '리뷰 상세 조회 성공')
+  @Response<ErrorResponse>(404, '리뷰를 찾을 수 없습니다.')
+  @Response<ErrorResponse>(500, '리뷰 상세 조회 실패', commonError.serverError)
+  public async getTargetReviewDetail(
+    @Path() targetType: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST',
+    @Path() targetId: string,
+    @Path() reviewId: string,
+    @Query() photoIndex?: number
+  ): Promise<TsoaResponse<GetReviewDetailResponseDto>> {
+    if (photoIndex !== undefined) {
+      await validateDto(GetReviewDetailRequestDto, { photoIndex });
+    }
+    const result = await this.reviewService.getTargetReviewDetail(
+      targetType,
+      targetId,
+      reviewId,
+      photoIndex
     );
     return new ResponseHandler(result);
   }

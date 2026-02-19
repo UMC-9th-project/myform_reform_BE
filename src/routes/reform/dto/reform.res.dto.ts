@@ -1,4 +1,5 @@
 import { UUID } from '../../../@types/common.js';
+import { Category } from '../../../@types/item.js';
 
 export class ReformHomeResponse {
   requests!: ReformRequestResponseDto[];
@@ -38,8 +39,9 @@ export class ReformDetailRequestResponseDto {
     photo_order: number;
   }[];
   content!: string;
+  category!: Category;
   dueDate!: Date;
-  name!: string;
+  nickname!: string;
   profile!: string;
   isCompleted?: boolean;
 }
@@ -53,6 +55,7 @@ export class ReformDetailProposalResponseDto {
   price!: number;
   delivery!: number;
   expectedWorking!: number;
+  category!: Category;
   images!: {
     photo: string;
     photo_order: number;

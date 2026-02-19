@@ -34,6 +34,7 @@ export class SaleDetailResponseDto extends SaleResponseDto {
   };
   billNumber!: string;
   option!: string;
+  tracking_number!: string;
 }
 
 // --- 5 GET 응답 타입 (profile/{id}, feed, item, proposal, review) ---
@@ -106,7 +107,7 @@ export class ReviewItem {
   createdAt!: Date | null;
   content!: string | null;
   productId!: string | null;
-  productType!: 'ITEM' | 'PROPOSAL' | null;
+  productType!: 'ITEM' | 'PROPOSAL' | 'REQUEST' | 'FEED' | null;
   productTitle!: string | null;
   productPhoto!: string | null;
   productPrice!: number | null;
@@ -164,6 +165,7 @@ export class OrderDetailResponseDto {
   deliveryPhone!: string;
   deliveryAddressName!: string;
   options!: RawOptionItemsWithGroup[];
+  chatRoomId!: string;
 }
 
 export class RequestsListResponseDto {

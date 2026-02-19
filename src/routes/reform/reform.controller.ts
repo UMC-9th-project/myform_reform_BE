@@ -39,7 +39,7 @@ import { ReformError } from './reform.error.js';
 import { CustomJwt } from '../../@types/expreees.js';
 import { ReformProposalFactory, ReformRequestFactory } from './reform.model.js';
 
-@Tags('Reform Router')
+@Tags('리폼 관련 기능')
 @Route('reform')
 export class ReformController extends Controller {
   private reformService: ReformService;
@@ -130,8 +130,12 @@ export class ReformController extends Controller {
     content: 'string',
     minBudget: 0,
     maxBudget: 50000,
-    name: '홍길동',
+    nickname: '홍길동',
     profile: '',
+    category: {
+      major: '의류',
+      sub: '상의'
+    },
     images: [
       {
         photo: 'https://image.png',
@@ -269,25 +273,25 @@ export class ReformController extends Controller {
     return new ResponseHandler(ans);
   }
 
-  /**
-   * @summary 요청서를 바탕으로 새로운 견적서를 생성합니다.
-   * @param body 견적서
-   * @returns 생성된 견적서 UUID
-   */
-  @Post('/quote')
-  @Security('jwt')
-  @SuccessResponse(200, '생성 성공')
-  public async addQuote(
-    @Request() req: ExRequest,
-    @Body() body: ReformQuoteRequest
-  ): Promise<TsoaResponse<{ order_id: string }>> {
-    const payload = req.user;
-    if (payload.role !== 'reformer')
-      throw new ReformError('리폼러만 견적서를 작성 할 수 있습니다');
+  // /**
+  //  * @summary 요청서를 바탕으로 새로운 견적서를 생성합니다.
+  //  * @param body 견적서
+  //  * @returns 생성된 견적서 UUID
+  //  */
+  // @Post('/quote')
+  // @Security('jwt')
+  // @SuccessResponse(200, '생성 성공')
+  // public async addQuote(
+  //   @Request() req: ExRequest,
+  //   @Body() body: ReformQuoteRequest
+  // ): Promise<TsoaResponse<{ order_id: string }>> {
+  //   const payload = req.user;
+  //   if (payload.role !== 'reformer')
+  //     throw new ReformError('리폼러만 견적서를 작성 할 수 있습니다');
 
-    const ownerId = req.user.id;
+  //   const ownerId = req.user.id;
 
-    const ans = await this.reformService.addReformQuote(body, ownerId);
-    return new ResponseHandler(ans);
-  }
+  //   const ans = await this.reformService.addReformQuote(body, ownerId);
+  //   return new ResponseHandler(ans);
+  // }
 }

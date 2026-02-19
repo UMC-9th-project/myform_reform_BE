@@ -50,7 +50,7 @@ import { ItemAddError } from './profile.error.js';
 import { CustomJwt } from '../../@types/expreees.js';
 
 @Route('profile')
-@Tags('Profile Router')
+@Tags('프로필 기능')
 export class ProfileController extends Controller {
   private profileService: ProfileService;
   constructor() {
@@ -207,14 +207,17 @@ export class ProfileController extends Controller {
     @Query() type: 'ITEM' | 'REFORM',
     @Query() page: number = 1,
     @Query() limit: number = 15,
+    @Query() sort: 'asc' | 'desc' = 'desc',
     @Request() req: ExRequest
   ): Promise<TsoaResponse<SaleResponseDto[]>> {
     const payload = req.user;
     if (payload.role !== 'reformer') {
       throw new ItemAddError('판매자만 조회할 수 있습니다.');
     }
+
     const ownerId = payload.id;
-    const dto = new SaleRequestDto(type, page, limit, ownerId);
+    const dto = new SaleRequestDto(type, page, limit, ownerId, sort);
+
     const data = await this.profileService.getSales(dto);
 
     const res = data.map((sale) => {
@@ -224,6 +227,33 @@ export class ProfileController extends Controller {
     return new ResponseHandler(res);
   }
 
+  /**
+   * 운송장 번호 수정
+   * @summary 운송장 번호를 수정, 삭제합니다.
+   * @param orderId 판매상품 ID (order_id)
+   */
+  @Patch('sales/{orderId}/tracking')
+  @Security('jwt')
+  @SuccessResponse(200, '운송장 번호 수정 성공')
+  @Response<ErrorResponse>(500, '서버에러', commonError.serverError)
+  public async updateTrackingNumber(
+    @Path() orderId: string,
+    @Body() body: { trackingNumber: string },
+    @Request() req: ExRequest
+  ): Promise<TsoaResponse<string>> {
+    const payload = req.user;
+    if (payload.role !== 'reformer') {
+      throw new ItemAddError('판매자만 조회할 수 있습니다.');
+    }
+    const ownerId = payload.id;
+
+    await this.profileService.updateTrackingNumber(
+      ownerId,
+      orderId,
+      body.trackingNumber
+    );
+    return new ResponseHandler('수정 성공');
+  }
   /**
    * 특정 판매목록 상세 조회
    * @summary 판매상품 ID로 해당 상품의 상세 정보를 조회합니다
@@ -242,7 +272,7 @@ export class ProfileController extends Controller {
       success: {
         orderId: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
         targetId: '550e8400-e29b-41d4-a716-446655440000',
-        status: 'PAID',
+        status: 'COMPLETE',
         price: 53000,
         deliveryFee: 3000,
         userName: '구매자이름',
@@ -250,6 +280,7 @@ export class ProfileController extends Controller {
         title: '상품명',
         thumbnail: 'https://example.com/thumbnail.jpg',
         phone: '01012345678',
+        tracking_number: '12312123',
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
@@ -566,6 +597,7 @@ export class ProfileController extends Controller {
    * @param ownerId owner UUID 또는 리폼러 닉네임
    * @param cursor 페이지네이션 커서 (선택)
    * @param limit 한 번에 조회할 개수 (기본 20, 최대 50)
+   * @param targetType 필터: ITEM|PROPOSAL|FEED|REQUEST (선택, 없으면 전체 타입)
    * @returns 리뷰 목록
    */
   @Get('{ownerId}/review')
@@ -583,13 +615,15 @@ export class ProfileController extends Controller {
   public async getProfileReviews(
     @Path() ownerId: string,
     @Query() cursor?: string,
-    @Query() limit?: number
+    @Query() limit?: number,
+    @Query() targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ): Promise<TsoaResponse<ReviewListResponse>> {
     const limitValue = limit && limit > 0 ? limit : 20;
     const result = await this.profileService.getProfileReviews(
       ownerId,
       cursor,
-      limitValue
+      limitValue,
+      targetType
     );
     return new ResponseHandler(result);
   }

@@ -97,6 +97,18 @@ export class ForbiddenError extends BasicError {
   }
 }
 
+export class reformerNotApprovedError extends BasicError {
+  constructor(description: string) {
+    super(403, 'Auth_117', '아직 승인되지 않은 리폼러입니다.', description);
+  }
+}
+
+export class reformerRejectedError extends BasicError {
+  constructor(description: string) {
+    super(403, 'Auth_118', '리폼러 신청이 반려된 계정입니다.', description)
+  }
+}
+
 export class SmsProviderError extends BasicError {
   constructor(description: string) {
     super(500, 'Auth_501', 'SMS 전송 중 오류가 발생했습니다.', description);

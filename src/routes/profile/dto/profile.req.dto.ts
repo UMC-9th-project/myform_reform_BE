@@ -7,17 +7,20 @@ export class SaleRequestDto {
   page: number;
   limit: number;
   ownerId: UUID;
+  sort: 'asc' | 'desc';
 
   constructor(
     type: 'ITEM' | 'REFORM',
     page: number,
     limit: number,
-    ownerId: UUID
+    ownerId: UUID,
+    sort: 'asc' | 'desc'
   ) {
     this.ownerId = ownerId;
     this.type = type;
     this.page = page;
     this.limit = limit;
+    this.sort = sort;
   }
 }
 

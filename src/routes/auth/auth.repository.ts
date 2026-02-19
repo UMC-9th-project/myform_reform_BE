@@ -1,5 +1,6 @@
 import { OwnerCreateInput, UserCreateInput } from './auth.model.js'
 import prisma from "../../config/prisma.config.js";
+import { Role } from './dto/auth.dto.js';
 import { UserCreateResponse, OwnerCreateResponse } from './auth.model.js'
 
 export class AuthRepository {
@@ -93,5 +94,46 @@ export class AuthRepository {
       role: dbRole === 'USER' ? 'user' : 'reformer',
       auth_status: resultOwner.status
     } as OwnerCreateResponse;
+  }
+
+  async deleteSocialAccount(role: Role, accountId: string){
+    if (role === 'user'){
+      return await prisma.social_account.deleteMany(
+        {
+        where: { user_id: accountId }
+        }
+      )
+    }
+    else{
+      return await prisma.social_account.deleteMany(
+        {
+          where: { owner_id: accountId }
+        }
+      )
+    }
+  }
+
+  async deleteUserAccount(accountId: string){
+    return await prisma.user.delete(
+      {
+        where: { user_id: accountId }
+      }
+    )
+  }
+
+  async deleteReformerAccount(accountId: string){
+    return await prisma.owner.delete(
+      {
+        where: { owner_id: accountId }
+      }
+    )
+  }
+
+  async deleteReformerAuth(accountId: string){
+    return await prisma.reformer_auth.deleteMany(
+      {
+        where: { owner_id: accountId }
+      }
+    )
   }
 }

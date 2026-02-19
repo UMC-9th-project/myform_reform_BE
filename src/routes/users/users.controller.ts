@@ -1,34 +1,35 @@
-import { 
+import {
   Body,
-  Path, 
-  Post, 
-  Patch, 
-  Controller, 
-  Route, 
-  Tags, 
-  Query, 
-  SuccessResponse, 
-  Example, 
-  Response, 
-  Request, 
-  Security, 
-  Get 
+  Path,
+  Post,
+  Patch,
+  Controller,
+  Route,
+  Tags,
+  Query,
+  SuccessResponse,
+  Example,
+  Response,
+  Request,
+  Security,
+  Get
 } from 'tsoa';
 import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
 import { CheckNicknameResponseDto, UpdateReformerProfileResponseDto, UserProfileResponseDto, UsersInfoResponseDto } from './dto/users.res.dto.js';
 import { UpdateReformerStatusRequestDto, UpdateUserProfileRequestDto, UpdateReformerProfileRequestDto } from './dto/users.req.dto.js';
-import { 
-  UpdateUserProfileResponseDto, 
-  UserDetailInfoResponseDto, 
+import {
+  UpdateUserProfileResponseDto,
+  UserDetailInfoResponseDto,
   ReformerDetailInfoResponseDto,
-  ReformerPortfolioDto } from './dto/users.res.dto.js';
+  ReformerPortfolioDto
+} from './dto/users.res.dto.js';
 import { UsersService } from './users.service.js';
 import { UnauthorizedError } from '../auth/auth.error.js';
 import { Request as ExRequest } from 'express';
 import { reformer_status_enum } from '@prisma/client';
 
 @Route('users')
-@Tags('Users')
+@Tags('유저 관련 기능')
 export class UsersController extends Controller {
   private usersService = new UsersService();
 
@@ -65,6 +66,7 @@ export class UsersController extends Controller {
    * @param requestBody 목표 상태 (PENDING, APPROVED, REJECTED)
    * @returns 리폼러 상태 업데이트 결과
    */
+  @Security('jwt', ['master'])
   @SuccessResponse(200, '리폼러 상태 업데이트 성공')
   @Example<ResponseHandler<UsersInfoResponseDto>>({
     resultType: 'SUCCESS',
@@ -78,6 +80,7 @@ export class UsersController extends Controller {
     }
   })
   @Response<ErrorResponse>('400', '목표 상태 형식 오류')
+  @Response<ErrorResponse>('403', '권한 없음, 마스터 리폼러 계정만 이용 가능')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   @Patch('reformer/{reformerId}/status')
   public async updateReformerStatus(

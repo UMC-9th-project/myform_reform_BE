@@ -37,7 +37,7 @@ import { ChatService } from '../chat/chat.service.js';
 import { WebSocketServer } from '../../infra/websocket/websocket.js';
 
 @Route('orders')
-@Tags('Orders')
+@Tags('주문 기능')
 @Security('jwt')
 export class OrdersController extends Controller {
   private ordersService: OrdersService;
@@ -431,7 +431,7 @@ export class OrdersController extends Controller {
    * @param requestBody 결제 검증 요청 (order_id, imp_uid)
    * @returns 결제 검증 결과
    * @description 프론트엔드에서 포트원 결제 완료 콜백에서 호출합니다.
-   *              포트원 API로 결제 정보를 검증하고 주문 상태를 PAID로 업데이트합니다.
+   *              포트원 API로 결제 정보를 검증하고 주문 상태를 COMPLETE로 업데이트합니다.
    * @example requestBody {
    *   "order_id": "1f41caf0-dda0-4f9e-8085-35d1e79a2dfe",
    *   "imp_uid": "imp_1234567890"
@@ -527,7 +527,17 @@ export class OrdersController extends Controller {
           return undefined;
         });
         if (result?.receiverInfo != null && result?.message != null) {
-          this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            // 수신자(유저)에게 웹소켓 알림
+            this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            
+            // 발신자(오너)에게도 웹소켓 알림
+            const messageProps = result.message['props'] || result.message;
+            const senderAsReceiver = {
+              receiverId: messageProps.sender_id,
+              nickname: undefined,
+              receiverType: messageProps.sender_type
+            };
+            this.wsServer.getHandler().notifyNewMessage(senderAsReceiver, result.message);
         }
       }
     }
@@ -561,7 +571,7 @@ export class OrdersController extends Controller {
       success: {
         order_id: '1f41caf0-dda0-4f9e-8085-35d1e79a2dfe',
         receipt_number: '481025937412',
-        status: 'PAID',
+        status: 'COMPLETE',
         delivery_address: {
           postal_code: '12345',
           address: '서울시 강남구 테헤란로',
@@ -712,7 +722,17 @@ export class OrdersController extends Controller {
             return undefined;
           });
           if (result?.receiverInfo != null && result?.message != null) {
+            // 수신자(유저)에게 웹소켓 알림
             this.wsServer.getHandler().notifyNewMessage(result.receiverInfo, result.message);
+            
+            // 발신자(오너)에게도 웹소켓 알림
+            const messageProps = result.message['props'] || result.message;
+            const senderAsReceiver = {
+              receiverId: messageProps.sender_id,
+              nickname: undefined,
+              receiverType: messageProps.sender_type
+            };
+            this.wsServer.getHandler().notifyNewMessage(senderAsReceiver, result.message);
           }
         }
       }

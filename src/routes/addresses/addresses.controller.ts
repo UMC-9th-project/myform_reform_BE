@@ -11,17 +11,24 @@ import {
   Post,
   Body,
   Delete,
-  Path,
+  Path
 } from 'tsoa';
 import { AddressesService } from './addresses.service.js';
-import { ErrorResponse, ResponseHandler, TsoaResponse } from '../../config/tsoaResponse.js';
+import {
+  ErrorResponse,
+  ResponseHandler,
+  TsoaResponse
+} from '../../config/tsoaResponse.js';
 import { Request as ExRequest } from 'express';
-import { AddressesCreateRequestDto, AddressesGetRequestDto } from './dto/addresses.req.dto.js';
+import {
+  AddressesCreateRequestDto,
+  AddressesGetRequestDto
+} from './dto/addresses.req.dto.js';
 import { ForbiddenError } from '../auth/auth.error.js';
 import { AddressesResponseDto } from './dto/addresses.res.dto.js';
 
 @Route('addresses')
-@Tags('Addresses Router')
+@Tags('주소록')
 export class AddressesController extends Controller {
   private addressesService: AddressesService;
   constructor() {
@@ -66,14 +73,18 @@ export class AddressesController extends Controller {
   @Response<ErrorResponse>('400', '주소 추가 오류')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   public async createAddress(
-    @Body() requestBody: AddressesCreateRequestDto, @Request() req: ExRequest
+    @Body() requestBody: AddressesCreateRequestDto,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<AddressesResponseDto>> {
     const payload = (req as any).user;
     if (payload.role !== 'user') {
       throw new ForbiddenError('사용자만 주소를 추가할 수 있습니다.');
     }
     const userId = payload.id;
-    const address = await this.addressesService.createAddress(userId, requestBody);
+    const address = await this.addressesService.createAddress(
+      userId,
+      requestBody
+    );
     return new ResponseHandler<AddressesResponseDto>(address);
   }
 
@@ -89,7 +100,8 @@ export class AddressesController extends Controller {
   @Response<ErrorResponse>('400', '주소 삭제 오류')
   @Response<ErrorResponse>('500', '서버 내부 오류')
   public async deleteAddress(
-    @Path() addressId: string, @Request() req: ExRequest
+    @Path() addressId: string,
+    @Request() req: ExRequest
   ): Promise<TsoaResponse<string>> {
     const payload = (req as any).user;
     if (payload.role !== 'user') {

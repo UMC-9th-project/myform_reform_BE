@@ -101,6 +101,13 @@ export class ProfileRepository {
     return groups;
   }
 
+  async updateTrackingNumber(orderId: string, trackingNumber: string) {
+    await prisma.order.update({
+      where: { order_id: orderId },
+      data: { tracking_number: trackingNumber }
+    });
+  }
+
   async addReform(dto: ReformDto, categoryId: string) {
     return await prisma.reform_proposal.create({
       data: {
@@ -127,13 +134,16 @@ export class ProfileRepository {
   }
 
   async getOrder(dto: SaleRequestDto): Promise<RawSaleData[]> {
-    const { ownerId, type, page, limit } = dto;
+    const { ownerId, type, page, limit, sort } = dto;
+    const taregeTypes: target_type_enum[] =
+      type === 'REFORM' ? ['REQUEST', 'PROPOSAL', 'FEED'] : ['ITEM'];
 
     const orders = await prisma.order.findMany({
       where: {
         owner_id: ownerId,
-        target_type:
-          type === 'REFORM' ? { in: ['REQUEST', 'PROPOSAL', 'FEED'] } : 'ITEM'
+        target_type: {
+          in: taregeTypes
+        }
       },
       take: limit,
       skip: (page - 1) * limit,
@@ -155,15 +165,6 @@ export class ProfileRepository {
             created_at: true,
             receipt_number: true
           }
-        },
-        quote_photo: {
-          select: {
-            content: true
-          },
-          orderBy: {
-            photo_order: 'asc'
-          },
-          take: 1
         }
       }
     });
@@ -464,9 +465,9 @@ export class ProfileRepository {
   }
 
   async getFeedInfos(feedIds: string[]) {
-    if(feedIds.length === 0) return [];
+    if (feedIds.length === 0) return [];
     const feeds = await this.prisma.chat_request.findMany({
-      where: { chat_request_id: { in : feedIds } },
+      where: { chat_request_id: { in: feedIds } },
       select: {
         chat_request_id: true,
         message_id: true,
@@ -482,9 +483,8 @@ export class ProfileRepository {
       title: feed.title,
       photo: feed.image[0],
       min_budget: feed.min_budget,
-      max_budget: feed.max_budget,
-      expectedWorking: feed.expected_working,
-    }))
+      max_budget: feed.max_budget
+    }));
   }
 
   async getOrderDetail(
@@ -504,6 +504,7 @@ export class ProfileRepository {
         delivery_fee: true,
         target_type: true,
         chat_room_id: true,
+        tracking_number: true,
         user: {
           select: {
             name: true,
@@ -755,11 +756,19 @@ export class ProfileRepository {
   async findReviewsByOwnerId(
     ownerId: string,
     cursor: string | undefined,
-    take: number
+    take: number,
+    targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ) {
-    const where = cursor
+    const where: {
+      owner_id: string;
+      review_id?: { lt: string };
+      order?: { target_type: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST' };
+    } = cursor
       ? { owner_id: ownerId, review_id: { lt: cursor } }
       : { owner_id: ownerId };
+    if (targetType) {
+      where.order = { target_type: targetType };
+    }
 
     return await this.prisma.review.findMany({
       where,
@@ -867,6 +876,7 @@ export class ProfileRepository {
         price: true,
         delivery_fee: true,
         tracking_number: true,
+        chat_room_id: true,
         receipt: {
           select: {
             created_at: true,

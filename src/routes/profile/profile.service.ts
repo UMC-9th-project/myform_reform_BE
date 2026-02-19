@@ -4,7 +4,8 @@ import {
   ItemAddError,
   OrderItemError,
   OwnerNotFound,
-  ForbiddenAccessError
+  ForbiddenAccessError,
+  profileError
 } from './profile.error.js';
 import { OrderNotFoundError } from '../orders/orders.error.js';
 import {
@@ -23,7 +24,7 @@ import {
   Sale,
   SaleDetail,
   OrderDetail,
-  RawOptionItemsWithGroup,
+  RawOptionItemsWithGroup
 } from './profile.model.js';
 import type {
   AddFeedResponseDto,
@@ -108,21 +109,87 @@ export class ProfileService {
   async getSales(dto: SaleRequestDto): Promise<Sale[]> {
     try {
       const orders = await this.profileRepository.getOrder(dto);
-      const titleThumbnailMap =
-        await this.profileRepository.getTitleAndThumbnailsForOrders(orders);
 
-      return orders.map((order) => {
-        const info =
-          order.target_id != null
-            ? titleThumbnailMap.get(order.target_id)
-            : undefined;
-        const title = info?.title ?? '';
-        const thumbnailOverride = info?.thumbnail;
-        return Sale.create(order, title, { thumbnailOverride });
+      const itemIds = new Set<string>();
+      const requestIds = new Set<string>();
+      const proposalIds = new Set<string>();
+      const feedIds = new Set<string>();
+
+      orders.forEach((o) => {
+        if (!o.target_id) return;
+        if (o.target_type === 'ITEM') itemIds.add(o.target_id);
+        else if (o.target_type === 'REQUEST') requestIds.add(o.target_id);
+        else if (o.target_type === 'PROPOSAL') proposalIds.add(o.target_id);
+        else if (o.target_type === 'FEED') feedIds.add(o.target_id);
       });
+
+      const [itemInfos, reqInfos, propInfos, feedInfos] = await Promise.all([
+        this.profileRepository.getItemInfos(Array.from(itemIds)),
+        this.profileRepository.getRequestInfos(Array.from(requestIds)),
+        this.profileRepository.getProposalInfos(Array.from(proposalIds)),
+        this.profileRepository.getFeedInfos(Array.from(feedIds))
+      ]);
+
+      const infoMap = new Map<string, { title: string; thumbnail: string }>();
+      const addToMap = (list: any[], idKey: string) => {
+        list.forEach((data) => {
+          infoMap.set(data[idKey], {
+            title: data.title,
+            thumbnail: data.photo
+          });
+        });
+      };
+
+      addToMap(itemInfos, 'item_id');
+      addToMap(reqInfos, 'reform_request_id');
+      addToMap(propInfos, 'reform_proposal_id');
+      addToMap(feedInfos, 'chatRequestId');
+
+      // 4. 모든 주문 목록 preview 생성
+      const ordersPreview = orders.map((order) => {
+        const info = infoMap.get(order.target_id ?? '') ?? {
+          title: '',
+          thumbnail: ''
+        };
+        return Sale.create(order, info.title, info.thumbnail);
+      });
+      return ordersPreview;
+
+      // const titleThumbnailMap =
+      //   await this.profileRepository.getTitleAndThumbnailsForOrders(orders);
+
+      // return orders.map((order) => {
+      //   const info =
+      //     order.target_id != null
+      //       ? titleThumbnailMap.get(order.target_id)
+      //       : undefined;
+      //   const title = info?.title ?? '';
+      //   const thumbnailOverride = info?.thumbnail;
+      //   return Sale.create(order, title, { thumbnailOverride });
+      // });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       throw new OrderItemError(message);
+    }
+  }
+
+  async updateTrackingNumber(
+    ownerId: string,
+    orderId: string,
+    trackingNumber: string
+  ) {
+    try {
+      const check = await this.profileRepository.isOrderOwner(ownerId, orderId);
+      if (!check) {
+        throw new OrderItemError('본인의 판매 내용이 아닙니다.');
+      }
+
+      await this.profileRepository.updateTrackingNumber(
+        orderId,
+        trackingNumber
+      );
+    } catch (err: any) {
+      throw new OrderItemError(err);
     }
   }
 
@@ -349,9 +416,10 @@ export class ProfileService {
           content: proposal.content,
           category: await this.marketService.getCategoryName(proposal.category),
           price: proposal.price !== null ? Number(proposal.price) : null,
-          avgStar: proposal.avg_star !== null ? Number(proposal.avg_star) : null,
+          avgStar:
+            proposal.avg_star !== null ? Number(proposal.avg_star) : null,
           reviewCount: proposal.review_count,
-          sellerName: owner.nickname,
+          sellerName: owner.nickname
         })
       )
     );
@@ -371,7 +439,8 @@ export class ProfileService {
   async getProfileReviews(
     id: string,
     cursor: string | undefined,
-    limit: number
+    limit: number,
+    targetType?: 'ITEM' | 'PROPOSAL' | 'FEED' | 'REQUEST'
   ): Promise<ReviewListResponse> {
     const owner = await this.resolveOwner(id);
     const ownerId = owner.owner_id;
@@ -380,7 +449,8 @@ export class ProfileService {
     const reviews = await this.profileRepository.findReviewsByOwnerId(
       ownerId,
       cursor,
-      take
+      take,
+      targetType
     );
     const hasNext = reviews.length > take;
     const actualReviews = hasNext ? reviews.slice(0, take) : reviews;
@@ -425,11 +495,40 @@ export class ProfileService {
         (r: { order: { target_id: string | null } | null }) =>
           r.order!.target_id!
       );
+    const requestIds: string[] = actualReviews
+      .filter(
+        (r: {
+          order: {
+            target_type: string | null;
+            target_id: string | null;
+          } | null;
+        }) => r.order?.target_type === 'REQUEST' && r.order?.target_id
+      )
+      .map(
+        (r: { order: { target_id: string | null } | null }) =>
+          r.order!.target_id!
+      );
+    const feedIds: string[] = actualReviews
+      .filter(
+        (r: {
+          order: {
+            target_type: string | null;
+            target_id: string | null;
+          } | null;
+        }) => r.order?.target_type === 'FEED' && r.order?.target_id
+      )
+      .map(
+        (r: { order: { target_id: string | null } | null }) =>
+          r.order!.target_id!
+      );
 
-    const [itemInfos, proposalInfos] = await Promise.all([
-      this.profileRepository.getItemInfos([...new Set(itemIds)]),
-      this.profileRepository.getProposalInfos([...new Set(proposalIds)])
-    ]);
+    const [itemInfos, proposalInfos, requestInfos, feedInfos] =
+      await Promise.all([
+        this.profileRepository.getItemInfos([...new Set(itemIds)]),
+        this.profileRepository.getProposalInfos([...new Set(proposalIds)]),
+        this.profileRepository.getRequestInfos([...new Set(requestIds)]),
+        this.profileRepository.getFeedInfos([...new Set(feedIds)])
+      ]);
     type ProductInfo = {
       title: string | null;
       price: number | null;
@@ -447,6 +546,36 @@ export class ProfileService {
         { title: p.title, price: p.price, photo: p.photo }
       ])
     );
+    const requestMap = new Map<string, ProductInfo>(
+      requestInfos.map(
+        (r: {
+          reform_request_id: string;
+          title: string | null;
+          minBudget: number | null;
+          maxBudget: number | null;
+          photo: string | null;
+        }) => [
+          r.reform_request_id,
+          {
+            title: r.title,
+            price: r.minBudget ?? r.maxBudget ?? null,
+            photo: r.photo
+          }
+        ]
+      )
+    );
+    const feedMap = new Map<string, ProductInfo>(
+      feedInfos.map(
+        (f: {
+          chatRequestId: string;
+          title: string | null;
+          photo: string | undefined;
+        }) => [
+          f.chatRequestId,
+          { title: f.title, price: null, photo: f.photo ?? null }
+        ]
+      )
+    );
 
     const reviewList = actualReviews.map(
       (review: {
@@ -461,7 +590,7 @@ export class ProfileService {
         const order = review.order;
         const user = review.user_id ? userMap.get(review.user_id) : null;
         let productId: string | null = null;
-        let productType: 'ITEM' | 'PROPOSAL' | null = null;
+        let productType: 'ITEM' | 'PROPOSAL' | 'REQUEST' | 'FEED' | null = null;
         let productTitle: string | null = null;
         let productPhoto: string | null = null;
         let productPrice: number | null = null;
@@ -473,7 +602,11 @@ export class ProfileService {
               ? 'ITEM'
               : order.target_type === 'PROPOSAL'
                 ? 'PROPOSAL'
-                : null;
+                : order.target_type === 'REQUEST'
+                  ? 'REQUEST'
+                  : order.target_type === 'FEED'
+                    ? 'FEED'
+                    : null;
 
           if (productType === 'ITEM' && productId) {
             const item = itemMap.get(productId);
@@ -485,6 +618,16 @@ export class ProfileService {
             productTitle = proposal?.title ?? null;
             productPhoto = proposal?.photo ?? null;
             productPrice = proposal?.price ?? null;
+          } else if (productType === 'REQUEST' && productId) {
+            const req = requestMap.get(productId);
+            productTitle = req?.title ?? null;
+            productPhoto = req?.photo ?? null;
+            productPrice = req?.price ?? null;
+          } else if (productType === 'FEED' && productId) {
+            const feed = feedMap.get(productId);
+            productTitle = feed?.title ?? null;
+            productPhoto = feed?.photo ?? null;
+            productPrice = feed?.price ?? null;
           }
         }
 
@@ -547,7 +690,7 @@ export class ProfileService {
     });
 
     // 3. title 과 thumbnail(photo) 조회
-    const [itemInfos, reqInfos, propInfos, feedInfos ] = await Promise.all([
+    const [itemInfos, reqInfos, propInfos, feedInfos] = await Promise.all([
       this.profileRepository.getItemInfos(Array.from(itemIds)),
       this.profileRepository.getRequestInfos(Array.from(requestIds)),
       this.profileRepository.getProposalInfos(Array.from(proposalIds)),
@@ -564,7 +707,7 @@ export class ProfileService {
     addToMap(itemInfos, 'item_id');
     addToMap(reqInfos, 'reform_request_id');
     addToMap(propInfos, 'reform_proposal_id');
-    addToMap(feedInfos, 'chatRequestId')
+    addToMap(feedInfos, 'chatRequestId');
 
     // 4. 모든 주문 목록 preview 생성
     const ordersPreview = actualOrders.map((order) => {
@@ -600,18 +743,18 @@ export class ProfileService {
     }
 
     // 2. 옵션 조회
-    const optionItemIds 
-      = await this.profileRepository.getOptionIdsByOrderId(orderId)
+    const optionItemIds =
+      await this.profileRepository.getOptionIdsByOrderId(orderId);
     let optionItemsWithGroup: RawOptionItemsWithGroup[] = [];
-    if(optionItemIds.length > 0 ){
-      optionItemsWithGroup 
-      = await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
+    if (optionItemIds.length > 0) {
+      optionItemsWithGroup =
+        await this.profileRepository.getOptionItemsWithGroup(optionItemIds);
     }
 
     const [info] = await Promise.all([
       this.getTargetInfo(order.target_type, order.target_id)
-    ])    
-    
+    ]);
+
     // 3. 결과값 리턴
     const orderDetail = OrderDetail.create(
       order,
@@ -641,18 +784,21 @@ export class ProfileService {
           : undefined;
       case 'REQUEST':
         const requests = await this.profileRepository.getRequestInfos([id]);
-        return requests[0] 
-        ? { 
-          title: requests[0].title ?? '', 
-          thumbnail: requests[0].photo ?? ''
-        } : undefined;
+        return requests[0]
+          ? {
+              title: requests[0].title ?? '',
+
+              thumbnail: requests[0].photo ?? ''
+            }
+          : undefined;
       case 'FEED':
         const feeds = await this.profileRepository.getFeedInfos([id]);
-        return feeds[0] 
-        ? { 
-          title: feeds[0].title ?? '', 
-          thumbnail: feeds[0].photo ?? ''
-        } : undefined;
+        return feeds[0]
+          ? {
+              title: feeds[0].title ?? '',
+              thumbnail: feeds[0].photo ?? ''
+            }
+          : undefined;
       default:
         return undefined;
     }

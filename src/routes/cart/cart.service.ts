@@ -4,6 +4,7 @@ import { DeleteItemsDTO, AddToCartDTO } from './dto/cart.req.dto.js';
 import {
   CreateCartResDTO,
   CartGroupedResDTO,
+  UpdateQuantityResDTO,
   SellerCartDTO,
   CartItemDTO,
   OptionDTO
@@ -57,6 +58,32 @@ export class CartService {
     const itemsMap = await this.getItemsMapFromCartRows(rows);
 
     return this.assembleCartResponse(rows, itemsMap);
+  }
+
+  async updateCartQuantity(
+    cartId: string,
+    userId: string,
+    type: 'inc' | 'dec'
+  ): Promise<UpdateQuantityResDTO> {
+    // 권한 검증
+    await this.validateUserCartOwnership([cartId], userId);
+
+    const cart = await cartModel.findCartById(cartId);
+    if (!cart) {
+      throw new CartNotFoundError();
+    }
+
+    // 감소 시 수량 검증
+    if (type === 'dec') {
+      const newQuantity = cart.quantity - 1;
+      if (newQuantity <= 0) {
+        await cartModel.deleteCartById(cartId);
+        return { cartId, updatedAt: new Date() };
+      }
+    }
+
+    const updated = await cartModel.updateCartQuantity(cartId, type);
+    return { cartId: updated.cart_id, updatedAt: new Date() };
   }
 
   // Private Helper Methods

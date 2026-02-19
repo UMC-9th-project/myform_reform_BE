@@ -11,7 +11,10 @@ import {
   RefreshTokenError, 
   EmailDuplicateError, 
   InputValidationError, 
-  SocialAccountDuplicateError
+  SocialAccountDuplicateError,
+  reformerNotApprovedError,
+  ForbiddenError,
+  reformerRejectedError
 } from './auth.error.js';
 import { SolapiMessageService} from 'solapi';
 import { redisClient } from '../../config/redis.js';
@@ -60,7 +63,7 @@ import {
 } from './dto/auth.req.dto.js';
 import { CustomJwt } from '../../@types/expreees.js';
 import { AuthRepository } from './auth.repository.js';
-
+import { runInTransaction } from '../../config/prisma.config.js';
 dotenv.config();
 
 const messageService = new SolapiMessageService(
@@ -179,6 +182,15 @@ export class AuthService {
       throw new MissingAuthInfoError('JWT 토큰 생성에 필요한 유저 정보가 DB에서 누락되었습니다.');
     }
     
+    if (user.role === 'reformer') {
+      if (user.auth_status === 'PENDING') {
+        throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+      }
+      if (user.auth_status === 'REJECTED') {
+        throw new reformerRejectedError('리폼러 신청이 반려된 계정입니다.')
+      }
+    }
+    
     const payload: CustomJwt = {
       id: user.id,
       role: user.role,
@@ -194,9 +206,10 @@ export class AuthService {
   }
 
   // 로그아웃 처리 : Redis에서 Refresh Token 삭제
-  async logout(userId: string): Promise<void> {
+  async logout(userId: string, accessToken: string): Promise<void> {
     try {
-      await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));      
+      await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));  
+      await this.registerAccessTokenToBlacklist(accessToken)    
     } catch (error) {
       console.error(`[Logout] Redis refreshToken 삭제 실패 - userId: ${userId}`, error);
     }
@@ -292,11 +305,21 @@ export class AuthService {
       throw new passwordInvalidError('비밀번호가 일치하지 않습니다.');
     }
     
+    if (account.role === 'reformer') {
+      if (account.auth_status === 'PENDING') {
+        throw new reformerNotApprovedError('아직 승인되지 않은 리폼러입니다.')
+      }
+      if (account.auth_status === 'REJECTED') {
+        throw new reformerRejectedError('리폼러 신청이 반려된 계정입니다.')
+      }
+    }
+
     const payload: CustomJwt = {
       id: account.id,
       role: account.role,
       ...(role === 'reformer' && { auth_status: account.auth_status })
     };
+    
 
     return await this.generateAndSaveTokens(payload);
   }
@@ -304,35 +327,85 @@ export class AuthService {
   // 리프레시 토큰을 입력받아 엑세스 토큰과 리프레시 토큰을 재발급
   async reissueAccessToken(requestBody: RefreshTokenRequest): Promise<AuthLoginResponse> {
     const { refreshToken } = requestBody;
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
+    const userId = (decoded as CustomJwt).id;
+    const role = (decoded as CustomJwt).role;
+    const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
+    
+    if (!savedRefreshToken || savedRefreshToken !== refreshToken){
+      await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));
+      throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
+    }
+    
+    const account = (role === 'user'
+      ? await this.usersRepository.findUserById(userId)
+      : await this.usersRepository.findReformerById(userId)) as UsersInfoResponseDto;
+    
+    if (!account){
+      throw new AccountNotFoundError('존재하지 않는 유저입니다.');
+    }
+
+    const payload: CustomJwt = {
+      id: account.id,
+      role: account.role as 'user' | 'reformer',
+      ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
+    };
+
+    const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
+    return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  // 계정 하드 딜리트 (로그인 시 테스트용)
+  async withdraw(accountId: string, role: Role, accessToken: string) {
+    return await runInTransaction(async () => {
+      if (role === 'user') {
+        if (accountId === process.env.MASTER_USER){
+          throw new ForbiddenError('마스터 계정은 삭제할 수 없습니다.')
+        }
+        const userAccount = await this.usersRepository.findUserbyUserId(accountId);
+        if (!userAccount){
+          throw new AccountNotFoundError('삭제하려는 계정을 찾을 수 없습니다. 이미 삭제되었거나 없는 계정입니다.')
+        }
+        await this.authRepository.deleteSocialAccount(role, accountId);
+        await this.authRepository.deleteUserAccount(accountId);
+      } else {
+        if (accountId === process.env.MASTER_REFORMER){
+          throw new ForbiddenError('마스터 계정은 삭제할 수 없습니다.')
+        }
+        const ownerAccount = await this.usersRepository.findReformerById(accountId);
+        if (!ownerAccount){
+          throw new AccountNotFoundError('삭제하려는 계정을 찾을 수 없습니다. 이미 삭제되었거나 없는 계정입니다.')
+        }
+        await this.authRepository.deleteReformerAuth(accountId);
+        await this.authRepository.deleteSocialAccount(role, accountId);
+        await this.authRepository.deleteReformerAccount(accountId);
+      }
+
+      try {
+        await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(accountId));
+        await this.registerAccessTokenToBlacklist(accessToken);      
+      } catch (error) {
+        console.error(`[Logout] Redis refreshToken 삭제 실패 - userId: ${accountId}`, error);
+      }
+    })
+  }
+
+  async registerAccessTokenToBlacklist(accessToken: string): Promise<void>{
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
-      const userId = (decoded as CustomJwt).id;
-      const role = (decoded as CustomJwt).role;
-      const savedRefreshToken = await redisClient.get(REDIS_KEYS.REFRESH_TOKEN(userId));
-      
-      if (!savedRefreshToken || savedRefreshToken !== refreshToken){
-        await redisClient.del(REDIS_KEYS.REFRESH_TOKEN(userId));
-        throw new InvalidCodeError('리프레시 토큰이 만료되었거나 일치하지 않습니다.');
-      }
-      
-      const account = (role === 'user'
-        ? await this.usersRepository.findUserById(userId)
-        : await this.usersRepository.findReformerById(userId)) as UsersInfoResponseDto;
-      
-      if (!account){
-        throw new AccountNotFoundError('존재하지 않는 유저입니다.');
-      }
+      const decoded = jwt.decode(accessToken) as { exp?: number };
+      const now = Math.floor(Date.now() / 1000);
+      const exp = decoded?.exp || (now + 3600);
+      const remainingTime = exp - now;
 
-      const payload: CustomJwt = {
-        id: account.id,
-        role: account.role as 'user' | 'reformer',
-        ...(role === 'reformer' && { auth_status: account.auth_status as AuthStatus })
-      };
-
-      const { accessToken, refreshToken: newRefreshToken } = await this.generateAndSaveTokens(payload);
-      return { accessToken, refreshToken: newRefreshToken };
+      if (remainingTime > 0) {
+        await redisClient.set(
+          REDIS_KEYS.BLACKLIST(accessToken),
+          'true',
+          { EX : remainingTime }
+        )
+      }
     } catch (error) {
-      throw new RefreshTokenError('액세스 토큰 및 리프레시 토큰 재발급에 실패하였습니다.');
+      console.error('액세스 토큰 블랙리스트 추가에 실패했습니다.', error);
     }
   }
 
@@ -358,7 +431,7 @@ export class AuthService {
 
   // JWT 토큰 생성 및 Redis에 저장
   private async generateAndSaveTokens(payload: CustomJwt): Promise<AuthLoginResponse> {
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '1h' });
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '5m' });
     const refreshToken = jwt.sign({id: payload.id, role: payload.role}, process.env.JWT_SECRET!, { expiresIn: '14d' });
     // Refresh Token Redis에 저장
     try {

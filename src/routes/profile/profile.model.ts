@@ -14,12 +14,12 @@ import {
 import { Category, OptionGroup } from '../../@types/item.js';
 
 const ORDER_STATUS_LABELS: Record<order_status_enum, string> = {
-  PENDING: '결제 대기',
+  PENDING: '상품준비 중',
   PAID: '결제 완료',
   SENT: '발송 완료',
   WORKING: '작업 중',
   DELIVERY: '배송 중',
-  COMPLETE: '거래 완료',
+  COMPLETE: '결제 완료',
   SETTLEMENT: '정산 완료',
   CANCELLED: '취소됨',
   REFUNDED: '환불됨'
@@ -45,15 +45,6 @@ export type RawSaleData = Prisma.orderGetPayload<{
         receipt_number: true;
       };
     };
-    quote_photo: {
-      select: {
-        content: true;
-      };
-      orderBy: {
-        photo_order: 'asc';
-      };
-      take: 1;
-    };
   };
 }>;
 
@@ -66,6 +57,7 @@ export type RawSaleDetailData = Prisma.orderGetPayload<{
     delivery_fee: true;
     target_type: true;
     chat_room_id: true;
+    tracking_number: true;
     user: {
       select: {
         name: true;
@@ -147,21 +139,15 @@ export class Sale {
     this.props = props;
   }
 
-  static create(
-    raw: RawSaleData,
-    title: string,
-    options?: { thumbnailOverride?: string }
-  ): Sale {
-    const thumbnail =
-      options?.thumbnailOverride ?? raw.quote_photo[0]?.content ?? '';
+  static create(raw: RawSaleData, title: string, thumbnail: string): Sale {
     return new Sale({
       orderId: raw.order_id as UUID,
       targetId: raw.target_id as UUID,
       status: ORDER_STATUS_LABELS[raw.status!],
-      price: raw.price!.toNumber() ?? 0,
-      deliveryFee: raw.delivery_fee!.toNumber() ?? 0,
+      price: raw.price?.toNumber() ?? 0,
+      deliveryFee: raw.delivery_fee?.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt!.created_at ?? new Date(),
+      createdAt: raw.receipt?.created_at ?? new Date(),
       title: title ?? '',
       thumbnail,
       receiptNumber: raw.receipt?.receipt_number ?? null,
@@ -198,20 +184,21 @@ export class SaleDetail {
       price: raw.price?.toNumber() ?? 0,
       deliveryFee: raw.delivery_fee?.toNumber() ?? 0,
       userName: raw.user.name ?? '',
-      createdAt: raw.receipt!.created_at ?? new Date(),
+      createdAt: raw.receipt?.created_at ?? new Date(),
       title: title,
       thumbnail,
       receiptNumber: raw.receipt?.receipt_number ?? null,
       chatRoomId: raw.chat_room_id ?? null,
       targetType: raw.target_type ?? 'ITEM',
+      tracking_number: raw.tracking_number ?? '',
       phone: raw.user.phone ?? '',
       delivery_address: {
-        postal_code: receipt.delivery_postal_code ?? null,
-        address: receipt.delivery_address ?? null,
-        address_detail: receipt.delivery_address_detail ?? null,
-        recipient_name: receipt.delivery_recipient_name ?? null,
-        phone: receipt.delivery_phone ?? null,
-        address_name: receipt.delivery_address_name ?? null
+        postal_code: receipt?.delivery_postal_code ?? null,
+        address: receipt?.delivery_address ?? null,
+        address_detail: receipt?.delivery_address_detail ?? null,
+        recipient_name: receipt?.delivery_recipient_name ?? null,
+        phone: receipt?.delivery_phone ?? null,
+        address_name: receipt?.delivery_address_name ?? null
       },
       option: option?.option_item?.name ?? '',
       billNumber: raw.receipt?.receipt_number ?? ''
@@ -388,6 +375,7 @@ export type RawOrderDetailData = Prisma.orderGetPayload<{
     delivery_fee: true;
     target_type: true;
     tracking_number: true;
+    chat_room_id: true;
     receipt: {
       select: {
         created_at: true;
@@ -443,6 +431,7 @@ export class OrderDetail {
       deliveryFee: delivery_fee,
       totalPrice: totalPrice,
       trackingNumber: raw.tracking_number ?? '',
+      chatRoomId: raw.chat_room_id ?? '',
       createdAt: raw.receipt?.created_at ?? new Date(),
       receiptNumber: raw.receipt?.receipt_number ?? '',
       deliveryPostalCode: raw.receipt?.delivery_postal_code ?? '',
