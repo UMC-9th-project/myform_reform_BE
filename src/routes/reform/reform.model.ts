@@ -348,7 +348,8 @@ export class ReformProposalUpdate {
 export class ReformProposalFactory {
   static createFromRaw(
     raw: RawProposalLatest,
-    isWished: boolean
+    isWished: boolean,
+    review: { avgStar: number; totalCount: number }
   ): ReformProposalResponse {
     return new ReformProposalResponse({
       isWished: isWished,
@@ -356,8 +357,8 @@ export class ReformProposalFactory {
       thumbnail: raw.reform_proposal_photo[0]?.content ?? '',
       title: raw.title ?? '',
       price: raw.price?.toNumber() ?? 0,
-      avgStar: raw.avg_star?.toNumber() ?? 0,
-      reviewCount: raw.review_count ?? 0,
+      avgStar: review.avgStar ?? 0,
+      reviewCount: review.totalCount ?? 0,
       ownerName: raw.owner.name ?? ''
     });
   }

@@ -23,14 +23,17 @@ import { Category } from '../../@types/item.js';
 import { runInTransaction } from '../../config/prisma.config.js';
 import { ProfileService } from '../profile/profile.service.js';
 import { MarketService } from '../market/market.service.js';
+import { ReviewsRepository } from '../reviews/reviews.repository.js';
 
 export class ReformService {
   private reformRepository: ReformRepository;
   private profileService: ProfileService;
   private maretService: MarketService;
+  private reviewsRepository: ReviewsRepository;
 
   private s3: S3;
   constructor() {
+    this.reviewsRepository = new ReviewsRepository();
     this.reformRepository = new ReformRepository();
     this.profileService = new ProfileService();
     this.maretService = new MarketService();
@@ -90,6 +93,19 @@ export class ReformService {
 
         const proposals = await Promise.all(
           proposalData.map(async (o) => {
+            const avgStar =
+              await this.reviewsRepository.findAverageStarForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              );
+
+            const review = {
+              avgStar: avgStar._avg?.star ? Number(avgStar._avg.star) : 0,
+              totalCount: await this.reviewsRepository.countReviewsForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              )
+            };
             let isWished = false;
             if (payload?.role === 'user') {
               isWished = await this.reformRepository.checkIsWishUser(
@@ -97,7 +113,11 @@ export class ReformService {
                 payload.id
               );
             }
-            return ReformProposalFactory.createFromRaw(o, isWished).toDto();
+            return ReformProposalFactory.createFromRaw(
+              o,
+              isWished,
+              review
+            ).toDto();
           })
         );
 
@@ -342,13 +362,30 @@ export class ReformService {
         const results = await Promise.all(
           proposals.map(async (o) => {
             let isWished = false;
+            const avgStar =
+              await this.reviewsRepository.findAverageStarForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              );
+
+            const review = {
+              avgStar: avgStar._avg?.star ? Number(avgStar._avg.star) : 0,
+              totalCount: await this.reviewsRepository.countReviewsForTarget(
+                'PROPOSAL',
+                o.reform_proposal_id
+              )
+            };
             if (payload?.role === 'user') {
               isWished = await this.reformRepository.checkIsWishUser(
                 o.reform_proposal_id,
                 payload.id
               );
             }
-            return ReformProposalFactory.createFromRaw(o, isWished).toDto();
+            return ReformProposalFactory.createFromRaw(
+              o,
+              isWished,
+              review
+            ).toDto();
           })
         );
 
